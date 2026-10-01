@@ -83,7 +83,9 @@
             const status = document.createElement('span');
             status.className = 'standing-status';
             root.append(rank, dot, name, status);
-            node = HUD._standingNodes[row.id] = { root: root, rank: rank, status: status };
+            node = HUD._standingNodes[row.id] = {
+              root: root, rank: rank, status: status, nameNode: name
+            };
           }
           list.appendChild(node.root);
         });
@@ -91,6 +93,11 @@
       rows.forEach(row => {
         const node = HUD._standingNodes[row.id];
         const stalled = !Standings.frozen && row.stalled;
+        /* Step 9: the profile name can change between races, so the row keeps
+           up with it instead of showing whatever it was first built with. */
+        HUD._set('standingName-' + row.id, row.name, () => {
+          node.nameNode.textContent = row.name;
+        });
         HUD._set('standing-' + row.id, row.place + '/' + stalled + '/' + row.finished, () => {
           node.rank.textContent = String(row.place);
           node.status.textContent = stalled ? '⚡' : (row.finished ? 'FIN' : '');

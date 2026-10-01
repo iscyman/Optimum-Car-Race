@@ -70,9 +70,13 @@
       return byId(id) || byId(Difficulty._id) || byId(D.default) || D.levels[0];
     },
 
-    /** Re-read the saved selection (called at boot and after storage errors). */
+    /**
+     * Re-read the saved selection (called at boot and after storage errors).
+     * Step 9: the choice lives inside the one save object; the old per-feature
+     * key is only read by the migration when no save exists yet.
+     */
     load() {
-      const saved = readRaw(D.keys.selection);
+      const saved = OR.Save ? OR.Save.selection().difficulty : readRaw(D.keys.selection);
       Difficulty._id = byId(saved) ? saved : Difficulty.defaultId;
       return Difficulty._id;
     },
@@ -103,19 +107,26 @@
     select(id) {
       const level = byId(id) || Difficulty.current();
       Difficulty._id = level.id;
-      writeRaw(D.keys.selection, level.id);
+      if (OR.Save) OR.Save.setSelection(null, level.id);
+      else writeRaw(D.keys.selection, level.id);
       return level;
     },
 
     /* ---- best race time per difficulty ---------------------------------- */
 
+    /**
+     * Best race time per difficulty. Step 8 made records per track, so this is
+     * the best on the ACTIVE track — the number the finish screen is showing.
+     */
     bestTimes() {
-      const stored = readJson(D.keys.best, {});
+      const table = OR.Save ? OR.Save.bests() : null;
+      const trackId = (OR.activeTrack && OR.activeTrack.id) || 'flexnode';
+      const stored = table ? (table[trackId] || {}) : readJson(D.keys.best, {});
       const out = {};
       for (let i = 0; i < D.levels.length; i++) {
         const id = D.levels[i].id;
-        const ms = Math.max(topos(stored[id]), topos(Difficulty._memoryBest[id]));
-        out[id] = ms;
+        const raw = table ? (stored[id] && stored[id].timeMs) : stored[id];
+        out[id] = Math.max(topos(raw), topos(Difficulty._memoryBest[id]));
       }
       return out;
     },
@@ -136,7 +147,18 @@
       if (isNewBest) {
         best[level.id] = timeMs;
         Difficulty._memoryBest[level.id] = timeMs;
-        writeRaw(D.keys.best, JSON.stringify(best));
+        if (OR.Save) {
+          /* One storage path for the whole game (Step 9): the record goes into
+             the active track's row of the shared save. */
+          const trackId = (OR.activeTrack && OR.activeTrack.id) || 'flexnode';
+          const table = OR.Save.bests();
+          if (!table[trackId]) table[trackId] = {};
+          if (!table[trackId][level.id]) table[trackId][level.id] = { timeMs: 0, lapMs: 0 };
+          table[trackId][level.id].timeMs = timeMs;
+          OR.Save.write();
+        } else {
+          writeRaw(D.keys.best, JSON.stringify(best));
+        }
       }
       return {
         bestMs: isNewBest ? timeMs : previousMs,

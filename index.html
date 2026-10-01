@@ -118,6 +118,8 @@
       </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
+      <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
+      <p class="racing-as" id="racingAs"></p>
       <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
@@ -148,6 +150,44 @@
       <p id="trackSummary" class="track-summary"></p>
       <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
       <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 9: profile, stats and the save file -->
+    <div class="panel panel-wide hidden" id="menuProfile">
+      <div class="badge">DRIVER PROFILE</div>
+      <h2 class="title title-sm">PROFILE</h2>
+
+      <div class="profile-row">
+        <label class="profile-label" for="profileName">NAME</label>
+        <input id="profileName" class="profile-input" type="text" maxlength="16"
+               autocomplete="off" spellcheck="false" aria-label="Player name">
+        <span class="profile-counter" id="profileNameCount">0/16</span>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">CAR COLOUR</div>
+        <div id="profileColors" class="color-picker" role="radiogroup" aria-label="Car colour"></div>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">CAREER</div>
+        <div class="stats stats-compact" id="profileStats"></div>
+        <div class="profile-records" id="profileRecords"></div>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">SAVE FILE</div>
+        <div class="profile-save-row">
+          <button id="profileExportBtn" class="btn btn-ghost btn-inline">EXPORT</button>
+          <button id="profileImportBtn" class="btn btn-ghost btn-inline">IMPORT</button>
+          <button id="profileResetBtn" class="btn btn-ghost btn-inline btn-danger">RESET</button>
+        </div>
+        <textarea id="profileSaveText" class="profile-save-text" rows="3" spellcheck="false"
+                  aria-label="Save data (Base64)"></textarea>
+        <p class="profile-save-hint" id="profileSaveHint">EXPORT copies a Base64 string. IMPORT replaces this profile and progress with a pasted string.</p>
+      </div>
+
+      <button id="profileBackBtn" class="btn btn-ghost">BACK</button>
     </div>
   </div>
 
@@ -190,6 +230,10 @@
         <div class="stat">
           <span class="stat-label">TRACK</span>
           <span class="stat-value" id="finalTrack">FLEXNODE CIRCUIT</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">DRIVER</span>
+          <span class="stat-value driver-value"><span class="driver-dot" id="finalDriverDot" aria-hidden="true"></span><span id="finalDriver">Racer</span></span>
         </div>
         <div class="stat">
           <span class="stat-label">FINAL TIME</span>
@@ -236,6 +280,7 @@
 <script src="js/track.js"></script>
 <script src="js/car.js"></script>
 <script src="js/race.js"></script>
+<script src="js/save.js"></script>
 <script src="js/difficulty.js"></script>
 <script src="js/bests.js"></script>
 <script src="js/rivals.js"></script>

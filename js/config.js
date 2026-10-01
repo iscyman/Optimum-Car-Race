@@ -272,6 +272,30 @@ OR.CONFIG = {
     fixedStep: 1 / 120     // physics timestep
   },
 
+  /* ---- Player profile and the save file (Step 9) ------------------------------
+   * One versioned save object holds everything the player keeps between
+   * sessions: profile, career stats, best times and the menu selections.
+   * `keys.save` is the single live key; the older per-feature keys are read
+   * once, by the migration, and then left alone. */
+  profile: {
+    maxNameLength: 16,
+    defaultName: 'Racer',
+    defaultColor: 'violet',
+    /* Six car colours. `body` is the four-stop body gradient used by the
+       renderer: outer dark, inner light, then the mirrored pair. */
+    colors: [
+      { id: 'violet', label: 'VIOLET', hex: '#8b5cff', body: ['#3a2f6b', '#6f5bd6', '#5a49b8', '#2a2350'] },
+      { id: 'cyan', label: 'CYAN', hex: '#22e1ff', body: ['#155166', '#3fd3ee', '#2fb2cd', '#0d3745'] },
+      { id: 'amber', label: 'AMBER', hex: '#ffb347', body: ['#5c3f14', '#f0a94b', '#d18f38', '#3d2a0d'] },
+      { id: 'magenta', label: 'MAGENTA', hex: '#ff3ea5', body: ['#5c1440', '#e64b96', '#c43c80', '#3d0d2b'] },
+      { id: 'mint', label: 'MINT', hex: '#52f4b8', body: ['#155c46', '#4fd7a6', '#3fb98d', '#0d3d2e'] },
+      { id: 'crimson', label: 'CRIMSON', hex: '#ff684e', body: ['#5c241a', '#e05f47', '#c04f3b', '#3d180f'] }
+    ],
+    keys: {
+      save: 'optimumRace.save.v1'
+    }
+  },
+
   /* ---- Theme ------------------------------------------------------------- */
   theme: {
     cyan: '#22e1ff',

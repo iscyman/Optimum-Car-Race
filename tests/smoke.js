@@ -12,7 +12,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
+const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'save', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
   .map(f => path.join(ROOT, 'js', f + '.js'));
 
 let pass = 0;
@@ -1755,14 +1755,158 @@ section('18. Step 8 — multiple tracks, track select and records');
   check('a slower finish does not replace the record',
     !Bests.record('mesh-highway', Diff.currentId(), { timeMs: 48000, lapMs: 23000 }).isNewTime &&
     Bests.bestTime('mesh-highway', Diff.currentId()) === 47000);
-  check('the choice is remembered under the documented key',
+  check('the choice is remembered in the save object',
+    OR.Save.selection().track === 'mesh-highway' &&
+    OR.TrackSelect.savedId() === 'mesh-highway',
+    OR.Save.selection().track);
+}
+
+/* ====================== 19. Step 9 — profile and saves ==================== */
+section('19. Step 9 — profile screen, stats and the save file');
+{
+  const Save = OR.Save;
+  const profilePane = doc.getElementById('menuProfile');
+  const nameInput = doc.getElementById('profileName');
+  const colors = doc.getElementById('profileColors');
+  const statsBox = doc.getElementById('profileStats');
+  const saveText = doc.getElementById('profileSaveText');
+  const saveHint = doc.getElementById('profileSaveHint');
+  const fire = (el, type) => el.dispatchEvent(new win.Event(type, { bubbles: true }));
+
+  check('the menu offers a profile pane',
+    !!doc.getElementById('profileBtn') && !!profilePane &&
+    profilePane.classList.contains('hidden'));
+
+  doc.getElementById('profileBtn').click();
+  check('PROFILE opens it and BACK returns to the title pane',
     (function () {
-      try {
-        return win.localStorage.getItem(CONFIG.track.keys.selection) === 'mesh-highway';
-      } catch (error) {
-        return false;
-      }
+      const opened = !profilePane.classList.contains('hidden') &&
+        doc.getElementById('menuMain').classList.contains('hidden');
+      doc.getElementById('profileBackBtn').click();
+      return opened && profilePane.classList.contains('hidden') &&
+        !doc.getElementById('menuMain').classList.contains('hidden');
     })());
+
+  check('the name field is capped at 16 characters',
+    nameInput.getAttribute('maxlength') === '16' &&
+    OR.CONFIG.profile.maxNameLength === 16 &&
+    nameInput.value === Save.profile().name,
+    'maxlength=' + nameInput.getAttribute('maxlength') + ', starts as ' + nameInput.value);
+
+  doc.getElementById('profileBtn').click();
+  nameInput.value = '  <b>Ace</b>  Pilot  ';
+  fire(nameInput, 'input');
+  check('junk typed into the name field is sanitised as you type',
+    !/[<>&"']/.test(nameInput.value) && nameInput.value.length <= 16 &&
+    nameInput.value === OR.Utils.sanitiseName('  <b>Ace</b>  Pilot  ') &&
+    doc.getElementById('profileNameCount').textContent ===
+      nameInput.value.length + '/16',
+    JSON.stringify(nameInput.value));
+
+  nameInput.value = 'Smoke Tester';
+  fire(nameInput, 'input');
+  fire(nameInput, 'change');
+  check('changing the name saves it', Save.profile().name === 'Smoke Tester',
+    Save.profile().name);
+
+  const swatches = Array.from(colors.querySelectorAll('.color-swatch'));
+  check('six car colours are offered',
+    swatches.length === 6 && swatches.every(sw => sw.getAttribute('role') === 'radio'),
+    swatches.map(sw => sw.dataset.color).join(', '));
+
+  swatches[3].click();
+  check('picking a colour paints the car and marks the swatch',
+    Save.profile().color === 'amber' || Save.profile().color === 'magenta'
+      ? swatches[3].classList.contains('is-selected') &&
+        Save.color().hex === Game.car.color &&
+        Array.isArray(Game.car.palette) && Game.car.palette.length === 4
+      : false,
+    Save.profile().color + ' → ' + Save.color().hex);
+  check('the menu says who you are racing as',
+    /Racing as Smoke Tester/.test(doc.getElementById('racingAs').textContent) &&
+    doc.getElementById('racingAs').textContent.indexOf(Save.color().label) !== -1,
+    doc.getElementById('racingAs').textContent);
+
+  check('career tiles show races, wins, podiums and total time',
+    statsBox.querySelectorAll('.stat').length === 4 &&
+    statsBox.textContent.indexOf(String(Save.stats().races)) !== -1 &&
+    statsBox.textContent.indexOf(Save.totalTimeText()) !== -1,
+    statsBox.querySelectorAll('.stat').length + ' tiles');
+  check('one record line per difficulty is listed',
+    doc.getElementById('profileRecords').querySelectorAll('.record-line').length ===
+      OR.Difficulty.levels.length);
+
+  doc.getElementById('profileExportBtn').click();
+  const exported = saveText.value;
+  check('EXPORT puts a Base64 save in the box',
+    exported.length > 40 && !/[^A-Za-z0-9+/=]/.test(exported) &&
+    /copied|save/i.test(saveHint.textContent),
+    exported.slice(0, 20) + '… (' + exported.length + ' chars)');
+
+  const nameBefore = Save.profile().name;
+  saveText.value = 'this is definitely not a save';
+  win.confirm = () => true;
+  doc.getElementById('profileImportBtn').click();
+  check('IMPORT refuses junk and says why',
+    Save.profile().name === nameBefore &&
+    /not look like/i.test(saveHint.textContent),
+    saveHint.textContent);
+
+  Save.recordRace({ timeMs: 40000, place: 1 });
+  OR.Bests.record('flexnode', 'normal', { timeMs: 40000, lapMs: 13000 });
+  saveText.value = exported;
+  doc.getElementById('profileImportBtn').click();
+  check('IMPORT restores an exported save',
+    Save.profile().name === 'Smoke Tester' &&
+    Save.profile().color === 'magenta' &&
+    Save.bests().flexnode && Save.bests().flexnode.normal &&
+    Save.bests().flexnode.normal.timeMs === OR.Bests.bestTime('flexnode', 'normal'),
+    'restored as ' + Save.profile().name);
+  check('export, import and export again is stable',
+    (function () {
+      const once = Save.export();
+      Save.import(once);
+      return Save.export() === once && Save.profile().name === 'Smoke Tester';
+    })(), Save.profile().name);
+
+  const keepName = Save.profile().name;
+  doc.getElementById('profileResetBtn').click();
+  check('RESET (confirmed) clears progress but keeps the profile',
+    Save.stats().races === 0 &&
+    Object.keys(Save.bests()).length === 0 &&
+    Save.profile().name === keepName,
+    Save.profile().name + ', ' + Save.stats().races + ' races');
+  doc.getElementById('profileBackBtn').click();
+
+  /* The profile must reach the HUD and the finish screen. */
+  Game.startRace();
+  advance(CONFIG.race.countdownSeconds + 0.05);
+  HUD.update(Game);
+  const playerRow = doc.querySelector('#standingsList .standing-row.is-player .standing-name');
+  check('the HUD standings show the profile name',
+    playerRow && playerRow.textContent === Save.profile().name,
+    playerRow && playerRow.textContent);
+
+  Race.lap = Race.laps;
+  Race.lapBase = 0;
+  Race.progress = 0.96;
+  Race.lastFraction = 0.96;
+  Race.nextCheckpoint = Track.checkpoints.length;
+  Race.lapTimes.push(15000);
+  Race.bestLapMs = 15000;
+  Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+  Game.raceTimeMs = 45000;
+  Game._finishRace();
+  Game._emit('finish', Game.results);
+  check('the finish screen names the driver in their colour',
+    doc.getElementById('finalDriver').textContent === Save.profile().name &&
+    /rgb|#/.test(doc.getElementById('finalDriverDot').style.background || Save.color().hex),
+    doc.getElementById('finalDriver').textContent);
+  check('the race is booked into the career stats',
+    Game.results.career && Game.results.career.races === 1 &&
+    Game.results.driver === Save.profile().name &&
+    Save.stats().races === 1,
+    JSON.stringify(Save.stats()));
 }
 
 /* =========================== summary ====================================== */

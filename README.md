@@ -1,4 +1,4 @@
-# OPTIMUM RACE — Steps 1 to 8
+# OPTIMUM RACE — Steps 1 to 9
 
 **Race. React. Win.**
 
@@ -134,6 +134,20 @@ npm run build      # regenerates optimum-race.html from the sources
 | Race Again keeps the same track, Menu returns to track select | done (`#againBtn` restarts on the track; QUIT/MAIN MENU open the track pane) |
 | Track select works on mobile | done (cards stack to one column, ≥ 84 px previews, tap targets are full-width buttons) |
 
+
+### Step 9 — profile and saves
+
+| Requirement | Status |
+| --- | --- |
+| One versioned save object with migrations; every read/write in try/catch | done (`js/save.js`, `version: 1`, migration chain, blocked storage keeps working in memory) |
+| Profile screen: name (max 16, sanitised, default `Racer`) and 6 car colours | done (menu pane; live-sanitised input; 6 swatches with palettes) |
+| Stats: races, wins, podiums, total race time, best time per track | done (`Save.stats()` + the Step 8 record book, all inside the save) |
+| Stats update automatically after each race | done (`Game._finishRace()` books the race; quitting early never reaches it) |
+| Export save (Base64) and Import with confirmation | done (EXPORT fills/copies the string, IMPORT asks first, junk and future versions are refused) |
+| Reset progress with confirmation | done (clears stats and records, keeps name and colour) |
+| Player name and car colour in the HUD and finish screen | done (HUD standings, finish DRIVER tile, car paint, menu "racing as" line) |
+| Preserve best times from earlier steps | done (Step 7 flat and Step 8 per-track records migrate on first load) |
+
 ## Not built yet (deliberately)
 
 Optimum network integration ·
@@ -178,6 +192,38 @@ lap for the difficulty just raced, and every card shows the record for the
 difficulty currently selected on the menu. A race that beats either number is
 labelled `NEW`. Flat Step 7 saves (per difficulty, no track) are migrated to
 FLEXNODE on first read, so nobody loses a record.
+
+## Profile and the save file (Step 9)
+
+Everything the player keeps lives in **one object under one key**
+(`optimumRace.save.v1`):
+
+```json
+{
+  "version": 1,
+  "profile":   { "name": "Racer", "color": "violet" },
+  "stats":     { "races": 0, "wins": 0, "podiums": 0, "totalTimeMs": 0 },
+  "bests":     { "mesh-highway": { "normal": { "timeMs": 47000, "lapMs": 22500 } } },
+  "selection": { "track": "flexnode", "difficulty": "normal" }
+}
+```
+
+* **Migrations.** `version` drives a chain (`MIGRATIONS[from]`). On first run of
+  Step 9 the loader folds in the keys Steps 7 and 8 wrote — the flat
+  `{ difficulty: ms }` table and the per-track table — so no record is lost.
+  A save from a *newer* build is refused rather than half-read.
+* **Never crashes.** Corrupt JSON, wrong types, impossible counts (more wins
+  than races) and partial objects are repaired or replaced by defaults; blocked
+  storage (private mode, `file://`, quota) keeps the whole game working from an
+  in-memory save, and every boundary is a try/catch.
+* **Export / import.** EXPORT shows (and copies) the save as a Base64 string.
+  IMPORT asks for confirmation and then replaces profile, stats, records and
+  selections. Whitespace and line breaks from a chat paste are tolerated.
+* **Reset progress** clears stats and every record but keeps the driver's name
+  and colour, and removes the old per-feature keys so nothing can resurrect.
+
+`js/bests.js` and `js/difficulty.js` kept their public APIs but now read and
+write through `OR.Save`, so there is exactly one file to back up.
 
 ## Controls
 
@@ -474,7 +520,7 @@ crosses the finish line.
 ## Testing
 
 ```bash
-npm test          # 375 checks: gameplay/UI, rival races, difficulty + balance, tracks
+npm test          # 433 checks: gameplay/UI, rival races, difficulty, tracks, save file
 npm run visual    # earlier-step real-browser pixel/performance regressions
 npm run rivals    # Steps 6–7 pixels, races, difficulty, phone emulation (needs Chrome)
 npm run balance   # tune the difficulty levels against the reference player
@@ -646,3 +692,44 @@ Manual pass:
   `tests/difficulty.js`, `tools/build-standalone.js`, `package.json`,
   `README.md`.
 - Regenerated deliverable: `optimum-race.html`.
+
+### Step 9 verification and manual checks
+
+`npm test` runs five suites — 433 checks, 0 failures:
+
+| Suite | Checks | What it covers |
+| --- | --- | --- |
+| `tests/smoke.js` | 264 | Steps 1–8 plus section 19: the profile pane, name sanitising, colour swatches, EXPORT/IMPORT/RESET through the real buttons, the HUD standings name, the finish DRIVER tile, and the race being booked into the career stats |
+| `tests/rivals.js` | 49 | AI racing, collisions, standings |
+| `tests/difficulty.js` | 47 | EASY / NORMAL / HARD, per-track records, corrupt and legacy selection data |
+| `tests/tracks.js` | 33 | Track data, geometry, a full AI race per circuit, previews, record book |
+| `tests/save.js` | 40 | The versioned save: defaults, profile/colour rules, stats, export→import round trips, reset, migrations from Steps 7–8, corrupt data, blocked storage |
+
+Manual pass:
+
+1. `npm start` → **PROFILE**. Type a name with odd characters and spaces: the
+   field cleans itself and caps at 16. Pick one of the six colours.
+2. Go back to the menu: the "racing as" line and the car's paint change.
+3. Race and finish: the HUD standings and the finish screen show your name and
+   colour; the profile's RACES/WINS/PODIUMS/TOTAL TIME have gone up.
+4. **PROFILE → EXPORT**, copy the string somewhere safe. Then **RESET** (confirm):
+   stats and records are empty, the name and colour stay.
+5. Paste the string back into the box and **IMPORT** (confirm): everything
+   returns, and it is still there after a reload.
+6. Break it on purpose: paste garbage into the box — the game says so and keeps
+   your save. Open a private window (blocked storage) — the game still plays.
+
+### Files changed for Step 9
+
+- Added: `js/save.js`, `tests/save.js`.
+- Updated: `js/utils.js` (`sanitiseName`), `js/config.js` (profile section,
+  6 colours, save key), `js/bests.js` (records now inside the save),
+  `js/difficulty.js` (selection + best time through the save),
+  `js/trackselect.js` (selection through the save), `js/rivals.js` (player name
+  and paint from the profile), `js/renderer.js` (player body palette),
+  `js/game.js` (career stats + driver identity at the flag), `js/hud.js`
+  (standings keep up with a renamed driver), `js/main.js` (profile pane,
+  export/import/reset, finish tile), `index.html`, `css/style.css`,
+  `tests/smoke.js` (section 19), `tests/difficulty.js` (save-backed keys),
+  `tools/build-standalone.js`, `package.json`, `README.md`.
+- Regenerated deliverable: `optimum-race.html` (254.8 KB).

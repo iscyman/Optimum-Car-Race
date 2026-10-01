@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty',
+const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'save', 'difficulty',
   'bests', 'rivals', 'collisions', 'standings', 'shards'];
 const STEP = 1 / 120;
 

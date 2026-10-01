@@ -30,6 +30,28 @@
       };
     },
 
+    /**
+     * Step 9: clean a player name.
+     * Control characters and markup-ish punctuation are dropped, runs of
+     * whitespace collapse to one space, the result is clamped to
+     * CONFIG.profile.maxNameLength characters, and an empty name falls back to
+     * the configured default ("Racer"). Never throws, never returns ''.
+     */
+    sanitiseName(value, max, fallback) {
+      const config = OR.CONFIG && OR.CONFIG.profile;
+      const limit = max || (config ? config.maxNameLength : 16);
+      const def = fallback || (config ? config.defaultName : 'Racer');
+      if (typeof value !== 'string') return def;
+      const name = value
+        .replace(/[\u0000-\u001f\u007f]/g, '')
+        .replace(/[<>&"'`\\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, limit)
+        .trim();
+      return name || def;
+    },
+
     /* 12345.6 -> "00:12.346" */
     formatTime(ms) {
       const safe = Math.max(0, ms);

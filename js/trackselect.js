@@ -25,23 +25,13 @@
     return Utils.clamp(Math.round(rating) || RATINGS.length - 1, 1, RATING_MAX);
   }
 
-  /** localStorage that never throws (selection only; the records are in bests.js). */
-  function readRaw(key) {
-    try {
-      const value = window.localStorage.getItem(key);
-      return value === null ? null : value;
-    } catch (error) {
-      return null;
-    }
+  /* Step 9: the selected circuit is part of the shared save object. */
+  function savedTrackId() {
+    return OR.Save ? OR.Save.selection().track : null;
   }
 
-  function writeRaw(key, value) {
-    try {
-      window.localStorage.setItem(key, value);
-      return true;
-    } catch (error) {
-      return false;
-    }
+  function rememberTrack(id) {
+    if (OR.Save) OR.Save.setSelection(id, null);
   }
 
   const TrackSelect = {
@@ -73,7 +63,7 @@
 
     /** The id saved from last time, or the first track. */
     savedId() {
-      const saved = readRaw(CONFIG.track.keys.selection);
+      const saved = savedTrackId();
       return OR.trackById(saved) ? saved : OR.TRACKS[0].id;
     },
 
@@ -248,7 +238,7 @@
       Track.use(track);
       Shards.reset();
       Renderer.invalidateTrack();
-      writeRaw(CONFIG.track.keys.selection, track.id);
+      rememberTrack(track.id);
       TrackSelect.refresh();
       return track;
     },

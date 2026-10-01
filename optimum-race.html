@@ -1010,6 +1010,102 @@ body.is-paused #hud { opacity: 0.35; }
   .track-summary { font-size: 10px; }
 }
 
+/* ============================ PROFILE (Step 9) ============================ */
+
+.racing-as {
+  margin: 14px 0 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.racing-as::before {
+  content: "";
+  display: inline-block;
+  width: 7px; height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--driver-color, var(--violet));
+  box-shadow: 0 0 10px var(--driver-color, var(--violet));
+}
+
+.profile-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; }
+.profile-label { font-size: 10px; letter-spacing: 0.22em; font-weight: 800; color: var(--muted); }
+.profile-input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 13px;
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  background: rgba(9, 12, 22, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+.profile-input:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.profile-counter { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 38px; text-align: right; }
+
+.profile-block { margin: 18px 0 0; text-align: center; }
+.profile-block .card-label { margin-bottom: 8px; }
+
+.color-picker { display: inline-flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.color-swatch {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55), transparent 55%), var(--swatch);
+  cursor: pointer;
+  transition: transform .12s, border-color .12s, box-shadow .12s;
+}
+.color-swatch:hover { transform: translateY(-2px); }
+.color-swatch:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.color-swatch.is-selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(34, 225, 255, 0.35), 0 0 18px var(--swatch);
+  transform: scale(1.06);
+}
+
+.profile-records { margin-top: 12px; display: grid; gap: 3px; }
+.record-line {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.profile-save-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.btn-inline { padding: 10px 16px; font-size: 11px; margin: 0; }
+.btn-danger { color: #ffb0a0; border-color: rgba(255, 104, 78, 0.42); }
+.btn-danger:hover { background: rgba(255, 104, 78, 0.14); }
+
+.profile-save-text {
+  width: 100%;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted);
+  background: rgba(5, 7, 14, 0.8);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+.profile-save-text:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.profile-save-hint { margin: 8px 0 18px; font-size: 10px; line-height: 1.6; color: var(--muted); }
+
+.driver-value { display: inline-flex; align-items: center; gap: 7px; justify-content: center; }
+.driver-value .driver-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--violet); }
+
+@media (max-width: 720px) {
+  .profile-input { font-size: 13px; }
+  .color-swatch { width: 30px; height: 30px; }
+  .profile-save-text { font-size: 9px; }
+}
+
 </style>
 </head>
 <body>
@@ -1121,6 +1217,8 @@ body.is-paused #hud { opacity: 0.35; }
       </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
+      <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
+      <p class="racing-as" id="racingAs"></p>
       <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
@@ -1151,6 +1249,44 @@ body.is-paused #hud { opacity: 0.35; }
       <p id="trackSummary" class="track-summary"></p>
       <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
       <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 9: profile, stats and the save file -->
+    <div class="panel panel-wide hidden" id="menuProfile">
+      <div class="badge">DRIVER PROFILE</div>
+      <h2 class="title title-sm">PROFILE</h2>
+
+      <div class="profile-row">
+        <label class="profile-label" for="profileName">NAME</label>
+        <input id="profileName" class="profile-input" type="text" maxlength="16"
+               autocomplete="off" spellcheck="false" aria-label="Player name">
+        <span class="profile-counter" id="profileNameCount">0/16</span>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">CAR COLOUR</div>
+        <div id="profileColors" class="color-picker" role="radiogroup" aria-label="Car colour"></div>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">CAREER</div>
+        <div class="stats stats-compact" id="profileStats"></div>
+        <div class="profile-records" id="profileRecords"></div>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">SAVE FILE</div>
+        <div class="profile-save-row">
+          <button id="profileExportBtn" class="btn btn-ghost btn-inline">EXPORT</button>
+          <button id="profileImportBtn" class="btn btn-ghost btn-inline">IMPORT</button>
+          <button id="profileResetBtn" class="btn btn-ghost btn-inline btn-danger">RESET</button>
+        </div>
+        <textarea id="profileSaveText" class="profile-save-text" rows="3" spellcheck="false"
+                  aria-label="Save data (Base64)"></textarea>
+        <p class="profile-save-hint" id="profileSaveHint">EXPORT copies a Base64 string. IMPORT replaces this profile and progress with a pasted string.</p>
+      </div>
+
+      <button id="profileBackBtn" class="btn btn-ghost">BACK</button>
     </div>
   </div>
 
@@ -1193,6 +1329,10 @@ body.is-paused #hud { opacity: 0.35; }
         <div class="stat">
           <span class="stat-label">TRACK</span>
           <span class="stat-value" id="finalTrack">FLEXNODE CIRCUIT</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">DRIVER</span>
+          <span class="stat-value driver-value"><span class="driver-dot" id="finalDriverDot" aria-hidden="true"></span><span id="finalDriver">Racer</span></span>
         </div>
         <div class="stat">
           <span class="stat-label">FINAL TIME</span>
@@ -1510,6 +1650,30 @@ OR.CONFIG = {
     fixedStep: 1 / 120     // physics timestep
   },
 
+  /* ---- Player profile and the save file (Step 9) ------------------------------
+   * One versioned save object holds everything the player keeps between
+   * sessions: profile, career stats, best times and the menu selections.
+   * `keys.save` is the single live key; the older per-feature keys are read
+   * once, by the migration, and then left alone. */
+  profile: {
+    maxNameLength: 16,
+    defaultName: 'Racer',
+    defaultColor: 'violet',
+    /* Six car colours. `body` is the four-stop body gradient used by the
+       renderer: outer dark, inner light, then the mirrored pair. */
+    colors: [
+      { id: 'violet', label: 'VIOLET', hex: '#8b5cff', body: ['#3a2f6b', '#6f5bd6', '#5a49b8', '#2a2350'] },
+      { id: 'cyan', label: 'CYAN', hex: '#22e1ff', body: ['#155166', '#3fd3ee', '#2fb2cd', '#0d3745'] },
+      { id: 'amber', label: 'AMBER', hex: '#ffb347', body: ['#5c3f14', '#f0a94b', '#d18f38', '#3d2a0d'] },
+      { id: 'magenta', label: 'MAGENTA', hex: '#ff3ea5', body: ['#5c1440', '#e64b96', '#c43c80', '#3d0d2b'] },
+      { id: 'mint', label: 'MINT', hex: '#52f4b8', body: ['#155c46', '#4fd7a6', '#3fb98d', '#0d3d2e'] },
+      { id: 'crimson', label: 'CRIMSON', hex: '#ff684e', body: ['#5c241a', '#e05f47', '#c04f3b', '#3d180f'] }
+    ],
+    keys: {
+      save: 'optimumRace.save.v1'
+    }
+  },
+
   /* ---- Theme ------------------------------------------------------------- */
   theme: {
     cyan: '#22e1ff',
@@ -1559,6 +1723,28 @@ OR.CONFIG = {
         t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
+    },
+
+    /**
+     * Step 9: clean a player name.
+     * Control characters and markup-ish punctuation are dropped, runs of
+     * whitespace collapse to one space, the result is clamped to
+     * CONFIG.profile.maxNameLength characters, and an empty name falls back to
+     * the configured default ("Racer"). Never throws, never returns ''.
+     */
+    sanitiseName(value, max, fallback) {
+      const config = OR.CONFIG && OR.CONFIG.profile;
+      const limit = max || (config ? config.maxNameLength : 16);
+      const def = fallback || (config ? config.defaultName : 'Racer');
+      if (typeof value !== 'string') return def;
+      const name = value
+        .replace(/[\u0000-\u001f\u007f]/g, '')
+        .replace(/[<>&"'`\\]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, limit)
+        .trim();
+      return name || def;
     },
 
     /* 12345.6 -> "00:12.346" */
@@ -2735,6 +2921,458 @@ OR.CONFIG = {
   OR.Race = Race.reset();
 })();
 
+/* ==== js/save.js ==== */
+/* =============================================================================
+ * save.js — Step 9: the one save object, its version and its migrations.
+ *
+ * Everything the player keeps between sessions lives in a single versioned
+ * object under one key (CONFIG.profile.keys.save):
+ *
+ *   {
+ *     version: 1,
+ *     profile:   { name: 'Racer', color: 'violet' },
+ *     stats:     { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
+ *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
+ *     selection: { track: 'flexnode', difficulty: 'normal' }
+ *   }
+ *
+ * Rules the rest of the game relies on:
+ *   - every read and write is wrapped in try/catch (private mode, file://,
+ *     quotas and blocked storage all fall back to an in-memory save);
+ *   - unknown or corrupt data never throws and never crashes the game — it is
+ *     replaced by sane defaults, and the bad blob is simply ignored;
+ *   - older versions migrate forward, including the pre-Step-9 keys that
+ *     Steps 7 and 8 wrote, so no best time is ever lost.
+ *
+ * Base64 for export/import is implemented locally (UTF-8 safe) so the module
+ * behaves identically in a browser, in jsdom and in a bare vm.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Utils } = OR;
+  const P = CONFIG.profile;
+  const K = P.keys;
+
+  const VERSION = 1;
+
+  /* ---- storage that never throws ------------------------------------------ */
+
+  function readRaw(key) {
+    try {
+      const value = window.localStorage.getItem(key);
+      return value === null ? null : value;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeRaw(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /* ---- base64 (UTF-8 safe, no environment dependency) --------------------- */
+
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+  function toUtf8Bytes(str) {
+    const bytes = [];
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (code < 0x80) {
+        bytes.push(code);
+      } else if (code < 0x800) {
+        bytes.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+      } else if (code >= 0xd800 && code <= 0xdbff && i + 1 < str.length) {
+        const next = str.charCodeAt(++i);
+        const cp = 0x10000 + ((code - 0xd800) << 10) + (next - 0xdc00);
+        bytes.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3f),
+          0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+      } else {
+        bytes.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+      }
+    }
+    return bytes;
+  }
+
+  function fromUtf8Bytes(bytes) {
+    let out = '';
+    for (let i = 0; i < bytes.length;) {
+      const b = bytes[i++];
+      if (b < 0x80) {
+        out += String.fromCharCode(b);
+      } else if (b >= 0xc0 && b < 0xe0) {
+        out += String.fromCharCode(((b & 0x1f) << 6) | (bytes[i++] & 0x3f));
+      } else if (b >= 0xe0 && b < 0xf0) {
+        out += String.fromCharCode(((b & 0x0f) << 12) |
+          ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f));
+      } else {
+        const cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3f) << 12) |
+          ((bytes[i++] & 0x3f) << 6) | (bytes[i++] & 0x3f);
+        const off = cp - 0x10000;
+        out += String.fromCharCode(0xd800 + (off >> 10), 0xdc00 + (off & 0x3ff));
+      }
+    }
+    return out;
+  }
+
+  function base64Encode(str) {
+    const bytes = toUtf8Bytes(str);
+    let out = '';
+    for (let i = 0; i < bytes.length; i += 3) {
+      const b0 = bytes[i];
+      const b1 = i + 1 < bytes.length ? bytes[i + 1] : NaN;
+      const b2 = i + 2 < bytes.length ? bytes[i + 2] : NaN;
+      out += ALPHABET[b0 >> 2];
+      out += ALPHABET[((b0 & 3) << 4) | (isNaN(b1) ? 0 : b1 >> 4)];
+      out += isNaN(b1) ? '=' : ALPHABET[((b1 & 15) << 2) | (isNaN(b2) ? 0 : b2 >> 6)];
+      out += isNaN(b2) ? '=' : ALPHABET[b2 & 63];
+    }
+    return out;
+  }
+
+  function base64Decode(text) {
+    const clean = String(text).replace(/[\s=]+$/g, '').replace(/\s+/g, '');
+    const bytes = [];
+    let buffer = 0;
+    let bits = 0;
+    for (let i = 0; i < clean.length; i++) {
+      const value = ALPHABET.indexOf(clean[i]);
+      if (value < 0) throw new Error('not base64');
+      buffer = (buffer << 6) | value;
+      bits += 6;
+      if (bits >= 8) {
+        bits -= 8;
+        bytes.push((buffer >> bits) & 0xff);
+      }
+    }
+    return fromUtf8Bytes(bytes);
+  }
+
+  /* ---- defaults and sanitising -------------------------------------------- */
+
+  function defaults() {
+    return {
+      version: VERSION,
+      profile: { name: P.defaultName, color: P.defaultColor },
+      stats: { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
+      bests: {},
+      selection: { track: null, difficulty: null }
+    };
+  }
+
+  function topos(value) {
+    return typeof value === 'number' && isFinite(value) && value > 0 ? Math.round(value) : 0;
+  }
+
+  function tocount(value) {
+    return typeof value === 'number' && isFinite(value) && value > 0 ? Math.floor(value) : 0;
+  }
+
+  function colorById(id) {
+    for (let i = 0; i < P.colors.length; i++) {
+      if (P.colors[i].id === id) return P.colors[i];
+    }
+    return null;
+  }
+
+  /** Only the shape the game understands survives; junk is dropped. */
+  function sanitiseBests(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    Object.keys(raw).forEach(function (trackId) {
+      const byDifficulty = raw[trackId];
+      if (!byDifficulty || typeof byDifficulty !== 'object') return;
+      const row = {};
+      Object.keys(byDifficulty).forEach(function (diffId) {
+        const cell = byDifficulty[diffId];
+        if (!cell || typeof cell !== 'object') return;
+        const timeMs = topos(cell.timeMs);
+        const lapMs = topos(cell.lapMs);
+        if (timeMs || lapMs) row[diffId] = { timeMs: timeMs, lapMs: lapMs };
+      });
+      if (Object.keys(row).length) out[trackId] = row;
+    });
+    return out;
+  }
+
+  function sanitise(raw) {
+    const base = defaults();
+    if (!raw || typeof raw !== 'object') return base;
+
+    const profile = raw.profile && typeof raw.profile === 'object' ? raw.profile : {};
+    base.profile.name = Utils.sanitiseName(profile.name);
+    base.profile.color = colorById(profile.color) ? profile.color : P.defaultColor;
+
+    const stats = raw.stats && typeof raw.stats === 'object' ? raw.stats : {};
+    base.stats.races = tocount(stats.races);
+    base.stats.wins = Math.min(base.stats.races, tocount(stats.wins));
+    base.stats.podiums = Math.min(base.stats.races, Math.max(base.stats.wins, tocount(stats.podiums)));
+    base.stats.totalTimeMs = topos(stats.totalTimeMs);
+
+    base.bests = sanitiseBests(raw.bests);
+
+    const selection = raw.selection && typeof raw.selection === 'object' ? raw.selection : {};
+    base.selection.track = typeof selection.track === 'string' ? selection.track : null;
+    base.selection.difficulty = typeof selection.difficulty === 'string' ? selection.difficulty : null;
+
+    return base;
+  }
+
+  /* ---- migrations ---------------------------------------------------------- */
+
+  /**
+   * Version chain. Each entry takes the previous shape and returns the next.
+   * There is nothing to do for 0 -> 1 beyond the sanitising above (the import
+   * of the pre-Step-9 keys is handled by readLegacy()); future steps append
+   * `2: function (data) { ... }` here.
+   */
+  const MIGRATIONS = {
+    0: function (data) { return data; }
+  };
+
+  function migrate(raw) {
+    if (!raw || typeof raw !== 'object') return defaults();
+    let data = raw;
+    let version = typeof data.version === 'number' && isFinite(data.version)
+      ? Math.floor(data.version) : 0;
+    /* A save from a future build is not understood: start clean rather than
+       half-read it, and never crash. */
+    if (version > VERSION) return defaults();
+    let guard = 0;
+    while (version < VERSION && guard++ < 32) {
+      const step = MIGRATIONS[version];
+      data = step ? step(data) : data;
+      version += 1;
+      data.version = version;
+    }
+    return sanitise(data);
+  }
+
+  /**
+   * Fold the older per-feature keys into a save object. Steps 7 and 8 wrote
+   * best times under their own keys; those records must survive Step 9.
+   */
+  function readLegacy() {
+    const legacy = { bests: {}, selection: {} };
+
+    const tableRaw = readRaw(CONFIG.track.keys.best);
+    if (tableRaw) {
+      try {
+        legacy.bests = sanitiseBests(JSON.parse(tableRaw));
+      } catch (error) {
+        legacy.bests = {};
+      }
+    }
+    /* Still nothing? Step 7 stored a flat { difficulty: ms } table. */
+    if (!Object.keys(legacy.bests).length) {
+      const flatRaw = readRaw(CONFIG.difficulty.keys.best);
+      if (flatRaw) {
+        try {
+          const flat = JSON.parse(flatRaw);
+          if (flat && typeof flat === 'object') {
+            CONFIG.difficulty.levels.forEach(function (level) {
+              const ms = topos(flat[level.id]);
+              if (ms) {
+                if (!legacy.bests.flexnode) legacy.bests.flexnode = {};
+                legacy.bests.flexnode[level.id] = { timeMs: ms, lapMs: 0 };
+              }
+            });
+          }
+        } catch (error) { /* ignored: treated as no legacy records */ }
+      }
+    }
+
+    legacy.selection.track = readRaw(CONFIG.track.keys.selection);
+    legacy.selection.difficulty = readRaw(CONFIG.difficulty.keys.selection);
+    return legacy;
+  }
+
+  /* ---- the module ---------------------------------------------------------- */
+
+  const Save = {
+    VERSION: VERSION,
+    key: K.save,
+    _data: null,
+    _lastError: null,
+
+    /** The whole save (loaded and migrated once per page). */
+    load() {
+      if (Save._data) return Save._data;
+      const raw = readRaw(K.save);
+
+      if (raw === null) {
+        /* First run of Step 9: adopt whatever earlier steps left behind and
+           write the migrated save out, so the file exists from the first visit. */
+        const legacy = readLegacy();
+        const fresh = defaults();
+        fresh.bests = legacy.bests;
+        fresh.selection.track = legacy.selection.track;
+        fresh.selection.difficulty = legacy.selection.difficulty;
+        Save._data = sanitise(fresh);
+        Save.write();
+        return Save._data;
+      }
+
+      try {
+        Save._data = migrate(JSON.parse(raw));
+      } catch (error) {
+        Save._lastError = String(error && error.message || error);
+        Save._data = defaults();
+      }
+      return Save._data;
+    },
+
+    /** Replace the in-memory save (used by import and by migrations). */
+    adopt(data) {
+      Save._data = migrate(data);
+      Save.write();
+      return Save._data;
+    },
+
+    /** Persist. Returns false when storage is unavailable, never throws. */
+    write() {
+      if (!Save._data) return false;
+      const ok = writeRaw(K.save, JSON.stringify(Save._data));
+      if (!ok) Save._lastError = 'storage unavailable';
+      return ok;
+    },
+
+    /** Force a re-read from storage (used by the tests). */
+    reload() {
+      Save._data = null;
+      return Save.load();
+    },
+
+    /* ---- accessors ------------------------------------------------------ */
+
+    profile() { return Save.load().profile; },
+    stats() { return Save.load().stats; },
+    bests() { return Save.load().bests; },
+    selection() { return Save.load().selection; },
+
+    /** The colour object for the profile (never null). */
+    color() {
+      return colorById(Save.load().profile.color) || colorById(P.defaultColor);
+    },
+
+    /**
+     * Set the player name and/or colour. The name is sanitised and clamped to
+     * CONFIG.profile.maxNameLength; an unknown colour is ignored.
+     */
+    setProfile(changes) {
+      const profile = Save.load().profile;
+      if (changes && typeof changes.name !== 'undefined') {
+        profile.name = Utils.sanitiseName(changes.name);
+      }
+      if (changes && typeof changes.color !== 'undefined' && colorById(changes.color)) {
+        profile.color = changes.color;
+      }
+      Save.write();
+      return profile;
+    },
+
+    setBests(bests) {
+      Save.load().bests = sanitiseBests(bests);
+      Save.write();
+      return Save.load().bests;
+    },
+
+    setSelection(trackId, difficultyId) {
+      const selection = Save.load().selection;
+      if (typeof trackId === 'string' && trackId) selection.track = trackId;
+      if (typeof difficultyId === 'string' && difficultyId) selection.difficulty = difficultyId;
+      Save.write();
+      return selection;
+    },
+
+    /* ---- career stats ---------------------------------------------------- */
+
+    /**
+     * Book a finished race. Called once, at the flag — quitting early must not
+     * count as a race played (nor, in Step 10, as XP earned).
+     */
+    recordRace(result) {
+      const stats = Save.load().stats;
+      const timeMs = topos(result && result.timeMs);
+      /* No place (0, missing, nonsense) counts the race but credits nothing. */
+      const place = tocount(result && result.place);
+      stats.races += 1;
+      if (place === 1) stats.wins += 1;
+      if (place >= 1 && place <= 3) stats.podiums += 1;
+      stats.totalTimeMs += timeMs;
+      Save.write();
+      return {
+        races: stats.races,
+        wins: stats.wins,
+        podiums: stats.podiums,
+        totalTimeMs: stats.totalTimeMs,
+        place: place
+      };
+    },
+
+    /** "2:34.912" style total, or a dash when nothing has been raced. */
+    totalTimeText() {
+      return Save.load().stats.totalTimeMs ? Utils.formatTime(Save.load().stats.totalTimeMs) : '--:--.---';
+    },
+
+    /* ---- export / import / reset ----------------------------------------- */
+
+    /** The whole save as a Base64 string that can be pasted anywhere. */
+    export() {
+      return base64Encode(JSON.stringify(Save.load()));
+    },
+
+    /**
+     * Adopt a Base64 save. Returns { ok: true, data } or { ok: false, error }.
+     * Corrupt input is reported, never thrown, and never destroys the current
+     * save.
+     */
+    import(text) {
+      if (typeof text !== 'string' || !text.trim()) {
+        return { ok: false, error: 'Nothing to import.' };
+      }
+      let parsed = null;
+      try {
+        parsed = JSON.parse(base64Decode(text));
+      } catch (error) {
+        return { ok: false, error: 'That does not look like an Optimum Race save.' };
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return { ok: false, error: 'That does not look like an Optimum Race save.' };
+      }
+      if (typeof parsed.version === 'number' && parsed.version > VERSION) {
+        return { ok: false, error: 'That save comes from a newer version of the game.' };
+      }
+      Save.adopt(parsed);
+      return { ok: true, data: Save._data };
+    },
+
+    /**
+     * Wipe progress (stats and every record) and keep the profile: the player
+     * is still the same person, just back at zero.
+     */
+    reset() {
+      const fresh = defaults();
+      fresh.profile = Save.load().profile;
+      fresh.selection = Save.load().selection;
+      Save._data = fresh;
+      /* Make sure the older keys cannot resurrect deleted records. */
+      writeRaw(CONFIG.track.keys.best, '{}');
+      writeRaw(CONFIG.difficulty.keys.best, '{}');
+      Save.write();
+      return Save._data;
+    }
+  };
+
+  OR.Save = Save;
+})();
+
 /* ==== js/difficulty.js ==== */
 /* =============================================================================
  * difficulty.js — Step 7: EASY / NORMAL / HARD for the rivals.
@@ -2808,9 +3446,13 @@ OR.CONFIG = {
       return byId(id) || byId(Difficulty._id) || byId(D.default) || D.levels[0];
     },
 
-    /** Re-read the saved selection (called at boot and after storage errors). */
+    /**
+     * Re-read the saved selection (called at boot and after storage errors).
+     * Step 9: the choice lives inside the one save object; the old per-feature
+     * key is only read by the migration when no save exists yet.
+     */
     load() {
-      const saved = readRaw(D.keys.selection);
+      const saved = OR.Save ? OR.Save.selection().difficulty : readRaw(D.keys.selection);
       Difficulty._id = byId(saved) ? saved : Difficulty.defaultId;
       return Difficulty._id;
     },
@@ -2841,19 +3483,26 @@ OR.CONFIG = {
     select(id) {
       const level = byId(id) || Difficulty.current();
       Difficulty._id = level.id;
-      writeRaw(D.keys.selection, level.id);
+      if (OR.Save) OR.Save.setSelection(null, level.id);
+      else writeRaw(D.keys.selection, level.id);
       return level;
     },
 
     /* ---- best race time per difficulty ---------------------------------- */
 
+    /**
+     * Best race time per difficulty. Step 8 made records per track, so this is
+     * the best on the ACTIVE track — the number the finish screen is showing.
+     */
     bestTimes() {
-      const stored = readJson(D.keys.best, {});
+      const table = OR.Save ? OR.Save.bests() : null;
+      const trackId = (OR.activeTrack && OR.activeTrack.id) || 'flexnode';
+      const stored = table ? (table[trackId] || {}) : readJson(D.keys.best, {});
       const out = {};
       for (let i = 0; i < D.levels.length; i++) {
         const id = D.levels[i].id;
-        const ms = Math.max(topos(stored[id]), topos(Difficulty._memoryBest[id]));
-        out[id] = ms;
+        const raw = table ? (stored[id] && stored[id].timeMs) : stored[id];
+        out[id] = Math.max(topos(raw), topos(Difficulty._memoryBest[id]));
       }
       return out;
     },
@@ -2874,7 +3523,18 @@ OR.CONFIG = {
       if (isNewBest) {
         best[level.id] = timeMs;
         Difficulty._memoryBest[level.id] = timeMs;
-        writeRaw(D.keys.best, JSON.stringify(best));
+        if (OR.Save) {
+          /* One storage path for the whole game (Step 9): the record goes into
+             the active track's row of the shared save. */
+          const trackId = (OR.activeTrack && OR.activeTrack.id) || 'flexnode';
+          const table = OR.Save.bests();
+          if (!table[trackId]) table[trackId] = {};
+          if (!table[trackId][level.id]) table[trackId][level.id] = { timeMs: 0, lapMs: 0 };
+          table[trackId][level.id].timeMs = timeMs;
+          OR.Save.write();
+        } else {
+          writeRaw(D.keys.best, JSON.stringify(best));
+        }
       }
       return {
         bestMs: isNewBest ? timeMs : previousMs,
@@ -2898,48 +3558,25 @@ OR.CONFIG = {
 
 /* ==== js/bests.js ==== */
 /* =============================================================================
- * bests.js — Step 8: the record book, per TRACK and per DIFFICULTY.
+ * bests.js — Step 8's record book, now stored inside the Step 9 save.
  *
- * One storage key holds the whole table:
+ * The public API is unchanged: best race time and best lap per TRACK and per
+ * DIFFICULTY, `record()` returning what changed, and the "Best on Normal …"
+ * wording the finish screen uses. What changed underneath is the storage: the
+ * table lives in OR.Save, so there is one save file, one version and one
+ * migration path (see js/save.js).
  *
- *   { "flexnode":       { "normal": { timeMs: 38900, lapMs: 12750 }, ... },
+ *   {
+ *     "flexnode":       { "normal": { timeMs: 38900, lapMs: 12750 }, ... },
  *     "mesh-highway":   { ... },
- *     "shard-speedway": { ... } }
- *
- * Both numbers are stored per cell: the best race time and the best lap.
- * Everything is defensive — blocked storage (private mode, file://, quotas)
- * simply falls back to an in-memory table for the session, exactly like
- * Step 7's difficulty module.
- *
- * A flat Step 7 record ("best time per difficulty", no track) is migrated to
- * FLEXNODE on first read, so old saves are not thrown away.
+ *     "shard-speedway": { ... }
+ *   }
  * ========================================================================== */
 (function () {
   'use strict';
 
-  const { CONFIG, Utils } = OR;
-  const K = CONFIG.track.keys;
+  const { Utils, Save } = OR;
 
-  /** localStorage that never throws. */
-  function readRaw(key) {
-    try {
-      const value = window.localStorage.getItem(key);
-      return value === null ? null : value;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  function writeRaw(key, value) {
-    try {
-      window.localStorage.setItem(key, value);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  /** Positive finite number or 0. */
   function topos(value) {
     return typeof value === 'number' && isFinite(value) && value > 0 ? value : 0;
   }
@@ -2948,101 +3585,32 @@ OR.CONFIG = {
     return { timeMs: 0, lapMs: 0 };
   }
 
-  /** Only keep the shape the game understands; junk is dropped silently. */
-  function sanitise(raw) {
-    const out = {};
-    if (!raw || typeof raw !== 'object') return out;
-    Object.keys(raw).forEach(function (trackId) {
-      const byDifficulty = raw[trackId];
-      if (!byDifficulty || typeof byDifficulty !== 'object') return;
-      const row = {};
-      Object.keys(byDifficulty).forEach(function (diffId) {
-        const cell = byDifficulty[diffId];
-        if (!cell || typeof cell !== 'object') return;
-        const timeMs = topos(cell.timeMs);
-        const lapMs = topos(cell.lapMs);
-        if (timeMs || lapMs) row[diffId] = { timeMs: timeMs, lapMs: lapMs };
-      });
-      if (Object.keys(row).length) out[trackId] = row;
-    });
-    return out;
-  }
-
-  /** Step 7 records are per difficulty only: they belong to the default track. */
-  function legacyTable() {
-    const raw = readRaw(CONFIG.difficulty.keys.best);
-    if (!raw) return null;
-    let parsed = null;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (error) {
-      return null;
-    }
-    if (!parsed || typeof parsed !== 'object') return null;
-    const row = {};
-    CONFIG.difficulty.levels.forEach(function (level) {
-      const ms = topos(parsed[level.id]);
-      if (ms) row[level.id] = { timeMs: ms, lapMs: 0 };
-    });
-    return Object.keys(row).length ? { flexnode: row } : null;
-  }
-
   const Bests = {
-    /* Session mirror: blocked storage must not break the current race. */
-    _memory: null,
-
-    _load() {
-      if (Bests._memory) return Bests._memory;
-      const raw = readRaw(K.best);
-      let table = null;
-      if (raw) {
-        try {
-          table = sanitise(JSON.parse(raw));
-        } catch (error) {
-          table = null;
-        }
-      }
-      if (!table || !Object.keys(table).length) {
-        const migrated = legacyTable();
-        if (migrated) table = migrated;
-      }
-      Bests._memory = table || {};
-      return Bests._memory;
+    /** The live table (do not mutate; use record()). */
+    _table() {
+      return Save.bests();
     },
 
-    _save() {
-      writeRaw(K.best, JSON.stringify(Bests._memory));
-      return Bests._memory;
-    },
-
-    /** Forget everything (used by tests and a future "reset records"). */
-    clear() {
-      Bests._memory = {};
-      writeRaw(K.best, '{}');
-      return Bests;
-    },
-
-    /** The whole table, as a plain object copy. */
+    /** A plain copy of the whole table. */
     table() {
-      return JSON.parse(JSON.stringify(Bests._load()));
+      return JSON.parse(JSON.stringify(Save.bests()));
     },
 
     /** { timeMs, lapMs } for one track + difficulty; zeroes when unset. */
     get(trackId, difficultyId) {
-      const table = Bests._load();
-      const row = table[trackId];
+      const row = Save.bests()[trackId];
       const cell = row && row[difficultyId];
-      return cell || emptyCell();
+      return cell ? { timeMs: topos(cell.timeMs), lapMs: topos(cell.lapMs) } : emptyCell();
     },
 
     /** Race time only (0 = none). Used by the track select cards. */
     bestTime(trackId, difficultyId) {
-      return topos(Bests.get(trackId, difficultyId).timeMs);
+      return Bests.get(trackId, difficultyId).timeMs;
     },
 
     /** Best lap only (0 = none). */
     bestLap(trackId, difficultyId) {
-      return topos(Bests.get(trackId, difficultyId).lapMs);
+      return Bests.get(trackId, difficultyId).lapMs;
     },
 
     /**
@@ -3050,7 +3618,7 @@ OR.CONFIG = {
      * Returns the stored values plus what (if anything) improved.
      */
     record(trackId, difficultyId, result) {
-      const table = Bests._load();
+      const table = Save.bests();
       if (!table[trackId]) table[trackId] = {};
       const row = table[trackId];
       if (!row[difficultyId]) row[difficultyId] = emptyCell();
@@ -3065,7 +3633,7 @@ OR.CONFIG = {
       const isNewLap = lapMs > 0 && (!previousLapMs || lapMs < previousLapMs);
       if (isNewTime) cell.timeMs = timeMs;
       if (isNewLap) cell.lapMs = lapMs;
-      if (isNewTime || isNewLap) Bests._save();
+      if (isNewTime || isNewLap) Save.write();
 
       return {
         timeMs: cell.timeMs,
@@ -3090,6 +3658,12 @@ OR.CONFIG = {
     lapText(trackId, difficultyId) {
       const ms = Bests.bestLap(trackId, difficultyId);
       return ms ? 'Best lap ' + Utils.formatTime(ms) : 'Best lap --:--.---';
+    },
+
+    /** Forget every record (the "Reset progress" button uses Save.reset()). */
+    clear() {
+      Save.setBests({});
+      return Bests;
     }
   };
 
@@ -3149,8 +3723,12 @@ OR.CONFIG = {
       level = level || OR.Difficulty.settings();
       Rivals.difficulty = level;
       player.id = 'player';
-      player.name = 'YOU';
-      player.color = CONFIG.theme.violet;
+      /* Step 9: the player is whoever the profile says, in the chosen colour. */
+      const profile = OR.Save ? OR.Save.profile() : null;
+      const paint = OR.Save ? OR.Save.color() : null;
+      player.name = profile ? profile.name : 'YOU';
+      player.color = paint ? paint.hex : CONFIG.theme.violet;
+      player.palette = paint ? paint.body : null;
       player.isPlayer = true;
       Rivals.placeOnGrid(player, 0);
 
@@ -4794,12 +5372,20 @@ OR.CONFIG = {
         ctx.fill();
       });
 
-      // body
+      // body (Step 9: the player's chosen colour, when one is set)
       const body = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
-      body.addColorStop(0, player ? '#3a2f6b' : Utils.rgba(accent, 0.55));
-      body.addColorStop(0.45, player ? '#6f5bd6' : accent);
-      body.addColorStop(0.55, player ? '#5a49b8' : accent);
-      body.addColorStop(1, player ? '#2a2350' : Utils.rgba(accent, 0.55));
+      const paint = player ? car.palette : null;
+      if (paint && paint.length === 4) {
+        body.addColorStop(0, paint[0]);
+        body.addColorStop(0.45, paint[1]);
+        body.addColorStop(0.55, paint[2]);
+        body.addColorStop(1, paint[3]);
+      } else {
+        body.addColorStop(0, player ? '#3a2f6b' : Utils.rgba(accent, 0.55));
+        body.addColorStop(0.45, player ? '#6f5bd6' : accent);
+        body.addColorStop(0.55, player ? '#5a49b8' : accent);
+        body.addColorStop(1, player ? '#2a2350' : Utils.rgba(accent, 0.55));
+      }
       ctx.fillStyle = body;
       Utils.roundRect(ctx, -w / 2, -L / 2, w, L, 18);
       ctx.fill();
@@ -5301,7 +5887,9 @@ OR.CONFIG = {
             const status = document.createElement('span');
             status.className = 'standing-status';
             root.append(rank, dot, name, status);
-            node = HUD._standingNodes[row.id] = { root: root, rank: rank, status: status };
+            node = HUD._standingNodes[row.id] = {
+              root: root, rank: rank, status: status, nameNode: name
+            };
           }
           list.appendChild(node.root);
         });
@@ -5309,6 +5897,11 @@ OR.CONFIG = {
       rows.forEach(row => {
         const node = HUD._standingNodes[row.id];
         const stalled = !Standings.frozen && row.stalled;
+        /* Step 9: the profile name can change between races, so the row keeps
+           up with it instead of showing whatever it was first built with. */
+        HUD._set('standingName-' + row.id, row.name, () => {
+          node.nameNode.textContent = row.name;
+        });
         HUD._set('standing-' + row.id, row.place + '/' + stalled + '/' + row.finished, () => {
           node.rank.textContent = String(row.place);
           node.status.textContent = stalled ? '⚡' : (row.finished ? 'FIN' : '');
@@ -5652,6 +6245,17 @@ OR.CONFIG = {
       Game.results.isNewTrackBest = trackBest.isNewTime;
       Game.results.isNewBestLap = trackBest.isNewLap;
 
+      /* Step 9: career stats and the driver identity, booked once per race.
+         Quitting early never reaches this method, so it cannot count. */
+      Game.results.driver = OR.Save.profile().name;
+      Game.results.driverColor = OR.Save.color().hex;
+      Game.results.career = OR.Save.recordRace({
+        trackId: Track.id,
+        difficultyId: Game.difficultyId,
+        timeMs: Game.finalTimeMs,
+        place: Standings.playerPlace
+      });
+
       /* Step 7's per-difficulty record is kept as well, so its storage key and
          wording keep working exactly as before. */
       const best = OR.Difficulty.recordBest(Game.difficultyId, Game.finalTimeMs);
@@ -5865,23 +6469,13 @@ OR.CONFIG = {
     return Utils.clamp(Math.round(rating) || RATINGS.length - 1, 1, RATING_MAX);
   }
 
-  /** localStorage that never throws (selection only; the records are in bests.js). */
-  function readRaw(key) {
-    try {
-      const value = window.localStorage.getItem(key);
-      return value === null ? null : value;
-    } catch (error) {
-      return null;
-    }
+  /* Step 9: the selected circuit is part of the shared save object. */
+  function savedTrackId() {
+    return OR.Save ? OR.Save.selection().track : null;
   }
 
-  function writeRaw(key, value) {
-    try {
-      window.localStorage.setItem(key, value);
-      return true;
-    } catch (error) {
-      return false;
-    }
+  function rememberTrack(id) {
+    if (OR.Save) OR.Save.setSelection(id, null);
   }
 
   const TrackSelect = {
@@ -5913,7 +6507,7 @@ OR.CONFIG = {
 
     /** The id saved from last time, or the first track. */
     savedId() {
-      const saved = readRaw(CONFIG.track.keys.selection);
+      const saved = savedTrackId();
       return OR.trackById(saved) ? saved : OR.TRACKS[0].id;
     },
 
@@ -6088,7 +6682,7 @@ OR.CONFIG = {
       Track.use(track);
       Shards.reset();
       Renderer.invalidateTrack();
-      writeRaw(CONFIG.track.keys.selection, track.id);
+      rememberTrack(track.id);
       TrackSelect.refresh();
       return track;
     },
@@ -6132,7 +6726,7 @@ OR.CONFIG = {
 (function () {
   'use strict';
 
-  const { Game, Input, Utils, Renderer, Audio, Difficulty } = OR;
+  const { CONFIG, Game, Input, Utils, Renderer, Audio, Difficulty, Save, Bests, TrackSelect } = OR;
 
   const Screens = {
     menu: null,
@@ -6143,6 +6737,7 @@ OR.CONFIG = {
     /* Step 8: the menu has two panes — title ('main') and track select. */
     menuMain: null,
     menuTracks: null,
+    menuProfile: null,
     view: 'main',
 
     init() {
@@ -6153,6 +6748,7 @@ OR.CONFIG = {
       Screens.touch = document.getElementById('touchControls');
       Screens.menuMain = document.getElementById('menuMain');
       Screens.menuTracks = document.getElementById('menuTracks');
+      Screens.menuProfile = document.getElementById('menuProfile');
 
       // ---- pause menu (Step 4) -------------------------------------------
       const pauseBtn = document.getElementById('pauseBtn');
@@ -6272,6 +6868,128 @@ OR.CONFIG = {
         });
       }
 
+      /* ---- Step 9: profile pane ------------------------------------------ */
+      const profileBtn = document.getElementById('profileBtn');
+      const profileBackBtn = document.getElementById('profileBackBtn');
+      if (profileBtn) {
+        profileBtn.addEventListener('click', e => {
+          e.preventDefault();
+          profileBtn.blur();
+          Screens.showMenuView('profile');
+        });
+      }
+      if (profileBackBtn) {
+        profileBackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          profileBackBtn.blur();
+          Screens.showMenuView('main');
+        });
+      }
+
+      Screens.nameInput = document.getElementById('profileName');
+      Screens.nameCount = document.getElementById('profileNameCount');
+      Screens.swatches = document.getElementById('profileColors');
+      Screens.statsBox = document.getElementById('profileStats');
+      Screens.recordsBox = document.getElementById('profileRecords');
+      Screens.saveText = document.getElementById('profileSaveText');
+      Screens.saveHint = document.getElementById('profileSaveHint');
+
+      if (Screens.swatches) {
+        CONFIG.profile.colors.forEach(color => {
+          const swatch = document.createElement('button');
+          swatch.type = 'button';
+          swatch.className = 'color-swatch';
+          swatch.dataset.color = color.id;
+          swatch.setAttribute('role', 'radio');
+          swatch.setAttribute('aria-checked', 'false');
+          swatch.setAttribute('aria-label', color.label + ' car');
+          swatch.title = color.label;
+          swatch.style.setProperty('--swatch', color.hex);
+          swatch.addEventListener('click', e => {
+            e.preventDefault();
+            Save.setProfile({ color: color.id });
+            Screens.applyProfile();
+          });
+          Screens.swatches.appendChild(swatch);
+        });
+      }
+
+      if (Screens.nameInput) {
+        Screens.nameInput.addEventListener('input', () => {
+          /* Live-sanitise while typing, so the field never shows junk. */
+          const clean = Utils.sanitiseName(Screens.nameInput.value);
+          if (Screens.nameInput.value !== clean) Screens.nameInput.value = clean;
+          if (Screens.nameCount) {
+            Screens.nameCount.textContent = clean.length + '/' + CONFIG.profile.maxNameLength;
+          }
+        });
+        Screens.nameInput.addEventListener('change', () => {
+          Save.setProfile({ name: Screens.nameInput.value });
+          Screens.applyProfile();
+        });
+      }
+
+      const exportBtn = document.getElementById('profileExportBtn');
+      const importBtn = document.getElementById('profileImportBtn');
+      const resetBtn = document.getElementById('profileResetBtn');
+      if (exportBtn) {
+        exportBtn.addEventListener('click', e => {
+          e.preventDefault();
+          exportBtn.blur();
+          if (!Screens.saveText) return;
+          Screens.saveText.value = Save.export();
+          Screens.saveText.focus();
+          Screens.saveText.select();
+          let copied = false;
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(Screens.saveText.value);
+              copied = true;
+            }
+          } catch (error) { copied = false; }
+          Screens.setSaveHint(copied
+            ? 'Save copied to the clipboard. Keep it somewhere safe.'
+            : 'Save shown below — copy the whole string to back it up.');
+        });
+      }
+      if (importBtn) {
+        importBtn.addEventListener('click', e => {
+          e.preventDefault();
+          importBtn.blur();
+          if (!Screens.saveText || !Screens.saveText.value.trim()) {
+            Screens.setSaveHint('Paste a Base64 save into the box first.');
+            return;
+          }
+          const ok = window.confirm('Import this save? It replaces the current profile and progress.');
+          if (!ok) return;
+          const result = Save.import(Screens.saveText.value);
+          if (!result.ok) {
+            Screens.setSaveHint(result.error);
+            return;
+          }
+          Screens.setSaveHint('Save imported. Profile and progress restored.');
+          Screens.applyProfile();
+          Difficulty.load();
+          Screens.selectDifficulty(Difficulty.currentId());
+          if (OR.TrackSelect) OR.TrackSelect.select(TrackSelect.savedId());
+          Screens.showMenuView('profile');
+        });
+      }
+      if (resetBtn) {
+        resetBtn.addEventListener('click', e => {
+          e.preventDefault();
+          resetBtn.blur();
+          const ok = window.confirm('Reset progress? Stats and every track record are deleted. ' +
+            'Your name and colour are kept.');
+          if (!ok) return;
+          Save.reset();
+          Screens.setSaveHint('Progress reset. Stats and records are empty again.');
+          Screens.applyProfile();
+          Screens.selectDifficulty(Difficulty.currentId());
+          if (OR.TrackSelect) OR.TrackSelect.refresh();
+        });
+      }
+
       // Engine sound: off until the player turns it on.
       const soundButtons = document.querySelectorAll('[data-action="sound"]');
       function syncSound() {
@@ -6329,12 +7047,16 @@ OR.CONFIG = {
       document.body.classList.toggle('is-paused', state === 'paused');
     },
 
-    /** Step 8: switch between the title pane and the track select pane. */
+    /**
+     * Step 8/9: switch between the menu panes — title, track select, profile.
+     */
     showMenuView(view) {
-      Screens.view = view === 'tracks' ? 'tracks' : 'main';
+      Screens.view = view === 'tracks' ? 'tracks' : (view === 'profile' ? 'profile' : 'main');
       if (Screens.menuMain) Screens.menuMain.classList.toggle('hidden', Screens.view !== 'main');
       if (Screens.menuTracks) Screens.menuTracks.classList.toggle('hidden', Screens.view !== 'tracks');
+      if (Screens.menuProfile) Screens.menuProfile.classList.toggle('hidden', Screens.view !== 'profile');
       if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
+      if (Screens.view === 'profile') Screens.refreshProfile();
       return Screens.view;
     },
 
@@ -6361,9 +7083,96 @@ OR.CONFIG = {
       return level;
     },
 
+    /** Small helper for the save-file hint line. */
+    setSaveHint(text) {
+      if (Screens.saveHint) Screens.saveHint.textContent = text;
+    },
+
+    /** Paint the profile pane from the save (called whenever it opens). */
+    refreshProfile() {
+      const profile = Save.profile();
+      const color = Save.color();
+      if (Screens.nameInput) Screens.nameInput.value = profile.name;
+      if (Screens.nameCount) {
+        Screens.nameCount.textContent = profile.name.length + '/' + CONFIG.profile.maxNameLength;
+      }
+      if (Screens.swatches) {
+        Array.from(Screens.swatches.children).forEach(swatch => {
+          const on = swatch.dataset.color === color.id;
+          swatch.classList.toggle('is-selected', on);
+          swatch.setAttribute('aria-checked', on ? 'true' : 'false');
+          swatch.tabIndex = on ? 0 : -1;
+        });
+      }
+      if (Screens.statsBox) {
+        const stats = Save.stats();
+        const rows = [
+          ['RACES', String(stats.races)],
+          ['WINS', String(stats.wins)],
+          ['PODIUMS', String(stats.podiums)],
+          ['TOTAL TIME', Save.totalTimeText()]
+        ];
+        Screens.statsBox.replaceChildren();
+        rows.forEach(([label, value]) => {
+          const cell = document.createElement('div');
+          cell.className = 'stat';
+          const l = document.createElement('span');
+          l.className = 'stat-label';
+          l.textContent = label;
+          const v = document.createElement('span');
+          v.className = 'stat-value';
+          v.textContent = value;
+          cell.append(l, v);
+          Screens.statsBox.appendChild(cell);
+        });
+      }
+      if (Screens.recordsBox) {
+        Screens.recordsBox.replaceChildren();
+        Difficulty.levels.forEach(level => {
+          const line = document.createElement('p');
+          line.className = 'record-line';
+          const best = OR.TRACKS.map(track =>
+            track.name + ' ' + (Bests.bestTime(track.id, level.id)
+              ? Utils.formatTime(Bests.bestTime(track.id, level.id)) : '—'));
+          line.textContent = level.label + ' · ' + best.join(' · ');
+          Screens.recordsBox.appendChild(line);
+        });
+      }
+      return Screens;
+    },
+
+    /**
+     * Push the profile into the running game: the car's paint, the name used
+     * by the HUD standings, and the menu's "racing as" line.
+     */
+    applyProfile() {
+      const profile = Save.profile();
+      const color = Save.color();
+      if (Game.car) {
+        /* The HUD standings read the car's name/colour, so the change shows up
+           on the next frame — no restart needed. Rivals keep their own. */
+        Game.car.name = profile.name;
+        Game.car.color = color.hex;
+        Game.car.palette = color.body;
+      }
+      const racingAs = document.getElementById('racingAs');
+      if (racingAs) {
+        racingAs.textContent = 'Racing as ' + profile.name + ' · ' + color.label;
+        racingAs.style.setProperty('--driver-color', color.hex);
+      }
+      Screens.refreshProfile();
+      return Screens;
+    },
+
     showFinish(results) {
       document.getElementById('finalDifficulty').textContent = results.difficulty || 'NORMAL';
       /* Step 8: which circuit, and its records for this difficulty. */
+      const driver = document.getElementById('finalDriver');
+      if (driver) {
+        driver.textContent = results.driver || Save.profile().name;
+        const dot = document.getElementById('finalDriverDot');
+        if (dot) dot.style.background = results.driverColor || Save.color().hex;
+      }
       const trackName = document.getElementById('finalTrack');
       if (trackName) trackName.textContent = results.trackName || OR.Track.name;
       const trackBest = document.getElementById('finalTrackBest');
@@ -6486,6 +7295,8 @@ OR.CONFIG = {
     }, 200);
     /* Step 8: build the track cards and restore the saved circuit. */
     if (OR.TrackSelect) OR.TrackSelect.init();
+    /* Step 9: show the stored profile (name, colour, stats). */
+    Screens.applyProfile();
   }
 
   if (document.readyState === 'loading') {

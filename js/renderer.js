@@ -819,12 +819,20 @@
         ctx.fill();
       });
 
-      // body
+      // body (Step 9: the player's chosen colour, when one is set)
       const body = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
-      body.addColorStop(0, player ? '#3a2f6b' : Utils.rgba(accent, 0.55));
-      body.addColorStop(0.45, player ? '#6f5bd6' : accent);
-      body.addColorStop(0.55, player ? '#5a49b8' : accent);
-      body.addColorStop(1, player ? '#2a2350' : Utils.rgba(accent, 0.55));
+      const paint = player ? car.palette : null;
+      if (paint && paint.length === 4) {
+        body.addColorStop(0, paint[0]);
+        body.addColorStop(0.45, paint[1]);
+        body.addColorStop(0.55, paint[2]);
+        body.addColorStop(1, paint[3]);
+      } else {
+        body.addColorStop(0, player ? '#3a2f6b' : Utils.rgba(accent, 0.55));
+        body.addColorStop(0.45, player ? '#6f5bd6' : accent);
+        body.addColorStop(0.55, player ? '#5a49b8' : accent);
+        body.addColorStop(1, player ? '#2a2350' : Utils.rgba(accent, 0.55));
+      }
       ctx.fillStyle = body;
       Utils.roundRect(ctx, -w / 2, -L / 2, w, L, 18);
       ctx.fill();

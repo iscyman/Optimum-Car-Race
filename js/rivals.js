@@ -50,8 +50,12 @@
       level = level || OR.Difficulty.settings();
       Rivals.difficulty = level;
       player.id = 'player';
-      player.name = 'YOU';
-      player.color = CONFIG.theme.violet;
+      /* Step 9: the player is whoever the profile says, in the chosen colour. */
+      const profile = OR.Save ? OR.Save.profile() : null;
+      const paint = OR.Save ? OR.Save.color() : null;
+      player.name = profile ? profile.name : 'YOU';
+      player.color = paint ? paint.hex : CONFIG.theme.violet;
+      player.palette = paint ? paint.body : null;
       player.isPlayer = true;
       Rivals.placeOnGrid(player, 0);
 

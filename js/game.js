@@ -226,6 +226,17 @@
       Game.results.isNewTrackBest = trackBest.isNewTime;
       Game.results.isNewBestLap = trackBest.isNewLap;
 
+      /* Step 9: career stats and the driver identity, booked once per race.
+         Quitting early never reaches this method, so it cannot count. */
+      Game.results.driver = OR.Save.profile().name;
+      Game.results.driverColor = OR.Save.color().hex;
+      Game.results.career = OR.Save.recordRace({
+        trackId: Track.id,
+        difficultyId: Game.difficultyId,
+        timeMs: Game.finalTimeMs,
+        place: Standings.playerPlace
+      });
+
       /* Step 7's per-difficulty record is kept as well, so its storage key and
          wording keep working exactly as before. */
       const best = OR.Difficulty.recordBest(Game.difficultyId, Game.finalTimeMs);

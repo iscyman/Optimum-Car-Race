@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty', 'bests', 'rivals', 'collisions', 'standings'];
+const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'save', 'difficulty', 'bests', 'rivals', 'collisions', 'standings'];
 const STEP = 1 / 120;
 
 let passed = 0, failed = 0;
@@ -78,19 +78,25 @@ section('selection persistence');
   check('a fresh install preselects the documented default',
     first.Difficulty.currentId() === D.default, first.Difficulty.currentId());
   first.Difficulty.select('hard');
+  /* Step 9: the choice is written into the shared save object. */
   check('the choice is written to localStorage',
-    storage.data[D.keys.selection] === 'hard', String(storage.data[D.keys.selection]));
+    first.Save.selection().difficulty === 'hard' &&
+    typeof storage.data[first.CONFIG.profile.keys.save] === 'string',
+    first.Save.selection().difficulty);
   const reloaded = boot(storage);
   check('a reload preselects the saved level',
     reloaded.Difficulty.currentId() === 'hard' && reloaded.Difficulty.current().label === 'HARD');
   reloaded.Difficulty.select('bogus-level');
   check('selecting an unknown level keeps the current one and stores nothing new',
-    reloaded.Difficulty.currentId() === 'hard' && storage.data[D.keys.selection] === 'hard',
+    reloaded.Difficulty.currentId() === 'hard' &&
+    reloaded.Save.selection().difficulty === 'hard',
     reloaded.Difficulty.currentId());
-  storage.data[D.keys.selection] = 'a-level-from-the-future';
+  storage.data[first.CONFIG.profile.keys.save] = JSON.stringify({
+    version: 1, selection: { difficulty: 'a-level-from-the-future' }
+  });
   check('an unknown saved value falls back to the default',
     boot(storage).Difficulty.currentId() === D.default);
-  storage.data[D.keys.selection] = '{{{ not json';
+  storage.data[first.CONFIG.profile.keys.save] = '{{{ not json';
   check('corrupt selection data does not break the game',
     boot(storage).Difficulty.currentId() === D.default);
 }
