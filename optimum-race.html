@@ -1248,6 +1248,195 @@ body.is-paused #hud { opacity: 0.35; }
   .level-toast strong { font-size: 17px; }
 }
 
+/* ============================================================================
+   STEP 11 — cars, stat bars, level locks and the unlock toast
+   ========================================================================== */
+
+.unlock-hint {
+  margin: 2px 0 0;
+  font: 600 11px/1.5 "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted, #8f95b8);
+}
+.unlock-hint[data-unlock-id=""] { opacity: 0.7; }
+
+/* ---- the garage ---------------------------------------------------------- */
+
+.car-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 4px 0 10px;
+  width: 100%;
+}
+
+.car-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  background: linear-gradient(160deg, rgba(30, 34, 62, 0.92), rgba(18, 20, 38, 0.94));
+  border: 1px solid rgba(143, 123, 255, 0.28);
+  border-radius: 14px;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.car-card:hover { border-color: rgba(143, 123, 255, 0.6); }
+.car-card.is-selected {
+  border-color: var(--accent, #8f7bff);
+  box-shadow: 0 0 0 1px var(--accent, #8f7bff), 0 10px 26px rgba(143, 123, 255, 0.25);
+}
+.car-card.is-selected .car-pick { opacity: 1; }
+.car-card.is-locked {
+  cursor: not-allowed;
+  opacity: 0.72;
+  border-color: rgba(120, 126, 160, 0.28);
+}
+.car-card.is-locked .car-preview { filter: grayscale(0.6); }
+.car-card.is-refused { animation: lock-shake 0.35s ease; }
+
+@keyframes lock-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.car-preview {
+  width: 100%;
+  height: 118px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 55%, rgba(143, 123, 255, 0.14), rgba(10, 12, 24, 0.9));
+}
+
+.car-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.car-name {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.car-subtitle { font-size: 11px; color: var(--muted, #8f95b8); }
+
+.car-blurb {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted, #8f95b8);
+}
+
+.car-lock {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffd9a0;
+  background: rgba(20, 16, 8, 0.85);
+  border: 1px solid rgba(255, 190, 110, 0.45);
+  border-radius: 999px;
+}
+.car-card.is-locked .car-lock { display: inline-flex; }
+.lock-icon { font-size: 11px; }
+
+.car-pick {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #10131f;
+  background: var(--accent, #8f7bff);
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+/* ---- stat bars ----------------------------------------------------------- */
+
+.stat-list { display: grid; gap: 5px; }
+.stat-row { display: grid; grid-template-columns: 96px 1fr 42px; align-items: center; gap: 7px; }
+.stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--muted, #8f95b8);
+}
+.stat-bar {
+  position: relative;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+.stat-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #5f7bff, #8f7bff 60%, #c07bff);
+  transition: width 0.25s ease;
+}
+.car-card.is-locked .stat-fill { background: linear-gradient(90deg, #4a5068, #6b7186); }
+.stat-value {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--muted, #8f95b8);
+}
+
+/* ---- locked tracks ------------------------------------------------------- */
+
+.track-card { position: relative; }
+.track-card.is-locked { cursor: not-allowed; opacity: 0.7; border-color: rgba(120, 126, 160, 0.3); }
+.track-card.is-locked .track-preview { filter: grayscale(0.65); }
+.track-card.is-refused { animation: lock-shake 0.35s ease; }
+.track-lock {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffd9a0;
+  background: rgba(20, 16, 8, 0.85);
+  border: 1px solid rgba(255, 190, 110, 0.45);
+  border-radius: 999px;
+  z-index: 2;
+}
+.track-card.is-locked .track-lock { display: inline-flex; }
+
+/* ---- the unlock toast ---------------------------------------------------- */
+
+.unlock-toast .toast-badge { background: #ffb45c; color: #1a1206; }
+.unlock-toast { bottom: 108px; }
+
+@media (max-width: 720px) {
+  .car-list { grid-template-columns: minmax(0, 1fr); }
+  .car-preview { height: 96px; }
+  .stat-row { grid-template-columns: 84px 1fr 40px; }
+  .unlock-toast { bottom: 132px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .car-card, .stat-fill { transition: none; }
+  .car-card.is-refused, .track-card.is-refused { animation: none; }
+}
+
 </style>
 </head>
 <body>
@@ -1359,8 +1548,10 @@ body.is-paused #hud { opacity: 0.35; }
       </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
+      <button id="carsBtn" class="btn btn-ghost">CARS</button>
       <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
       <p class="racing-as" id="racingAs"></p>
+      <p class="unlock-hint" id="unlockHint"></p>
       <div class="level-line" id="menuLevelLine">
         <span class="level-badge" id="menuLevel">LEVEL 1</span>
         <span class="level-bar"><span class="level-fill" id="menuLevelBar"></span></span>
@@ -1396,6 +1587,15 @@ body.is-paused #hud { opacity: 0.35; }
       <p id="trackSummary" class="track-summary"></p>
       <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
       <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 11: car select, stat bars and level locks -->
+    <div class="panel panel-wide hidden" id="menuCars">
+      <div class="badge">SELECT CAR</div>
+      <h2 class="title title-sm">GARAGE</h2>
+      <div id="carList" class="car-list" role="radiogroup" aria-label="Select car"></div>
+      <p id="carSummary" class="track-summary"></p>
+      <button id="carsBackBtn" class="btn btn-ghost">BACK</button>
     </div>
 
     <!-- Step 9: profile, stats and the save file -->
@@ -1443,6 +1643,12 @@ body.is-paused #hud { opacity: 0.35; }
   </div>
 
   <!-- ===================== LEVEL-UP TOAST (Step 10) ===================== -->
+  <div id="unlockToast" class="level-toast unlock-toast hidden" role="status" aria-live="polite">
+    <span class="toast-badge">UNLOCKED</span>
+    <strong id="unlockToastValue">VALIDATOR</strong>
+    <span class="toast-sub" id="unlockToastSub"></span>
+  </div>
+
   <div id="levelToast" class="level-toast hidden" role="status" aria-live="polite">
     <span class="toast-badge">LEVEL UP</span>
     <strong id="levelToastValue">LEVEL 2</strong>
@@ -1866,6 +2072,72 @@ OR.CONFIG = {
   },
 
   /* ---- Theme ------------------------------------------------------------- */
+  /* ---- CARS AND UNLOCKS (Step 11) ---------------------------------------
+   * Four cars, each a set of multipliers on the Step 2 physics the game
+   * shipped with (`base` below). RELAY is all 1.00, so it drives exactly
+   * like Steps 1-10. car.js holds a reference to CONFIG.car and CONFIG.boost,
+   * so applying a car just scales the numbers in place: no handling code
+   * changes and no per-car special cases.
+   *
+   * The rule the tests enforce: no car is >= another car on every stat, so
+   * every strength is paid for somewhere. trade in config, not in code.
+   */
+  cars: {
+    defaultId: 'relay',
+    base: {
+      accel: 520,        // units / second^2
+      maxSpeed: 900,     // world units / second
+      turnRateLow: 3.0,
+      turnRateHigh: 1.05,
+      gripLow: 10.0,
+      gripHigh: 4.2,
+      meterMax: 100      // boost tank
+    },
+    list: [
+      {
+        id: 'relay', name: 'RELAY', subtitle: 'Balanced starter',
+        blurb: 'The car the game shipped with. Even everywhere, no weak spot, ' +
+               'happy on any circuit.',
+        stats: { accel: 1.00, topSpeed: 1.00, handling: 1.00, boost: 1.00 }
+      },
+      {
+        id: 'validator', name: 'VALIDATOR', subtitle: 'Straight-line speed',
+        blurb: 'Pulls hardest on long straights, but charges and turns a ' +
+               'little slower. MESH HIGHWAY is its home.',
+        stats: { accel: 0.94, topSpeed: 1.08, handling: 0.97, boost: 1.00 }
+      },
+      {
+        id: 'shard', name: 'SHARD', subtitle: 'Point and squirt',
+        blurb: 'Fastest off the line and turns in sharpest, with a smaller ' +
+               'boost tank and a lower top end. Built for tight corners.',
+        stats: { accel: 1.12, topSpeed: 0.95, handling: 1.10, boost: 0.80 }
+      },
+      {
+        id: 'flexnode', name: 'FLEXNODE', subtitle: 'Boost tank',
+        blurb: 'A huge boost tank and a strong top end, traded against ' +
+               'acceleration and grip. Rewards good lines.',
+        stats: { accel: 0.92, topSpeed: 1.03, handling: 0.94, boost: 1.40 }
+      }
+    ],
+    /* Display ranges for the stat bars, so a full bar always means "best in
+       class" and the bars are comparable between cars. */
+    bars: {
+      accel: { min: 0.85, max: 1.15, label: 'ACCELERATION' },
+      topSpeed: { min: 0.90, max: 1.10, label: 'TOP SPEED' },
+      handling: { min: 0.85, max: 1.15, label: 'HANDLING' },
+      boost: { min: 0.70, max: 1.50, label: 'BOOST CAPACITY' }
+    }
+  },
+
+  /* ---- WHAT UNLOCKS WHEN (Step 11) --------------------------------------
+   * Every number the unlock screens show comes from here. A kind that is not
+   * listed is available from the start (level 1).
+   */
+  unlocks: {
+    cars: { relay: 1, validator: 3, shard: 6, flexnode: 10 },
+    tracks: { flexnode: 1, 'mesh-highway': 2, 'shard-speedway': 5 }
+  },
+
   theme: {
     cyan: '#22e1ff',
     violet: '#8b5cff',
@@ -3328,12 +3600,13 @@ OR.CONFIG = {
  * object under one key (CONFIG.profile.keys.save):
  *
  *   {
- *     version: 2,
+ *     version: 3,
  *     profile:   { name: 'Racer', color: 'violet' },
  *     stats:     { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
  *     progress:  { xp: 0, level: 1 },        <- Step 10
+ *     unlocks:   { cars: ['relay'], tracks: ['flexnode'] },   <- Step 11
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
- *     selection: { track: 'flexnode', difficulty: 'normal' }
+ *     selection: { track: 'flexnode', difficulty: 'normal', car: 'relay' }
  *   }
  *
  * Rules the rest of the game relies on:
@@ -3354,7 +3627,7 @@ OR.CONFIG = {
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 2;
+  const VERSION = 3;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -3462,14 +3735,52 @@ OR.CONFIG = {
       profile: { name: P.defaultName, color: P.defaultColor },
       stats: { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
       progress: { xp: 0, level: 1 },
+      unlocks: starterUnlocks(),
       bests: {},
-      selection: { track: null, difficulty: null }
+      selection: { track: null, difficulty: null, car: null }
     };
   }
 
   /** The level a total is worth, from the XP module when it is loaded. */
   function levelForXp(xp) {
     return OR.XP ? OR.XP.levelFor(xp) : 1;
+  }
+
+  /**
+   * What every player has from the first launch: the starter car and every
+   * item that unlocks at level 1. Step 11's whole unlock table lives in
+   * CONFIG.unlocks, so this stays in sync with the screens for free.
+   */
+  function starterUnlocks() {
+    const UN = CONFIG.unlocks;
+    const cars = [CONFIG.cars.defaultId];
+    const tracks = [];
+    Object.keys(UN.cars).forEach(function (id) {
+      if (UN.cars[id] <= 1 && cars.indexOf(id) === -1) cars.push(id);
+    });
+    Object.keys(UN.tracks).forEach(function (id) {
+      if (UN.tracks[id] <= 1 && tracks.indexOf(id) === -1) tracks.push(id);
+    });
+    return { cars: cars, tracks: tracks };
+  }
+
+  /**
+   * Keep only ids the game knows, in the config's own order, plus anything in
+   * `always` (the starters). Junk from an import or a half-written save simply
+   * disappears and duplicates cannot pile up, so the garage always lists cars
+   * in the same order whatever the stored blob said.
+   */
+  function sanitiseIds(raw, table, always) {
+    const out = [];
+    const granted = Array.isArray(raw) ? raw : [];
+    const keep = always || [];
+    Object.keys(table).forEach(function (id) {
+      if ((granted.indexOf(id) !== -1 || keep.indexOf(id) !== -1) &&
+        out.indexOf(id) === -1) {
+        out.push(id);
+      }
+    });
+    return out;
   }
 
   function topos(value) {
@@ -3529,9 +3840,20 @@ OR.CONFIG = {
 
     base.bests = sanitiseBests(raw.bests);
 
+    /* Step 11: unlocks are a stored list, validated against the config table.
+       The starter items can never be missing, so a corrupt save cannot even
+       lock the player out of the first car or the first track. */
+    const unlocks = raw.unlocks && typeof raw.unlocks === 'object' ? raw.unlocks : {};
+    const starter = starterUnlocks();
+    base.unlocks.cars = sanitiseIds(unlocks.cars, CONFIG.unlocks.cars, starter.cars);
+    base.unlocks.tracks = sanitiseIds(unlocks.tracks, CONFIG.unlocks.tracks, starter.tracks);
+
     const selection = raw.selection && typeof raw.selection === 'object' ? raw.selection : {};
     base.selection.track = typeof selection.track === 'string' ? selection.track : null;
     base.selection.difficulty = typeof selection.difficulty === 'string' ? selection.difficulty : null;
+    /* A car that is not owned is not selected: fall back to the starter. */
+    base.selection.car = typeof selection.car === 'string' &&
+      base.unlocks.cars.indexOf(selection.car) !== -1 ? selection.car : null;
 
     return base;
   }
@@ -3552,6 +3874,43 @@ OR.CONFIG = {
       if (!data.progress || typeof data.progress !== 'object') {
         data.progress = { xp: 0, level: 1 };
       }
+      return data;
+    },
+    /* 2 -> 3 (Step 11): grant everything the player's level has earned, and
+       — the important part — never lock anyone out of what they already had.
+       A pre-Step-11 save could race every track and had only one car, so any
+       track with a recorded time, and the track that was selected, are kept. */
+    2: function (data) {
+      const progress = data.progress && typeof data.progress === 'object' ? data.progress : {};
+      const level = Math.max(1, levelForXp(Math.max(0, topos(progress.xp))));
+      const fresh = starterUnlocks();
+
+      Object.keys(CONFIG.unlocks.cars).forEach(function (id) {
+        if (CONFIG.unlocks.cars[id] <= level && fresh.cars.indexOf(id) === -1) {
+          fresh.cars.push(id);
+        }
+      });
+      Object.keys(CONFIG.unlocks.tracks).forEach(function (id) {
+        if (CONFIG.unlocks.tracks[id] <= level && fresh.tracks.indexOf(id) === -1) {
+          fresh.tracks.push(id);
+        }
+      });
+      /* Evidence of use: a best time on the track, or it was the selection. */
+      Object.keys(sanitiseBests(data.bests)).forEach(function (trackId) {
+        if (CONFIG.unlocks.tracks[trackId] && fresh.tracks.indexOf(trackId) === -1) {
+          fresh.tracks.push(trackId);
+        }
+      });
+      const chosen = data.selection && typeof data.selection.track === 'string'
+        ? data.selection.track : null;
+      if (chosen && CONFIG.unlocks.tracks[chosen] && fresh.tracks.indexOf(chosen) === -1) {
+        fresh.tracks.push(chosen);
+      }
+
+      data.unlocks = fresh;
+      if (!data.selection || typeof data.selection !== 'object') data.selection = {};
+      /* Everyone drove the only car that existed before Step 11. */
+      if (!data.selection.car) data.selection.car = CONFIG.cars.defaultId;
       return data;
     }
   };
@@ -3753,6 +4112,50 @@ OR.CONFIG = {
       return selection;
     },
 
+    /* ---- Step 11: what is unlocked, and the chosen car ------------------- */
+
+    unlocks() { return Save.load().unlocks; },
+    unlockedCars() { return Save.load().unlocks.cars.slice(); },
+    unlockedTracks() { return Save.load().unlocks.tracks.slice(); },
+
+    /**
+     * Add granted ids. Only ids the config knows are stored, and the write
+     * only happens when something actually changed, so sync() is cheap to
+     * call after every race.
+     */
+    grantUnlocks(granted) {
+      const unlocks = Save.load().unlocks;
+      let changed = false;
+      ['cars', 'tracks'].forEach(function (kind) {
+        if (!granted || !Array.isArray(granted[kind])) return;
+        granted[kind].forEach(function (id) {
+          if (CONFIG.unlocks[kind][id] && unlocks[kind].indexOf(id) === -1) {
+            unlocks[kind].push(id);
+            changed = true;
+          }
+        });
+      });
+      if (changed) Save.write();
+      return unlocks;
+    },
+
+    /** The saved car id, or null when none is set (or it is not owned). */
+    car() {
+      const selection = Save.load().selection;
+      const unlocked = Save.load().unlocks.cars;
+      return typeof selection.car === 'string' && unlocked.indexOf(selection.car) !== -1
+        ? selection.car : null;
+    },
+
+    /** Only an owned car can be selected; a locked id is refused. */
+    setCar(id) {
+      const unlocked = Save.load().unlocks.cars;
+      if (typeof id !== 'string' || unlocked.indexOf(id) === -1) return Save.car();
+      Save.load().selection.car = id;
+      Save.write();
+      return id;
+    },
+
     /* ---- career stats ---------------------------------------------------- */
 
     /**
@@ -3822,7 +4225,11 @@ OR.CONFIG = {
     reset() {
       const fresh = defaults();
       fresh.profile = Save.load().profile;
-      fresh.selection = Save.load().selection;
+      /* Step 11: unlocking is progress too, so it goes back to the starter
+         car and track; the chosen track/difficulty/car are cleared. */
+      fresh.selection.track = null;
+      fresh.selection.difficulty = null;
+      fresh.selection.car = null;
       /* Progress (XP and level) is part of "progress", so it goes back to 1. */
       Save._data = fresh;
       /* Make sure the older keys cannot resurrect deleted records. */
@@ -3834,6 +4241,487 @@ OR.CONFIG = {
   };
 
   OR.Save = Save;
+})();
+
+/* ==== js/cars.js ==== */
+/* =============================================================================
+ * cars.js — Step 11: the four cars, their stat bars, and what unlocks when.
+ *
+ * Everything here is data-driven from CONFIG.cars and CONFIG.unlocks:
+ *
+ *   - `apply(id)` scales the numbers inside CONFIG.car / CONFIG.boost. car.js
+ *     holds a reference to those same objects, so the physics picks the new
+ *     values up on the next frame — there are no per-car code paths;
+ *   - `select(id)` refuses a locked car, so a locked car can never be raced;
+ *   - `sync()` grants whatever the player's level has earned and reports what
+ *     is new, which is what the unlock toast is built from;
+ *   - the same level rules cover tracks (`trackUnlocked`), so the track select
+ *     screen and the race start share one source of truth.
+ *
+ * Locked never means "stuck": a save that predates Step 11 is migrated to
+ * grant everything the player could already use (see js/save.js, version 3).
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Utils } = OR;
+  const CARS = CONFIG.cars;
+  const UN = CONFIG.unlocks;
+
+  /* The pristine Step 2 tuning, captured before any car is applied, so
+     restore() and every apply() start from the same numbers. */
+  const BASE = {
+    accel: CARS.base.accel,
+    maxSpeed: CARS.base.maxSpeed,
+    turnRateLow: CARS.base.turnRateLow,
+    turnRateHigh: CARS.base.turnRateHigh,
+    gripLow: CARS.base.gripLow,
+    gripHigh: CARS.base.gripHigh,
+    meterMax: CARS.base.meterMax,
+    startShare: CONFIG.boost.startMeter / CONFIG.boost.meterMax
+  };
+
+  const STAT_ORDER = ['accel', 'topSpeed', 'handling', 'boost'];
+
+  function byId(id) {
+    for (let i = 0; i < CARS.list.length; i++) {
+      if (CARS.list[i].id === id) return CARS.list[i];
+    }
+    return null;
+  }
+
+  /** The unlock level for an id in one of the tables (missing => level 1). */
+  function levelOf(table, id) {
+    const level = table[id];
+    return typeof level === 'number' && isFinite(level) && level > 1 ? Math.floor(level) : 1;
+  }
+
+  /** Save may not be loaded yet in a bare vm; treat a missing save as empty. */
+  function unlockedList(kind) {
+    if (!OR.Save) return [];
+    const unlocks = OR.Save.unlocks();
+    const list = unlocks && unlocks[kind];
+    return Array.isArray(list) ? list : [];
+  }
+
+  function granted(kind, id) {
+    return unlockedList(kind).indexOf(id) !== -1;
+  }
+
+  const Cars = {
+    ids: CARS.list.map(function (car) { return car.id; }),
+    defaultId: byId(CARS.defaultId) ? CARS.defaultId : CARS.list[0].id,
+    statOrder: STAT_ORDER.slice(),
+
+    list() { return CARS.list.slice(); },
+
+    has(id) { return !!byId(id); },
+
+    get(id) { return byId(id) || byId(Cars.defaultId); },
+
+    /** A copy of one car's multipliers (never the live config object). */
+    stats(id) {
+      const car = Cars.get(id);
+      const out = {};
+      STAT_ORDER.forEach(function (stat) { out[stat] = car.stats[stat]; });
+      return out;
+    },
+
+    /* ---- unlocking ------------------------------------------------------ */
+
+    unlockLevel(id) { return levelOf(UN.cars, id); },
+
+    unlocked(id) { return granted('cars', id); },
+
+    /** Every car id the player owns right now. */
+    unlockedIds() {
+      return Cars.ids.filter(function (id) { return Cars.unlocked(id); });
+    },
+
+    lockedIds() {
+      return Cars.ids.filter(function (id) { return !Cars.unlocked(id); });
+    },
+
+    trackUnlockLevel(id) { return levelOf(UN.tracks, id); },
+
+    trackUnlocked(id) { return granted('tracks', id); },
+
+    trackLocked(id) { return !Cars.trackUnlocked(id); },
+
+    /** The first track the player may race — the fallback for a stale pick. */
+    firstUnlockedTrack() {
+      const tracks = OR.TRACKS || [];
+      for (let i = 0; i < tracks.length; i++) {
+        if (Cars.trackUnlocked(tracks[i].id)) return tracks[i];
+      }
+      return tracks[0] || null;
+    },
+
+    /**
+     * If the live track is locked (a stale selection, an imported save, a
+     * hand-edited file) hop to the first one that is not. Returns the new
+     * track, or null when nothing needed to change. Game.startRace() calls
+     * this so a locked track can never be raced, whatever the UI says.
+     */
+    ensureTrack() {
+      if (!OR.Track) return null;
+      if (Cars.trackUnlocked(OR.Track.id)) return null;
+      const fallback = Cars.firstUnlockedTrack();
+      if (!fallback) return null;
+      if (OR.TrackSelect) return OR.TrackSelect.select(fallback.id);
+      OR.Track.use(fallback);
+      return fallback;
+    },
+
+    /**
+     * Grant everything the level has earned. Called on load and after every
+     * finish. Returns { cars, tracks, names, any } where the arrays are only
+     * the NEWLY granted items (so the toast can say what is new), and calling
+     * it twice in a row reports nothing new the second time.
+     */
+    sync(level) {
+      const current = typeof level === 'number' && isFinite(level) && level > 0
+        ? Math.floor(level) : (OR.Save ? OR.Save.level() : 1);
+      const fresh = { cars: [], tracks: [], names: [], any: false };
+
+      Cars.ids.forEach(function (id) {
+        if (!Cars.unlocked(id) && Cars.unlockLevel(id) <= current) fresh.cars.push(id);
+      });
+      (OR.TRACKS || []).forEach(function (track) {
+        if (Cars.trackLocked(track.id) && Cars.trackUnlockLevel(track.id) <= current) {
+          fresh.tracks.push(track.id);
+        }
+      });
+
+      if (fresh.cars.length || fresh.tracks.length) {
+        if (OR.Save) OR.Save.grantUnlocks(fresh);
+        fresh.cars.forEach(function (id) { fresh.names.push(Cars.get(id).name); });
+        fresh.tracks.forEach(function (id) {
+          const track = OR.trackById ? OR.trackById(id) : null;
+          fresh.names.push(track ? track.name : String(id).toUpperCase());
+        });
+        fresh.any = true;
+      }
+      return fresh;
+    },
+
+    /**
+     * The next thing levels will bring, for the menu hint: the closest item
+     * whose unlock level is still AHEAD of the player. Anything already at or
+     * below the current level is skipped — sync() grants those, so they are
+     * never what the player is working towards.
+     */
+    nextUnlock(level) {
+      const current = typeof level === 'number' && isFinite(level) && level > 0
+        ? Math.floor(level) : (OR.Save ? OR.Save.level() : 1);
+      let best = null;
+      function consider(kind, id, name, at) {
+        if (at <= current) return;
+        if (!best || at < best.level) {
+          best = { kind: kind, id: id, name: name, level: at };
+        }
+      }
+      Cars.ids.forEach(function (id) {
+        if (Cars.unlocked(id)) return;
+        consider('car', id, Cars.get(id).name, Cars.unlockLevel(id));
+      });
+      (OR.TRACKS || []).forEach(function (track) {
+        if (!Cars.trackLocked(track.id)) return;
+        consider('track', track.id, track.name, Cars.trackUnlockLevel(track.id));
+      });
+      if (best) best.levelsAway = Math.max(0, best.level - current);
+      return best;
+    },
+
+    /* ---- applying a car to the physics ---------------------------------- */
+
+    /** The car that should be driving: the saved pick, if it is unlocked. */
+    activeId() {
+      const saved = OR.Save ? OR.Save.car() : null;
+      if (saved && Cars.has(saved) && Cars.unlocked(saved)) return saved;
+      return Cars.defaultId;
+    },
+
+    /**
+     * Write one car's multipliers into the live physics config. car.js and
+     * every other physics reader sees the change immediately.
+     */
+    apply(id) {
+      const stats = Cars.stats(id || Cars.activeId());
+      CONFIG.car.accel = BASE.accel * stats.accel;
+      CONFIG.car.maxSpeed = BASE.maxSpeed * stats.topSpeed;
+      CONFIG.car.turnRateLow = BASE.turnRateLow * stats.handling;
+      CONFIG.car.turnRateHigh = BASE.turnRateHigh * stats.handling;
+      CONFIG.car.gripLow = BASE.gripLow * stats.handling;
+      CONFIG.car.gripHigh = BASE.gripHigh * stats.handling;
+      CONFIG.boost.meterMax = Math.round(BASE.meterMax * stats.boost);
+      CONFIG.boost.startMeter = Math.round(CONFIG.boost.meterMax * BASE.startShare);
+      return id || Cars.activeId();
+    },
+
+    /** Put the shipped Step 2 numbers back (tests, and the profile reset). */
+    restore() {
+      CONFIG.car.accel = BASE.accel;
+      CONFIG.car.maxSpeed = BASE.maxSpeed;
+      CONFIG.car.turnRateLow = BASE.turnRateLow;
+      CONFIG.car.turnRateHigh = BASE.turnRateHigh;
+      CONFIG.car.gripLow = BASE.gripLow;
+      CONFIG.car.gripHigh = BASE.gripHigh;
+      CONFIG.boost.meterMax = BASE.meterMax;
+      CONFIG.boost.startMeter = Math.round(BASE.meterMax * BASE.startShare);
+      return BASE;
+    },
+
+    /**
+     * Choose a car: only an unlocked one is accepted. A locked id returns
+     * null and changes nothing — that is what makes a locked car unraceable.
+     */
+    select(id) {
+      if (!Cars.has(id) || !Cars.unlocked(id)) return null;
+      Cars.apply(id);
+      if (OR.Save) OR.Save.setCar(id);
+      Cars.refresh();
+      /* The menu's "X selected" line lives in main.js; keep it in step. */
+      if (OR.Screens && OR.Screens.refreshCars) OR.Screens.refreshCars();
+      return id;
+    },
+
+    /* ---- the stat bars -------------------------------------------------- */
+
+    /**
+     * One row per stat for the display bars: { id, label, value (0..1),
+     * percent (how far from the base car), text ('+8%') }.
+     */
+    barRows(id) {
+      const car = Cars.get(id);
+      const bars = CARS.bars;
+      return STAT_ORDER.map(function (stat) {
+        const range = bars[stat];
+        const value = car.stats[stat];
+        const span = range.max - range.min;
+        const percent = Math.round((value - 1) * 100);
+        return {
+          id: stat,
+          label: range.label,
+          value: value,
+          bar: span > 0 ? Utils.clamp((value - range.min) / span, 0, 1) : 0,
+          percent: percent,
+          text: (percent > 0 ? '+' : '') + percent + '%'
+        };
+      });
+    },
+
+    /* ---- the car select screen ------------------------------------------ */
+
+    /** Build the cards once, from the config. Locked state is refreshed after. */
+    init(root) {
+      if (!root) return null;
+      const doc = root.ownerDocument || document;
+      Cars.el = { root: root, cards: [] };
+      root.replaceChildren();
+
+      CARS.list.forEach(function (car) {
+        const card = doc.createElement('button');
+        card.type = 'button';
+        card.className = 'car-card';
+        card.dataset.car = car.id;
+        card.dataset.unlockLevel = String(Cars.unlockLevel(car.id));
+        card.setAttribute('role', 'radio');
+        card.setAttribute('aria-checked', 'false');
+
+        const lock = doc.createElement('span');
+        lock.className = 'car-lock';
+        const lockIcon = doc.createElement('span');
+        lockIcon.className = 'lock-icon';
+        lockIcon.textContent = '🔒';
+        lockIcon.setAttribute('aria-hidden', 'true');
+        const lockText = doc.createElement('span');
+        lockText.className = 'lock-text';
+        lock.append(lockIcon, lockText);
+
+        const preview = doc.createElement('canvas');
+        preview.className = 'car-preview';
+        preview.width = 220;
+        preview.height = 130;
+        preview.setAttribute('aria-hidden', 'true');
+
+        const head = doc.createElement('div');
+        head.className = 'car-head';
+        const name = doc.createElement('h3');
+        name.className = 'car-name';
+        name.textContent = car.name;
+        const sub = doc.createElement('span');
+        sub.className = 'car-subtitle';
+        sub.textContent = car.subtitle;
+        head.append(name, sub);
+
+        const stats = doc.createElement('div');
+        stats.className = 'stat-list';
+        const fills = {};
+        Cars.barRows(car.id).forEach(function (row) {
+          const line = doc.createElement('div');
+          line.className = 'stat-row';
+          line.dataset.stat = row.id;
+          const label = doc.createElement('span');
+          label.className = 'stat-label';
+          label.textContent = row.label;
+          const bar = doc.createElement('span');
+          bar.className = 'stat-bar';
+          const fill = doc.createElement('span');
+          fill.className = 'stat-fill';
+          bar.appendChild(fill);
+          const value = doc.createElement('span');
+          value.className = 'stat-value';
+          line.append(label, bar, value);
+          stats.appendChild(line);
+          fills[row.id] = { fill: fill, value: value };
+        });
+
+        const blurb = doc.createElement('p');
+        blurb.className = 'car-blurb';
+        blurb.textContent = car.blurb;
+
+        const pick = doc.createElement('span');
+        pick.className = 'car-pick';
+        pick.textContent = 'SELECTED';
+
+        card.append(lock, preview, head, stats, blurb, pick);
+        card.addEventListener('click', function (e) {
+          e.preventDefault();
+          card.blur();
+          if (!Cars.unlocked(car.id)) {
+            card.classList.remove('is-refused');
+            void card.offsetWidth;      // restart the shake animation
+            card.classList.add('is-refused');
+            return;
+          }
+          Cars.select(car.id);
+        });
+
+        root.appendChild(card);
+        Cars.el.cards.push({ car: car, node: card, lock: lockText, preview: preview, fills: fills });
+      });
+
+      Cars.refresh();
+      return Cars.el;
+    },
+
+    /** Repaint selection, lock badges, bars and previews. */
+    refresh() {
+      if (!Cars.el) return null;
+      const activeId = Cars.activeId();
+      const level = OR.Save ? OR.Save.level() : 1;
+      Cars.el.cards.forEach(function (card) {
+        const id = card.car.id;
+        const unlocked = Cars.unlocked(id);
+        const selected = unlocked && id === activeId;
+        const need = Cars.unlockLevel(id);
+
+        card.node.classList.toggle('is-locked', !unlocked);
+        card.node.classList.toggle('is-selected', selected);
+        card.node.dataset.locked = unlocked ? 'false' : 'true';
+        card.node.dataset.selected = selected ? 'true' : 'false';
+        card.node.setAttribute('aria-checked', selected ? 'true' : 'false');
+        card.node.setAttribute('aria-disabled', unlocked ? 'false' : 'true');
+        card.node.tabIndex = unlocked ? 0 : -1;
+        card.node.setAttribute('aria-label', card.car.name + ' — ' +
+          (unlocked ? (selected ? 'selected' : 'available')
+                    : 'locked, unlocks at level ' + need));
+        card.lock.textContent = 'LOCKED · LEVEL ' + need + ' (now ' + level + ')';
+
+        Cars.barRows(id).forEach(function (row) {
+          const parts = card.fills[row.id];
+          if (!parts) return;
+          parts.fill.dataset.value = String(Math.round(row.bar * 100));
+          parts.fill.style.width = Math.round(row.bar * 100) + '%';
+          parts.value.textContent = row.text;
+        });
+
+        Cars.drawPreview(card.preview, id, unlocked);
+      });
+      return activeId;
+    },
+
+    /**
+     * A small top-down car for the cards, painted in the player's chosen
+     * colours. Deliberately self-contained: no game state, no camera.
+     */
+    drawPreview(canvas, id, unlocked) {
+      if (!canvas || !canvas.getContext) return false;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return false;
+      const color = OR.Save ? OR.Save.color() : null;
+      const body = (color && color.body) || ['#3a2f6b', '#6f5bd6', '#5a49b8', '#2a2350'];
+      const accent = (color && color.hex) || '#8f7bff';
+      const w = canvas.width, h = canvas.height;
+      const carW = w * 0.34, carL = h * 0.72;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.save();
+      ctx.translate(w / 2, h / 2);
+
+      // ground glow
+      const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, w * 0.42);
+      glow.addColorStop(0, Utils.rgba(accent, unlocked ? 0.30 : 0.10));
+      glow.addColorStop(1, Utils.rgba(accent, 0));
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, w * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+
+      // wheels
+      ctx.fillStyle = '#0a0c14';
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (s) {
+        Utils.roundRect(ctx, s[0] * (carW / 2 - 2) - (s[0] < 0 ? 11 : 0),
+          s[1] * (carL * 0.30) - 13, 11, 26, 4);
+        ctx.fill();
+      });
+
+      // body
+      const paint = ctx.createLinearGradient(-carW / 2, 0, carW / 2, 0);
+      paint.addColorStop(0, body[0]);
+      paint.addColorStop(0.45, body[1]);
+      paint.addColorStop(0.55, body[2]);
+      paint.addColorStop(1, body[3]);
+      ctx.fillStyle = paint;
+      Utils.roundRect(ctx, -carW / 2, -carL / 2, carW, carL, 14);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = Utils.rgba(accent, unlocked ? 0.7 : 0.3);
+      ctx.stroke();
+
+      // nose, cockpit and spoiler
+      ctx.fillStyle = Utils.rgba(accent, unlocked ? 0.9 : 0.35);
+      Utils.roundRect(ctx, -carW * 0.3, -carL / 2 + 5, carW * 0.6, 7, 4);
+      ctx.fill();
+      ctx.fillStyle = '#0c1020';
+      Utils.roundRect(ctx, -carW * 0.26, -carL * 0.14, carW * 0.52, carL * 0.28, 8);
+      ctx.fill();
+      ctx.fillStyle = '#191430';
+      Utils.roundRect(ctx, -carW * 0.45, carL / 2 - 18, carW * 0.9, 10, 4);
+      ctx.fill();
+
+      if (!unlocked) {
+        /* A padlock over a locked car. */
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(0, -6, 11, Math.PI, 0);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(12,15,28,0.85)';
+        Utils.roundRect(ctx, -16, -6, 32, 26, 6);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 2;
+        Utils.roundRect(ctx, -16, -6, 32, 26, 6);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return true;
+    }
+  };
+
+  OR.Cars = Cars;
 })();
 
 /* ==== js/difficulty.js ==== */
@@ -6583,6 +7471,10 @@ OR.CONFIG = {
 
     /** Start (or restart) a race. Every bit of race state is reset here. */
     startRace(seed, difficultyId) {
+      /* Step 11: a locked track can never be raced, however the selection got
+         there (stale save, import, a hand-edited file). Hop to the first
+         unlocked circuit before the grid is built. */
+      if (OR.Cars) OR.Cars.ensureTrack();
       Game.difficultyId = difficultyId || OR.Difficulty.currentId();
       Game.difficulty = OR.Difficulty.get(Game.difficultyId);
       Game.car.reset();
@@ -6953,6 +7845,10 @@ OR.CONFIG = {
  *
  * Records come from OR.Bests and are shown for the difficulty currently
  * selected on the menu.
+ *
+ * Step 11 adds level locks on top: a locked circuit shows a padlock and its
+ * required level, refuses to be selected (here and in Game.startRace), and a
+ * stale selection is quietly moved to the first unlocked circuit.
  * ========================================================================== */
 (function () {
   'use strict';
@@ -6970,6 +7866,17 @@ OR.CONFIG = {
   /* Step 9: the selected circuit is part of the shared save object. */
   function savedTrackId() {
     return OR.Save ? OR.Save.selection().track : null;
+  }
+
+  /* Step 11: which circuits the player's level has unlocked. */
+  function isLocked(id) {
+    return OR.Cars ? OR.Cars.trackLocked(id) : false;
+  }
+
+  function firstUnlockedId() {
+    if (!OR.Cars) return (OR.TRACKS[0] || {}).id || null;
+    const track = OR.Cars.firstUnlockedTrack();
+    return track ? track.id : null;
   }
 
   function rememberTrack(id) {
@@ -7034,8 +7941,10 @@ OR.CONFIG = {
         if (card) card.focus();
       });
 
-      /* Restore the last choice without clobbering a test that already picked. */
-      TrackSelect.select(TrackSelect.savedId());
+      /* Restore the last choice — unless it is locked now (an old save, a
+         level reset, an import), in which case open the first unlocked one. */
+      const saved = TrackSelect.savedId();
+      TrackSelect.select(saved && !isLocked(saved) ? saved : firstUnlockedId());
       return TrackSelect;
     },
 
@@ -7094,15 +8003,33 @@ OR.CONFIG = {
       rating.className = 'sr-only';
       rating.textContent = TrackSelect.ratingLabel(track) + ' difficulty';
 
-      card.append(preview, head, blurb, meta, best, lap, rating);
+      const lock = document.createElement('span');
+      lock.className = 'track-lock';
+      const lockIcon = document.createElement('span');
+      lockIcon.className = 'lock-icon';
+      lockIcon.textContent = '🔒';
+      lockIcon.setAttribute('aria-hidden', 'true');
+      const lockText = document.createElement('span');
+      lockText.className = 'lock-text';
+      lock.append(lockIcon, lockText);
+
+      card.append(lock, preview, head, blurb, meta, best, lap, rating);
       card.addEventListener('click', function (e) {
         e.preventDefault();
+        if (TrackSelect.locked(track.id)) {
+          card.classList.remove('is-refused');
+          void card.offsetWidth;          // restart the shake animation
+          card.classList.add('is-refused');
+          return;                          // a locked circuit cannot be chosen
+        }
         TrackSelect.select(track.id);
       });
       TrackSelect.el.list.appendChild(card);
 
       TrackSelect.drawPreview(preview, track);
-      return { track: track, node: card, preview: preview, best: best, lap: lap };
+      return {
+        track: track, node: card, preview: preview, best: best, lap: lap, lock: lockText
+      };
     },
 
     /**
@@ -7175,7 +8102,14 @@ OR.CONFIG = {
      * Make a track the active one: rebuild geometry, pickups and cached
      * layers, remember the choice, and update the cards.
      */
+    /** Step 11: is this circuit still locked for the player? */
+    locked(id) { return isLocked(id); },
+
     select(id) {
+      if (TrackSelect.locked(id)) {
+        /* Refuse; the live track stays on whatever unlocked circuit it was on. */
+        return OR.activeTrack;
+      }
       const track = OR.trackById(id) || OR.TRACKS[0];
       Track.use(track);
       Shards.reset();
@@ -7195,6 +8129,18 @@ OR.CONFIG = {
       const difficultyId = Difficulty.currentId();
       TrackSelect.cards.forEach(function (card) {
         const selected = card.track.id === Track.id;
+        const isCardLocked = isLocked(card.track.id);
+        card.node.classList.toggle('is-locked', isCardLocked);
+        card.node.dataset.locked = isCardLocked ? 'true' : 'false';
+        card.node.setAttribute('aria-disabled', isCardLocked ? 'true' : 'false');
+        card.node.setAttribute('aria-label', card.track.name + (isCardLocked
+          ? ', locked until level ' + OR.Cars.trackUnlockLevel(card.track.id)
+          : ', ' + TrackSelect.ratingLabel(card.track) + ' difficulty'));
+        if (card.lock) {
+          card.lock.textContent = 'LOCKED · LEVEL ' +
+            (OR.Cars ? OR.Cars.trackUnlockLevel(card.track.id) : 1) +
+            ' (now ' + (OR.Save ? OR.Save.level() : 1) + ')';
+        }
         card.node.classList.toggle('is-selected', selected);
         card.node.setAttribute('aria-checked', selected ? 'true' : 'false');
         card.node.tabIndex = selected ? 0 : -1;
@@ -7235,6 +8181,7 @@ OR.CONFIG = {
     /* Step 8: the menu has two panes — title ('main') and track select. */
     menuMain: null,
     menuTracks: null,
+    menuCars: null,
     menuProfile: null,
     view: 'main',
 
@@ -7246,6 +8193,7 @@ OR.CONFIG = {
       Screens.touch = document.getElementById('touchControls');
       Screens.menuMain = document.getElementById('menuMain');
       Screens.menuTracks = document.getElementById('menuTracks');
+      Screens.menuCars = document.getElementById('menuCars');
       Screens.menuProfile = document.getElementById('menuProfile');
 
       // ---- pause menu (Step 4) -------------------------------------------
@@ -7366,6 +8314,26 @@ OR.CONFIG = {
         });
       }
 
+      /* ---- Step 11: car select pane -------------------------------------- */
+      const carsBtn = document.getElementById('carsBtn');
+      const carsBackBtn = document.getElementById('carsBackBtn');
+      if (carsBtn) {
+        carsBtn.addEventListener('click', e => {
+          e.preventDefault();
+          carsBtn.blur();
+          Screens.showMenuView('cars');
+        });
+      }
+      if (carsBackBtn) {
+        carsBackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          carsBackBtn.blur();
+          Screens.showMenuView('main');
+        });
+      }
+      /* Build the four cards from CONFIG.cars; the module owns the DOM. */
+      if (OR.Cars) OR.Cars.init(document.getElementById('carList'));
+
       /* ---- Step 9: profile pane ------------------------------------------ */
       const profileBtn = document.getElementById('profileBtn');
       const profileBackBtn = document.getElementById('profileBackBtn');
@@ -7467,6 +8435,14 @@ OR.CONFIG = {
           }
           Screens.setSaveHint('Save imported. Profile and progress restored.');
           Screens.applyProfile();
+          /* An imported save carries its own unlocks: apply the car it names
+             (or the starter) and repaint the garage. */
+          if (OR.Cars) {
+            OR.Cars.restore();
+            OR.Cars.apply(OR.Cars.activeId());
+            OR.Cars.sync();
+            Screens.refreshCars();
+          }
           Difficulty.load();
           Screens.selectDifficulty(Difficulty.currentId());
           if (OR.TrackSelect) OR.TrackSelect.select(TrackSelect.savedId());
@@ -7482,7 +8458,14 @@ OR.CONFIG = {
           if (!ok) return;
           Save.reset();
           Screens.setSaveHint('Progress reset. Stats and records are empty again.');
+          if (OR.Cars) {
+            OR.Cars.restore();
+            OR.Cars.apply(OR.Cars.activeId());
+          }
           Screens.applyProfile();
+          Screens.refreshCars();
+          if (OR.TrackSelect) OR.TrackSelect.select(OR.Cars
+            ? OR.Cars.firstUnlockedTrack().id : TrackSelect.savedId());
           Screens.selectDifficulty(Difficulty.currentId());
             });
       }
@@ -7548,11 +8531,14 @@ OR.CONFIG = {
      * Step 8/9: switch between the menu panes — title, track select, profile.
      */
     showMenuView(view) {
-      Screens.view = view === 'tracks' ? 'tracks' : (view === 'profile' ? 'profile' : 'main');
+      Screens.view = view === 'tracks' ? 'tracks'
+        : (view === 'cars' ? 'cars' : (view === 'profile' ? 'profile' : 'main'));
       if (Screens.menuMain) Screens.menuMain.classList.toggle('hidden', Screens.view !== 'main');
       if (Screens.menuTracks) Screens.menuTracks.classList.toggle('hidden', Screens.view !== 'tracks');
+      if (Screens.menuCars) Screens.menuCars.classList.toggle('hidden', Screens.view !== 'cars');
       if (Screens.menuProfile) Screens.menuProfile.classList.toggle('hidden', Screens.view !== 'profile');
       if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
+      if (Screens.view === 'cars') Screens.refreshCars();
       if (Screens.view === 'profile') Screens.refreshProfile();
       return Screens.view;
     },
@@ -7716,6 +8702,81 @@ OR.CONFIG = {
     },
 
     /**
+     * Step 11: repaint the garage and the two lines that describe it — which
+     * car is selected and what the next unlock is.
+     */
+    refreshCars() {
+      if (!OR.Cars) return null;
+      const activeId = OR.Cars.refresh();
+      const car = OR.Cars.get(activeId);
+      const summary = document.getElementById('carSummary');
+      if (summary) {
+        const level = Save.level();
+        const locked = OR.Cars.lockedIds();
+        summary.textContent = car.name + ' selected · ' + car.subtitle +
+          (locked.length
+            ? ' · ' + locked.length + ' car' + (locked.length === 1 ? '' : 's') + ' still locked'
+            : ' · every car unlocked');
+        summary.dataset.car = activeId;
+        summary.dataset.level = String(level);
+      }
+      Screens.renderUnlockHint();
+      return activeId;
+    },
+
+    /** "NEXT UNLOCK: VALIDATOR AT LEVEL 3" on the main menu. */
+    renderUnlockHint() {
+      const hint = document.getElementById('unlockHint');
+      if (!hint) return null;
+      const next = OR.Cars ? OR.Cars.nextUnlock(Save.level()) : null;
+      if (!next) {
+        hint.textContent = 'Every car and track is unlocked.';
+        hint.dataset.unlockId = '';
+        return null;
+      }
+      hint.textContent = 'NEXT UNLOCK: ' + next.name + ' AT LEVEL ' + next.level +
+        (next.levelsAway === 1 ? ' (1 level to go)' : ' (' + next.levelsAway + ' levels to go)');
+      hint.dataset.unlockId = next.id;
+      hint.dataset.unlockKind = next.kind;
+      hint.dataset.unlockLevel = String(next.level);
+      return next;
+    },
+
+    /** The unlock toast, shown when a finish grants something new. */
+    showUnlockToast(granted) {
+      const toast = document.getElementById('unlockToast');
+      if (!toast || !granted || !granted.names || !granted.names.length) return null;
+      const value = document.getElementById('unlockToastValue');
+      const sub = document.getElementById('unlockToastSub');
+      const names = granted.names;
+      if (value) value.textContent = names[0];
+      if (sub) {
+        sub.textContent = names.length > 1
+          ? 'and ' + (names.length - 1) + ' more — check CARS'
+          : (granted.cars.length ? 'New car in the garage' : 'New track on the circuit list');
+      }
+      toast.dataset.unlocked = names.join(',');
+      toast.dataset.unlockCount = String(names.length);
+      toast.classList.remove('hidden');
+      toast.classList.remove('is-visible');
+      const raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 0); };
+      raf(() => toast.classList.add('is-visible'));
+      if (Screens._unlockTimer) window.clearTimeout(Screens._unlockTimer);
+      Screens._unlockTimer = window.setTimeout(function () {
+        Screens.hideUnlockToast();
+      }, (CONFIG.xp && CONFIG.xp.toastMs) || 2600);
+      return names;
+    },
+
+    hideUnlockToast() {
+      const toast = document.getElementById('unlockToast');
+      if (!toast) return null;
+      toast.classList.remove('is-visible');
+      toast.classList.add('hidden');
+      return toast;
+    },
+
+    /**
      * The level-up toast. It is shown by the finish handler only when the
      * award reports a level-up, so it fires exactly once per level gained.
      */
@@ -7859,6 +8920,18 @@ OR.CONFIG = {
          player walks back to them. */
       Screens.renderLevels(true);
 
+      /* ---- Step 11: did that prize unlock anything? ---------------------- */
+      if (OR.Cars) {
+        /* Once per race: a repeated finish event for the same result must not
+           re-sync (and must not hide the toast it just showed). */
+        if (!results.unlockGrant) results.unlockGrant = OR.Cars.sync();
+        const granted = results.unlockGrant;
+        if (granted.any) Screens.showUnlockToast(granted);
+        else Screens.hideUnlockToast();
+        Screens.refreshCars();
+        if (OR.TrackSelect) OR.TrackSelect.refresh();
+      }
+
       if (OR.TrackSelect) OR.TrackSelect.refresh();
       const splits = document.getElementById('lapSplits');
       if (splits) {
@@ -7927,10 +9000,19 @@ OR.CONFIG = {
       Renderer.resize();
       Renderer.buildMinimapPath();
     }, 200);
+    /* Step 11: grant what the level has earned, then put the saved car's
+       numbers into the physics before the first race can start. */
+    if (OR.Cars) {
+      OR.Cars.sync();
+      OR.Cars.apply(OR.Cars.activeId());
+      OR.Cars.ensureTrack();
+    }
     /* Step 8: build the track cards and restore the saved circuit. */
     if (OR.TrackSelect) OR.TrackSelect.init();
     /* Step 9: show the stored profile (name, colour, stats). */
     Screens.applyProfile();
+    /* Step 11: the garage cards and the next-unlock hint. */
+    Screens.refreshCars();
   }
 
   if (document.readyState === 'loading') {

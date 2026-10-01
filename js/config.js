@@ -318,6 +318,72 @@ OR.CONFIG = {
   },
 
   /* ---- Theme ------------------------------------------------------------- */
+  /* ---- CARS AND UNLOCKS (Step 11) ---------------------------------------
+   * Four cars, each a set of multipliers on the Step 2 physics the game
+   * shipped with (`base` below). RELAY is all 1.00, so it drives exactly
+   * like Steps 1-10. car.js holds a reference to CONFIG.car and CONFIG.boost,
+   * so applying a car just scales the numbers in place: no handling code
+   * changes and no per-car special cases.
+   *
+   * The rule the tests enforce: no car is >= another car on every stat, so
+   * every strength is paid for somewhere. trade in config, not in code.
+   */
+  cars: {
+    defaultId: 'relay',
+    base: {
+      accel: 520,        // units / second^2
+      maxSpeed: 900,     // world units / second
+      turnRateLow: 3.0,
+      turnRateHigh: 1.05,
+      gripLow: 10.0,
+      gripHigh: 4.2,
+      meterMax: 100      // boost tank
+    },
+    list: [
+      {
+        id: 'relay', name: 'RELAY', subtitle: 'Balanced starter',
+        blurb: 'The car the game shipped with. Even everywhere, no weak spot, ' +
+               'happy on any circuit.',
+        stats: { accel: 1.00, topSpeed: 1.00, handling: 1.00, boost: 1.00 }
+      },
+      {
+        id: 'validator', name: 'VALIDATOR', subtitle: 'Straight-line speed',
+        blurb: 'Pulls hardest on long straights, but charges and turns a ' +
+               'little slower. MESH HIGHWAY is its home.',
+        stats: { accel: 0.94, topSpeed: 1.08, handling: 0.97, boost: 1.00 }
+      },
+      {
+        id: 'shard', name: 'SHARD', subtitle: 'Point and squirt',
+        blurb: 'Fastest off the line and turns in sharpest, with a smaller ' +
+               'boost tank and a lower top end. Built for tight corners.',
+        stats: { accel: 1.12, topSpeed: 0.95, handling: 1.10, boost: 0.80 }
+      },
+      {
+        id: 'flexnode', name: 'FLEXNODE', subtitle: 'Boost tank',
+        blurb: 'A huge boost tank and a strong top end, traded against ' +
+               'acceleration and grip. Rewards good lines.',
+        stats: { accel: 0.92, topSpeed: 1.03, handling: 0.94, boost: 1.40 }
+      }
+    ],
+    /* Display ranges for the stat bars, so a full bar always means "best in
+       class" and the bars are comparable between cars. */
+    bars: {
+      accel: { min: 0.85, max: 1.15, label: 'ACCELERATION' },
+      topSpeed: { min: 0.90, max: 1.10, label: 'TOP SPEED' },
+      handling: { min: 0.85, max: 1.15, label: 'HANDLING' },
+      boost: { min: 0.70, max: 1.50, label: 'BOOST CAPACITY' }
+    }
+  },
+
+  /* ---- WHAT UNLOCKS WHEN (Step 11) --------------------------------------
+   * Every number the unlock screens show comes from here. A kind that is not
+   * listed is available from the start (level 1).
+   */
+  unlocks: {
+    cars: { relay: 1, validator: 3, shard: 6, flexnode: 10 },
+    tracks: { flexnode: 1, 'mesh-highway': 2, 'shard-speedway': 5 }
+  },
+
   theme: {
     cyan: '#22e1ff',
     violet: '#8b5cff',

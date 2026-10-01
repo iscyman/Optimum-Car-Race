@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'difficulty', 'bests', 'rivals', 'collisions', 'standings'];
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'difficulty', 'bests', 'rivals', 'collisions', 'standings'];
 const STEP = 1 / 120;
 
 let passed = 0, failed = 0;

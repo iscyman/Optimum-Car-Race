@@ -15,6 +15,7 @@
     /* Step 8: the menu has two panes — title ('main') and track select. */
     menuMain: null,
     menuTracks: null,
+    menuCars: null,
     menuProfile: null,
     view: 'main',
 
@@ -26,6 +27,7 @@
       Screens.touch = document.getElementById('touchControls');
       Screens.menuMain = document.getElementById('menuMain');
       Screens.menuTracks = document.getElementById('menuTracks');
+      Screens.menuCars = document.getElementById('menuCars');
       Screens.menuProfile = document.getElementById('menuProfile');
 
       // ---- pause menu (Step 4) -------------------------------------------
@@ -146,6 +148,26 @@
         });
       }
 
+      /* ---- Step 11: car select pane -------------------------------------- */
+      const carsBtn = document.getElementById('carsBtn');
+      const carsBackBtn = document.getElementById('carsBackBtn');
+      if (carsBtn) {
+        carsBtn.addEventListener('click', e => {
+          e.preventDefault();
+          carsBtn.blur();
+          Screens.showMenuView('cars');
+        });
+      }
+      if (carsBackBtn) {
+        carsBackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          carsBackBtn.blur();
+          Screens.showMenuView('main');
+        });
+      }
+      /* Build the four cards from CONFIG.cars; the module owns the DOM. */
+      if (OR.Cars) OR.Cars.init(document.getElementById('carList'));
+
       /* ---- Step 9: profile pane ------------------------------------------ */
       const profileBtn = document.getElementById('profileBtn');
       const profileBackBtn = document.getElementById('profileBackBtn');
@@ -247,6 +269,14 @@
           }
           Screens.setSaveHint('Save imported. Profile and progress restored.');
           Screens.applyProfile();
+          /* An imported save carries its own unlocks: apply the car it names
+             (or the starter) and repaint the garage. */
+          if (OR.Cars) {
+            OR.Cars.restore();
+            OR.Cars.apply(OR.Cars.activeId());
+            OR.Cars.sync();
+            Screens.refreshCars();
+          }
           Difficulty.load();
           Screens.selectDifficulty(Difficulty.currentId());
           if (OR.TrackSelect) OR.TrackSelect.select(TrackSelect.savedId());
@@ -262,7 +292,14 @@
           if (!ok) return;
           Save.reset();
           Screens.setSaveHint('Progress reset. Stats and records are empty again.');
+          if (OR.Cars) {
+            OR.Cars.restore();
+            OR.Cars.apply(OR.Cars.activeId());
+          }
           Screens.applyProfile();
+          Screens.refreshCars();
+          if (OR.TrackSelect) OR.TrackSelect.select(OR.Cars
+            ? OR.Cars.firstUnlockedTrack().id : TrackSelect.savedId());
           Screens.selectDifficulty(Difficulty.currentId());
             });
       }
@@ -328,11 +365,14 @@
      * Step 8/9: switch between the menu panes — title, track select, profile.
      */
     showMenuView(view) {
-      Screens.view = view === 'tracks' ? 'tracks' : (view === 'profile' ? 'profile' : 'main');
+      Screens.view = view === 'tracks' ? 'tracks'
+        : (view === 'cars' ? 'cars' : (view === 'profile' ? 'profile' : 'main'));
       if (Screens.menuMain) Screens.menuMain.classList.toggle('hidden', Screens.view !== 'main');
       if (Screens.menuTracks) Screens.menuTracks.classList.toggle('hidden', Screens.view !== 'tracks');
+      if (Screens.menuCars) Screens.menuCars.classList.toggle('hidden', Screens.view !== 'cars');
       if (Screens.menuProfile) Screens.menuProfile.classList.toggle('hidden', Screens.view !== 'profile');
       if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
+      if (Screens.view === 'cars') Screens.refreshCars();
       if (Screens.view === 'profile') Screens.refreshProfile();
       return Screens.view;
     },
@@ -496,6 +536,81 @@
     },
 
     /**
+     * Step 11: repaint the garage and the two lines that describe it — which
+     * car is selected and what the next unlock is.
+     */
+    refreshCars() {
+      if (!OR.Cars) return null;
+      const activeId = OR.Cars.refresh();
+      const car = OR.Cars.get(activeId);
+      const summary = document.getElementById('carSummary');
+      if (summary) {
+        const level = Save.level();
+        const locked = OR.Cars.lockedIds();
+        summary.textContent = car.name + ' selected · ' + car.subtitle +
+          (locked.length
+            ? ' · ' + locked.length + ' car' + (locked.length === 1 ? '' : 's') + ' still locked'
+            : ' · every car unlocked');
+        summary.dataset.car = activeId;
+        summary.dataset.level = String(level);
+      }
+      Screens.renderUnlockHint();
+      return activeId;
+    },
+
+    /** "NEXT UNLOCK: VALIDATOR AT LEVEL 3" on the main menu. */
+    renderUnlockHint() {
+      const hint = document.getElementById('unlockHint');
+      if (!hint) return null;
+      const next = OR.Cars ? OR.Cars.nextUnlock(Save.level()) : null;
+      if (!next) {
+        hint.textContent = 'Every car and track is unlocked.';
+        hint.dataset.unlockId = '';
+        return null;
+      }
+      hint.textContent = 'NEXT UNLOCK: ' + next.name + ' AT LEVEL ' + next.level +
+        (next.levelsAway === 1 ? ' (1 level to go)' : ' (' + next.levelsAway + ' levels to go)');
+      hint.dataset.unlockId = next.id;
+      hint.dataset.unlockKind = next.kind;
+      hint.dataset.unlockLevel = String(next.level);
+      return next;
+    },
+
+    /** The unlock toast, shown when a finish grants something new. */
+    showUnlockToast(granted) {
+      const toast = document.getElementById('unlockToast');
+      if (!toast || !granted || !granted.names || !granted.names.length) return null;
+      const value = document.getElementById('unlockToastValue');
+      const sub = document.getElementById('unlockToastSub');
+      const names = granted.names;
+      if (value) value.textContent = names[0];
+      if (sub) {
+        sub.textContent = names.length > 1
+          ? 'and ' + (names.length - 1) + ' more — check CARS'
+          : (granted.cars.length ? 'New car in the garage' : 'New track on the circuit list');
+      }
+      toast.dataset.unlocked = names.join(',');
+      toast.dataset.unlockCount = String(names.length);
+      toast.classList.remove('hidden');
+      toast.classList.remove('is-visible');
+      const raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 0); };
+      raf(() => toast.classList.add('is-visible'));
+      if (Screens._unlockTimer) window.clearTimeout(Screens._unlockTimer);
+      Screens._unlockTimer = window.setTimeout(function () {
+        Screens.hideUnlockToast();
+      }, (CONFIG.xp && CONFIG.xp.toastMs) || 2600);
+      return names;
+    },
+
+    hideUnlockToast() {
+      const toast = document.getElementById('unlockToast');
+      if (!toast) return null;
+      toast.classList.remove('is-visible');
+      toast.classList.add('hidden');
+      return toast;
+    },
+
+    /**
      * The level-up toast. It is shown by the finish handler only when the
      * award reports a level-up, so it fires exactly once per level gained.
      */
@@ -639,6 +754,18 @@
          player walks back to them. */
       Screens.renderLevels(true);
 
+      /* ---- Step 11: did that prize unlock anything? ---------------------- */
+      if (OR.Cars) {
+        /* Once per race: a repeated finish event for the same result must not
+           re-sync (and must not hide the toast it just showed). */
+        if (!results.unlockGrant) results.unlockGrant = OR.Cars.sync();
+        const granted = results.unlockGrant;
+        if (granted.any) Screens.showUnlockToast(granted);
+        else Screens.hideUnlockToast();
+        Screens.refreshCars();
+        if (OR.TrackSelect) OR.TrackSelect.refresh();
+      }
+
       if (OR.TrackSelect) OR.TrackSelect.refresh();
       const splits = document.getElementById('lapSplits');
       if (splits) {
@@ -707,10 +834,19 @@
       Renderer.resize();
       Renderer.buildMinimapPath();
     }, 200);
+    /* Step 11: grant what the level has earned, then put the saved car's
+       numbers into the physics before the first race can start. */
+    if (OR.Cars) {
+      OR.Cars.sync();
+      OR.Cars.apply(OR.Cars.activeId());
+      OR.Cars.ensureTrack();
+    }
     /* Step 8: build the track cards and restore the saved circuit. */
     if (OR.TrackSelect) OR.TrackSelect.init();
     /* Step 9: show the stored profile (name, colour, stats). */
     Screens.applyProfile();
+    /* Step 11: the garage cards and the next-unlock hint. */
+    Screens.refreshCars();
   }
 
   if (document.readyState === 'loading') {

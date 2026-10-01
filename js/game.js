@@ -101,6 +101,10 @@
 
     /** Start (or restart) a race. Every bit of race state is reset here. */
     startRace(seed, difficultyId) {
+      /* Step 11: a locked track can never be raced, however the selection got
+         there (stale save, import, a hand-edited file). Hop to the first
+         unlocked circuit before the grid is built. */
+      if (OR.Cars) OR.Cars.ensureTrack();
       Game.difficultyId = difficultyId || OR.Difficulty.currentId();
       Game.difficulty = OR.Difficulty.get(Game.difficultyId);
       Game.car.reset();

@@ -118,8 +118,10 @@
       </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
+      <button id="carsBtn" class="btn btn-ghost">CARS</button>
       <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
       <p class="racing-as" id="racingAs"></p>
+      <p class="unlock-hint" id="unlockHint"></p>
       <div class="level-line" id="menuLevelLine">
         <span class="level-badge" id="menuLevel">LEVEL 1</span>
         <span class="level-bar"><span class="level-fill" id="menuLevelBar"></span></span>
@@ -155,6 +157,15 @@
       <p id="trackSummary" class="track-summary"></p>
       <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
       <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 11: car select, stat bars and level locks -->
+    <div class="panel panel-wide hidden" id="menuCars">
+      <div class="badge">SELECT CAR</div>
+      <h2 class="title title-sm">GARAGE</h2>
+      <div id="carList" class="car-list" role="radiogroup" aria-label="Select car"></div>
+      <p id="carSummary" class="track-summary"></p>
+      <button id="carsBackBtn" class="btn btn-ghost">BACK</button>
     </div>
 
     <!-- Step 9: profile, stats and the save file -->
@@ -202,6 +213,12 @@
   </div>
 
   <!-- ===================== LEVEL-UP TOAST (Step 10) ===================== -->
+  <div id="unlockToast" class="level-toast unlock-toast hidden" role="status" aria-live="polite">
+    <span class="toast-badge">UNLOCKED</span>
+    <strong id="unlockToastValue">VALIDATOR</strong>
+    <span class="toast-sub" id="unlockToastSub"></span>
+  </div>
+
   <div id="levelToast" class="level-toast hidden" role="status" aria-live="polite">
     <span class="toast-badge">LEVEL UP</span>
     <strong id="levelToastValue">LEVEL 2</strong>
@@ -310,6 +327,7 @@
 <script src="js/car.js"></script>
 <script src="js/race.js"></script>
 <script src="js/save.js"></script>
+<script src="js/cars.js"></script>
 <script src="js/difficulty.js"></script>
 <script src="js/bests.js"></script>
 <script src="js/rivals.js"></script>

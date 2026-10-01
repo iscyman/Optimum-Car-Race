@@ -11,6 +11,10 @@
  *
  * Records come from OR.Bests and are shown for the difficulty currently
  * selected on the menu.
+ *
+ * Step 11 adds level locks on top: a locked circuit shows a padlock and its
+ * required level, refuses to be selected (here and in Game.startRace), and a
+ * stale selection is quietly moved to the first unlocked circuit.
  * ========================================================================== */
 (function () {
   'use strict';
@@ -28,6 +32,17 @@
   /* Step 9: the selected circuit is part of the shared save object. */
   function savedTrackId() {
     return OR.Save ? OR.Save.selection().track : null;
+  }
+
+  /* Step 11: which circuits the player's level has unlocked. */
+  function isLocked(id) {
+    return OR.Cars ? OR.Cars.trackLocked(id) : false;
+  }
+
+  function firstUnlockedId() {
+    if (!OR.Cars) return (OR.TRACKS[0] || {}).id || null;
+    const track = OR.Cars.firstUnlockedTrack();
+    return track ? track.id : null;
   }
 
   function rememberTrack(id) {
@@ -92,8 +107,10 @@
         if (card) card.focus();
       });
 
-      /* Restore the last choice without clobbering a test that already picked. */
-      TrackSelect.select(TrackSelect.savedId());
+      /* Restore the last choice — unless it is locked now (an old save, a
+         level reset, an import), in which case open the first unlocked one. */
+      const saved = TrackSelect.savedId();
+      TrackSelect.select(saved && !isLocked(saved) ? saved : firstUnlockedId());
       return TrackSelect;
     },
 
@@ -152,15 +169,33 @@
       rating.className = 'sr-only';
       rating.textContent = TrackSelect.ratingLabel(track) + ' difficulty';
 
-      card.append(preview, head, blurb, meta, best, lap, rating);
+      const lock = document.createElement('span');
+      lock.className = 'track-lock';
+      const lockIcon = document.createElement('span');
+      lockIcon.className = 'lock-icon';
+      lockIcon.textContent = '🔒';
+      lockIcon.setAttribute('aria-hidden', 'true');
+      const lockText = document.createElement('span');
+      lockText.className = 'lock-text';
+      lock.append(lockIcon, lockText);
+
+      card.append(lock, preview, head, blurb, meta, best, lap, rating);
       card.addEventListener('click', function (e) {
         e.preventDefault();
+        if (TrackSelect.locked(track.id)) {
+          card.classList.remove('is-refused');
+          void card.offsetWidth;          // restart the shake animation
+          card.classList.add('is-refused');
+          return;                          // a locked circuit cannot be chosen
+        }
         TrackSelect.select(track.id);
       });
       TrackSelect.el.list.appendChild(card);
 
       TrackSelect.drawPreview(preview, track);
-      return { track: track, node: card, preview: preview, best: best, lap: lap };
+      return {
+        track: track, node: card, preview: preview, best: best, lap: lap, lock: lockText
+      };
     },
 
     /**
@@ -233,7 +268,14 @@
      * Make a track the active one: rebuild geometry, pickups and cached
      * layers, remember the choice, and update the cards.
      */
+    /** Step 11: is this circuit still locked for the player? */
+    locked(id) { return isLocked(id); },
+
     select(id) {
+      if (TrackSelect.locked(id)) {
+        /* Refuse; the live track stays on whatever unlocked circuit it was on. */
+        return OR.activeTrack;
+      }
       const track = OR.trackById(id) || OR.TRACKS[0];
       Track.use(track);
       Shards.reset();
@@ -253,6 +295,18 @@
       const difficultyId = Difficulty.currentId();
       TrackSelect.cards.forEach(function (card) {
         const selected = card.track.id === Track.id;
+        const isCardLocked = isLocked(card.track.id);
+        card.node.classList.toggle('is-locked', isCardLocked);
+        card.node.dataset.locked = isCardLocked ? 'true' : 'false';
+        card.node.setAttribute('aria-disabled', isCardLocked ? 'true' : 'false');
+        card.node.setAttribute('aria-label', card.track.name + (isCardLocked
+          ? ', locked until level ' + OR.Cars.trackUnlockLevel(card.track.id)
+          : ', ' + TrackSelect.ratingLabel(card.track) + ' difficulty'));
+        if (card.lock) {
+          card.lock.textContent = 'LOCKED · LEVEL ' +
+            (OR.Cars ? OR.Cars.trackUnlockLevel(card.track.id) : 1) +
+            ' (now ' + (OR.Save ? OR.Save.level() : 1) + ')';
+        }
         card.node.classList.toggle('is-selected', selected);
         card.node.setAttribute('aria-checked', selected ? 'true' : 'false');
         card.node.tabIndex = selected ? 0 : -1;

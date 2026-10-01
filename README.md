@@ -1,4 +1,4 @@
-# OPTIMUM RACE — Steps 1 to 10
+# OPTIMUM RACE — Steps 1 to 11
 
 **Race. React. Win.**
 
@@ -162,11 +162,23 @@ npm run build      # regenerates optimum-race.html from the sources
 | XP and level saved through the storage module, with a migration | done (save `version: 2`, migration 1→2, XP is the source of truth and the level is recomputed on load so the save self-heals) |
 | Quitting early gives no XP | done (the award happens at the flag only, same as the Step 9 career stats) |
 
+### Step 11 — cars and level unlocks
+
+| Requirement | Status |
+| --- | --- |
+| Four cars with different stats, none strictly best | done (`CONFIG.cars`: RELAY, VALIDATOR, SHARD, FLEXNODE; acceleration, top speed, handling and boost capacity, all as multipliers on the Step 2 tuning, and the tests prove no car dominates another) |
+| Car select screen with stat bars and a preview | done (CARS pane: four cards, a drawn preview in the player's colours, four stat bars per car, plus a summary line) |
+| Unlock by level, numbers in config | done (`CONFIG.unlocks`: cars at level 1/3/6/10, MESH HIGHWAY at 2, SHARD SPEEDWAY at 5) |
+| Locked items show a lock icon and the required level, and cannot be selected | done (lock badge with `LEVEL n (now m)`, dimmed card, shake on click; locked tracks in the track list too, and `Game.startRace()` refuses one whatever the UI says) |
+| Unlock toast when something becomes available | done (`#unlockToast`: names the item, or "and N more", hidden again on the next race that unlocks nothing) |
+| Save the selected car and apply its stats through the existing physics config | done (`Cars.apply()` scales `CONFIG.car` / `CONFIG.boost` in place — car.js holds a reference, so no handling code changed; the choice is stored in the save) |
+| A migration for saves with no unlock data | done (save `version: 3`; 2 → 3 grants what the level earned and keeps every track the player had raced or selected, so nobody is locked out) |
+
 ## Not built yet (deliberately)
 
 Optimum network integration ·
 networking of any kind · simulated latency or fake network behaviour ·
-blockchain / wallets / tokens · unlocks · leaderboards ·
+blockchain / wallets / tokens · leaderboards ·
 multiplayer · events · real-world rewards. Later steps add config sections and
 modules rather than rewriting what exists.
 
@@ -786,5 +798,52 @@ Manual pass:
   `js/main.js` (level bars, the results XP panel, the toast),
   `index.html`, `css/style.css`, `tests/smoke.js` (section 20),
   `tests/save.js` (v2 + a v1 upgrade regression), `tests/difficulty.js`,
+  `tests/tracks.js`, `tools/build-standalone.js`, `package.json`, `README.md`.
+- Regenerated deliverable: `optimum-race.html`.
+
+### Step 11 verification and manual checks
+
+`npm test` runs seven suites — 558 checks, 0 failures:
+
+| Suite | Checks | What it covers |
+| --- | --- | --- |
+| `tests/smoke.js` | 290 | Steps 1–10 plus section 21: the garage opening from the CARS button, lock badges and required levels, a locked car and a locked track refusing to be picked, a finish that crosses a level unlocking exactly the right items and showing the toast, and a reset re-locking everything |
+| `tests/rivals.js` | 49 | AI racing, collisions, standings |
+| `tests/difficulty.js` | 47 | EASY / NORMAL / HARD, per-track records, corrupt and legacy selection data |
+| `tests/tracks.js` | 33 | Track data, geometry, a full AI race per circuit, previews, record book |
+| `tests/save.js` | 42 | The versioned save: defaults, profile/colour rules, stats, export→import round trips, reset, migrations from Steps 7–9, corrupt data, blocked storage |
+| `tests/xp.js` | 41 | The XP maths: every award source, difficulty multipliers, the level curve and its inverse, clamping, the clean-lap rule, migrations |
+| `tests/cars.js` | 56 | The four cars, the balance rule (no car dominates), stat bars, the physics each car writes, locked selection refused, unlocking at exactly the right level, persistence, the 2 → 3 migration and "never lock out an existing player", corrupt unlock data, export/import, reset |
+
+Manual pass:
+
+1. `npm start`. The menu shows `NEXT UNLOCK: MESH HIGHWAY AT LEVEL 2`. Open **CARS**:
+   RELAY is selected, the other three are dimmed with a padlock and their level.
+2. Click a locked car: nothing is selected (the card shakes). Click RELAY: the
+   summary line updates and the menu hint stays.
+3. Win a race or two until you reach level 2, then level 3: the toast announces
+   MESH HIGHWAY and VALIDATOR, the garage and the track list unlock them, and
+   the results screen still shows the XP breakdown.
+4. **CHANGE TRACK**: MESH HIGHWAY is greyed out until then, with `LOCKED · LEVEL 2`.
+   Clicking it does nothing; racing it is impossible even with a stale save.
+5. Pick VALIDATOR: the car pulls harder at the top end and turns a little
+   slower; the physics numbers really changed, not just the paint.
+6. Reload: the chosen car and the unlocked items are still there. **PROFILE →
+   RESET** returns the garage to RELAY and locks the rest again.
+7. Paste a Step 10 save into **PROFILE → IMPORT**: everything migrates, and any
+   track you had a time on stays unlocked.
+
+### Files changed for Step 11
+
+- Added: `js/cars.js` (the cars, stat bars, unlocks, track locks, previews),
+  `tests/cars.js`.
+- Updated: `js/config.js` (`cars` and `unlocks` sections), `js/save.js`
+  (**version 3**: `unlocks`, `selection.car`, the 2 → 3 migration, ordered
+  unlock sanitising, `grantUnlocks`/`car`/`setCar`), `js/trackselect.js`
+  (lock badges, refusals, stale-selection fallback), `js/game.js`
+  (`startRace` refuses a locked circuit), `js/main.js` (the garage pane, the
+  next-unlock hint, the unlock toast, boot/import/reset wiring),
+  `index.html`, `css/style.css`, `tests/smoke.js` (section 21),
+  `tests/save.js` and `tests/xp.js` (version 3), `tests/difficulty.js`,
   `tests/tracks.js`, `tools/build-standalone.js`, `package.json`, `README.md`.
 - Regenerated deliverable: `optimum-race.html`.

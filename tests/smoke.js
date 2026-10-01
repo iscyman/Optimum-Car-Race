@@ -12,7 +12,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
   .map(f => path.join(ROOT, 'js', f + '.js'));
 
 let pass = 0;
@@ -2062,6 +2062,182 @@ section('20. Step 10 — XP, levels, the breakdown and the toast');
         doc.getElementById('profileLevelBar').dataset.target ===
           String(Math.round(progress.ratio * 100));
     })(), 'level ' + Save.progress().level + ' · ' + Save.xp() + ' XP');
+}
+
+/* ================= 21. Step 11 — cars, locks and unlocks ================= */
+section('21. Step 11 — the garage, locked cars/tracks and the unlock toast');
+{
+  const Cars = OR.Cars;
+  const Screen = OR.Screens;
+  const XP = OR.XP;
+  const Save = OR.Save;
+
+  /* Start this section from a level 1 save so the locks are real. */
+  Save.reset();
+  Cars.restore();
+  Cars.apply(Cars.activeId());
+  Cars.sync(1);
+  Cars.refresh();
+
+  check('the CARS button opens a garage with one card per config car',
+    (function () {
+      doc.getElementById('carsBtn').click();
+      return Screen.view === 'cars' &&
+        !doc.getElementById('menuCars').classList.contains('hidden') &&
+        doc.querySelectorAll('#carList .car-card').length === Cars.ids.length;
+    })(), doc.querySelectorAll('#carList .car-card').length + ' cards');
+
+  check('a level 1 player sees three locked cars with their required level',
+    (function () {
+      const locked = Array.from(doc.querySelectorAll('#carList .car-card[data-locked="true"]'));
+      const validator = doc.querySelector('#carList .car-card[data-car="validator"]');
+      return locked.length === 3 && locked.every(card => card.dataset.unlockLevel) &&
+        validator.dataset.unlockLevel === '3' &&
+        /LEVEL 3/.test(validator.querySelector('.lock-text').textContent) &&
+        validator.getAttribute('aria-disabled') === 'true';
+    })(), doc.querySelector('#carList .car-card[data-car="validator"] .lock-text').textContent);
+
+  check('clicking a locked car selects nothing',
+    (function () {
+      const before = Save.car();
+      doc.querySelector('#carList .car-card[data-car="flexnode"]').click();
+      return Save.car() === before && Cars.activeId() === 'relay' &&
+        doc.querySelector('#carList .car-card[data-car="relay"]').dataset.selected === 'true';
+    })(), 'active ' + Cars.activeId());
+
+  check('clicking an unlocked car applies its physics and saves the choice',
+    (function () {
+      doc.querySelector('#carList .car-card[data-car="relay"]').click();
+      const summary = doc.getElementById('carSummary');
+      return Save.car() === 'relay' && CONFIG.car.maxSpeed === 900 &&
+        summary.dataset.car === 'relay' && /still locked/.test(summary.textContent);
+    })(), doc.getElementById('carSummary').textContent);
+
+  check('the menu names the next unlock and the level it needs',
+    /MESH HIGHWAY AT LEVEL 2/.test(doc.getElementById('unlockHint').textContent) &&
+    doc.getElementById('unlockHint').dataset.unlockId === 'mesh-highway',
+    doc.getElementById('unlockHint').textContent);
+
+  /* ---- a locked track cannot be selected or raced ---------------------- */
+  check('locked tracks are marked and refused on the track screen',
+    (function () {
+      Screen.showMenuView('tracks');
+      const card = doc.querySelector('#trackList .track-card[data-track="mesh-highway"]');
+      const locked = card.dataset.locked === 'true' &&
+        card.classList.contains('is-locked') &&
+        /LEVEL 2/.test(card.querySelector('.lock-text').textContent);
+      const before = Track.id;
+      OR.TrackSelect.select('mesh-highway');
+      card.click();
+      return locked && Track.id === before &&
+        doc.querySelector('#trackList .track-card[data-track="flexnode"]').dataset.locked === 'false';
+    })(), 'still on ' + Track.id);
+
+  check('Game.startRace never builds a grid on a locked track',
+    (function () {
+      /* Force the live track onto a locked circuit, the way a stale save might. */
+      Track.use(OR.trackById('shard-speedway'));
+      Game.startRace();
+      const ok = Track.id === 'flexnode';
+      Game.returnToMenu();
+      return ok;
+    })(), 'race landed on ' + Track.id);
+
+  /* ---- finish a race that crosses level 3 ------------------------------ */
+  const results = (function () {
+    Save.addXp(Math.max(0, XP.xpForLevel(3) - Save.xp() - 1));  // one short of level 3
+    Game.startRace();
+    advance(CONFIG.race.countdownSeconds + 0.05);
+    Game.car.wallHits = 0;
+    Race.lap = Race.laps;
+    Race.lapBase = 0;
+    Race.progress = 0.96;
+    Race.lastFraction = 0.96;
+    Race.nextCheckpoint = Track.checkpoints.length;
+    Race.lapTimes.push(15000);
+    Race.bestLapMs = 15000;
+    Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+    Game.raceTimeMs = 45000;
+    Game._countLapCleanliness();
+    Game._finishRace();
+    Game._emit('finish', Game.results);
+    return Game.results;
+  })();
+
+  check('the race crossed the level and granted exactly the new items',
+    Save.level() === 3 && results.xp.leveledUp === true &&
+    Save.unlockedCars().join(',') === 'relay,validator' &&
+    Save.unlockedTracks().indexOf('mesh-highway') !== -1,
+    'level ' + Save.level() + ' · ' + Save.unlockedCars().join(','));
+
+  check('the unlock toast names what was unlocked',
+    (function () {
+      const toast = doc.getElementById('unlockToast');
+      const state = [
+        'hidden=' + toast.classList.contains('hidden'),
+        'value=' + doc.getElementById('unlockToastValue').textContent,
+        'unlocked=' + toast.dataset.unlocked,
+        'count=' + toast.dataset.unlockCount
+      ].join(' | ');
+      return !toast.classList.contains('hidden') &&
+        /VALIDATOR/.test(doc.getElementById('unlockToastValue').textContent) &&
+        /MESH HIGHWAY/.test(toast.dataset.unlocked) &&
+        toast.dataset.unlockCount === '2';
+    })(), doc.getElementById('unlockToastValue').textContent + ' — ' + doc.getElementById('unlockToastSub').textContent);
+
+  check('the garage and the track screen repainted as unlocked',
+    (function () {
+      const car = doc.querySelector('#carList .car-card[data-car="validator"]');
+      const track = doc.querySelector('#trackList .track-card[data-track="mesh-highway"]');
+      return car.dataset.locked === 'false' && !car.classList.contains('is-locked') &&
+        !car.querySelector('.car-lock') === false &&
+        track.dataset.locked === 'false' && !track.classList.contains('is-locked');
+    })(), 'both open now');
+
+  check('the newly unlocked car can be selected and drives differently',
+    (function () {
+      doc.querySelector('#carList .car-card[data-car="validator"]').click();
+      return Save.car() === 'validator' && Math.round(CONFIG.car.maxSpeed) === 972 &&
+        doc.getElementById('carSummary').dataset.car === 'validator';
+    })(), 'maxSpeed ' + CONFIG.car.maxSpeed.toFixed(0));
+
+  check('the newly unlocked track can be selected',
+    (function () {
+      OR.TrackSelect.select('mesh-highway');
+      return Track.id === 'mesh-highway';
+    })(), 'now on ' + Track.id);
+
+  check('the toast hides again on a finish that unlocks nothing',
+    (function () {
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      Race.lap = Race.laps;
+      Race.lapBase = 0;
+      Race.progress = 0.96;
+      Race.lastFraction = 0.96;
+      Race.nextCheckpoint = Track.checkpoints.length;
+      Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+      Game.raceTimeMs = 30000;
+      Game._finishRace();
+      Game._emit('finish', Game.results);
+      return !doc.getElementById('unlockToast').classList.contains('is-visible') &&
+        !doc.getElementById('unlockToast').classList.contains('hidden') === false &&
+        Save.unlockedCars().length === 2 && Save.unlockedTracks().length === 2;
+    })(), 'level ' + Save.level() + ', no new items');
+
+  check('a reset locks the cars again and re-applies the starter',
+    (function () {
+      Save.reset();
+      Cars.restore();
+      Cars.apply(Cars.activeId());
+      Cars.sync(1);
+      Screen.refreshCars();
+      OR.TrackSelect.refresh();
+      return Save.unlockedCars().join(',') === 'relay' &&
+        Cars.activeId() === 'relay' && CONFIG.car.maxSpeed === 900 &&
+        doc.querySelector('#carList .car-card[data-car="validator"]').dataset.locked === 'true' &&
+        doc.querySelector('#trackList .track-card[data-track="mesh-highway"]').dataset.locked === 'true';
+    })(), 'back to the starter');
 }
 
 /* =========================== summary ====================================== */

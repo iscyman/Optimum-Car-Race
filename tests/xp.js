@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save',
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars',
   'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards'];
 const STEP = 1 / 120;
 
@@ -375,8 +375,8 @@ section('migrating a Step 9 save to version 2');
   OR.Save.load();   // reading the save is what triggers the migration
   const raw = JSON.parse(storage.data['optimumRace.save.v1']);
 
-  check('the save is upgraded to version 2',
-    OR.Save.VERSION === 2 && OR.Save.load().version === 2 && raw.version === 2,
+  check('the save is upgraded when it is older than the current version',
+    OR.Save.VERSION === 3 && OR.Save.load().version === 3 && raw.version === 3,
     'version ' + OR.Save.load().version);
 
   check('nothing is lost in the migration',

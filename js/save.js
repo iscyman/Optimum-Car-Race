@@ -5,12 +5,13 @@
  * object under one key (CONFIG.profile.keys.save):
  *
  *   {
- *     version: 2,
+ *     version: 3,
  *     profile:   { name: 'Racer', color: 'violet' },
  *     stats:     { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
  *     progress:  { xp: 0, level: 1 },        <- Step 10
+ *     unlocks:   { cars: ['relay'], tracks: ['flexnode'] },   <- Step 11
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
- *     selection: { track: 'flexnode', difficulty: 'normal' }
+ *     selection: { track: 'flexnode', difficulty: 'normal', car: 'relay' }
  *   }
  *
  * Rules the rest of the game relies on:
@@ -31,7 +32,7 @@
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 2;
+  const VERSION = 3;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -139,14 +140,52 @@
       profile: { name: P.defaultName, color: P.defaultColor },
       stats: { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
       progress: { xp: 0, level: 1 },
+      unlocks: starterUnlocks(),
       bests: {},
-      selection: { track: null, difficulty: null }
+      selection: { track: null, difficulty: null, car: null }
     };
   }
 
   /** The level a total is worth, from the XP module when it is loaded. */
   function levelForXp(xp) {
     return OR.XP ? OR.XP.levelFor(xp) : 1;
+  }
+
+  /**
+   * What every player has from the first launch: the starter car and every
+   * item that unlocks at level 1. Step 11's whole unlock table lives in
+   * CONFIG.unlocks, so this stays in sync with the screens for free.
+   */
+  function starterUnlocks() {
+    const UN = CONFIG.unlocks;
+    const cars = [CONFIG.cars.defaultId];
+    const tracks = [];
+    Object.keys(UN.cars).forEach(function (id) {
+      if (UN.cars[id] <= 1 && cars.indexOf(id) === -1) cars.push(id);
+    });
+    Object.keys(UN.tracks).forEach(function (id) {
+      if (UN.tracks[id] <= 1 && tracks.indexOf(id) === -1) tracks.push(id);
+    });
+    return { cars: cars, tracks: tracks };
+  }
+
+  /**
+   * Keep only ids the game knows, in the config's own order, plus anything in
+   * `always` (the starters). Junk from an import or a half-written save simply
+   * disappears and duplicates cannot pile up, so the garage always lists cars
+   * in the same order whatever the stored blob said.
+   */
+  function sanitiseIds(raw, table, always) {
+    const out = [];
+    const granted = Array.isArray(raw) ? raw : [];
+    const keep = always || [];
+    Object.keys(table).forEach(function (id) {
+      if ((granted.indexOf(id) !== -1 || keep.indexOf(id) !== -1) &&
+        out.indexOf(id) === -1) {
+        out.push(id);
+      }
+    });
+    return out;
   }
 
   function topos(value) {
@@ -206,9 +245,20 @@
 
     base.bests = sanitiseBests(raw.bests);
 
+    /* Step 11: unlocks are a stored list, validated against the config table.
+       The starter items can never be missing, so a corrupt save cannot even
+       lock the player out of the first car or the first track. */
+    const unlocks = raw.unlocks && typeof raw.unlocks === 'object' ? raw.unlocks : {};
+    const starter = starterUnlocks();
+    base.unlocks.cars = sanitiseIds(unlocks.cars, CONFIG.unlocks.cars, starter.cars);
+    base.unlocks.tracks = sanitiseIds(unlocks.tracks, CONFIG.unlocks.tracks, starter.tracks);
+
     const selection = raw.selection && typeof raw.selection === 'object' ? raw.selection : {};
     base.selection.track = typeof selection.track === 'string' ? selection.track : null;
     base.selection.difficulty = typeof selection.difficulty === 'string' ? selection.difficulty : null;
+    /* A car that is not owned is not selected: fall back to the starter. */
+    base.selection.car = typeof selection.car === 'string' &&
+      base.unlocks.cars.indexOf(selection.car) !== -1 ? selection.car : null;
 
     return base;
   }
@@ -229,6 +279,43 @@
       if (!data.progress || typeof data.progress !== 'object') {
         data.progress = { xp: 0, level: 1 };
       }
+      return data;
+    },
+    /* 2 -> 3 (Step 11): grant everything the player's level has earned, and
+       — the important part — never lock anyone out of what they already had.
+       A pre-Step-11 save could race every track and had only one car, so any
+       track with a recorded time, and the track that was selected, are kept. */
+    2: function (data) {
+      const progress = data.progress && typeof data.progress === 'object' ? data.progress : {};
+      const level = Math.max(1, levelForXp(Math.max(0, topos(progress.xp))));
+      const fresh = starterUnlocks();
+
+      Object.keys(CONFIG.unlocks.cars).forEach(function (id) {
+        if (CONFIG.unlocks.cars[id] <= level && fresh.cars.indexOf(id) === -1) {
+          fresh.cars.push(id);
+        }
+      });
+      Object.keys(CONFIG.unlocks.tracks).forEach(function (id) {
+        if (CONFIG.unlocks.tracks[id] <= level && fresh.tracks.indexOf(id) === -1) {
+          fresh.tracks.push(id);
+        }
+      });
+      /* Evidence of use: a best time on the track, or it was the selection. */
+      Object.keys(sanitiseBests(data.bests)).forEach(function (trackId) {
+        if (CONFIG.unlocks.tracks[trackId] && fresh.tracks.indexOf(trackId) === -1) {
+          fresh.tracks.push(trackId);
+        }
+      });
+      const chosen = data.selection && typeof data.selection.track === 'string'
+        ? data.selection.track : null;
+      if (chosen && CONFIG.unlocks.tracks[chosen] && fresh.tracks.indexOf(chosen) === -1) {
+        fresh.tracks.push(chosen);
+      }
+
+      data.unlocks = fresh;
+      if (!data.selection || typeof data.selection !== 'object') data.selection = {};
+      /* Everyone drove the only car that existed before Step 11. */
+      if (!data.selection.car) data.selection.car = CONFIG.cars.defaultId;
       return data;
     }
   };
@@ -430,6 +517,50 @@
       return selection;
     },
 
+    /* ---- Step 11: what is unlocked, and the chosen car ------------------- */
+
+    unlocks() { return Save.load().unlocks; },
+    unlockedCars() { return Save.load().unlocks.cars.slice(); },
+    unlockedTracks() { return Save.load().unlocks.tracks.slice(); },
+
+    /**
+     * Add granted ids. Only ids the config knows are stored, and the write
+     * only happens when something actually changed, so sync() is cheap to
+     * call after every race.
+     */
+    grantUnlocks(granted) {
+      const unlocks = Save.load().unlocks;
+      let changed = false;
+      ['cars', 'tracks'].forEach(function (kind) {
+        if (!granted || !Array.isArray(granted[kind])) return;
+        granted[kind].forEach(function (id) {
+          if (CONFIG.unlocks[kind][id] && unlocks[kind].indexOf(id) === -1) {
+            unlocks[kind].push(id);
+            changed = true;
+          }
+        });
+      });
+      if (changed) Save.write();
+      return unlocks;
+    },
+
+    /** The saved car id, or null when none is set (or it is not owned). */
+    car() {
+      const selection = Save.load().selection;
+      const unlocked = Save.load().unlocks.cars;
+      return typeof selection.car === 'string' && unlocked.indexOf(selection.car) !== -1
+        ? selection.car : null;
+    },
+
+    /** Only an owned car can be selected; a locked id is refused. */
+    setCar(id) {
+      const unlocked = Save.load().unlocks.cars;
+      if (typeof id !== 'string' || unlocked.indexOf(id) === -1) return Save.car();
+      Save.load().selection.car = id;
+      Save.write();
+      return id;
+    },
+
     /* ---- career stats ---------------------------------------------------- */
 
     /**
@@ -499,7 +630,11 @@
     reset() {
       const fresh = defaults();
       fresh.profile = Save.load().profile;
-      fresh.selection = Save.load().selection;
+      /* Step 11: unlocking is progress too, so it goes back to the starter
+         car and track; the chosen track/difficulty/car are cleared. */
+      fresh.selection.track = null;
+      fresh.selection.difficulty = null;
+      fresh.selection.car = null;
       /* Progress (XP and level) is part of "progress", so it goes back to 1. */
       Save._data = fresh;
       /* Make sure the older keys cannot resurrect deleted records. */
