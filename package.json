@@ -1,0 +1,21 @@
+{
+  "name": "optimum-race",
+  "version": "0.13.0",
+  "private": true,
+  "description": "Optimum Race - Steps 1-12: a lightweight browser racing game with a player profile, a versioned save file, three tracks, AI rivals and selectable difficulty.",
+  "scripts": {
+    "start": "node tools/serve.js --port 3000 --host 0.0.0.0",
+    "test": "node tests/smoke.js && node tests/rivals.js && node tests/difficulty.js && node tests/tracks.js && node tests/save.js && node tests/xp.js && node tests/cars.js && node tests/events.js && node tests/daily.js",
+    "build": "node tools/build-standalone.js",
+    "screenshots": "node tools/screenshots.js",
+    "preview": "node tools/ascii-preview.js",
+    "visual": "node tools/visual-check.js",
+    "rivals": "node tools/rivals-check.js",
+    "balance": "node tools/balance.js"
+  },
+  "devDependencies": {
+    "canvas": "^3.0.0",
+    "jsdom": "^26.0.0",
+    "puppeteer": "^24.0.0"
+  }
+}

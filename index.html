@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05060d">
+<meta name="description" content="Optimum Race — a lightweight browser racing game. Single player, instant play, no install.">
+<title>Optimum Race</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2305060d'/%3E%3Cpath d='M5 23 L27 9' stroke='%2322e1ff' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M5 15 L18 15' stroke='%238b5cff' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Optimum Race">
+<meta property="og:description" content="A lightweight single-player browser racing game. Three circuits, four cars, daily challenges. No install, no backend.">
+<meta property="og:site_name" content="Optimum Race">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Optimum Race">
+<meta name="twitter:description" content="A lightweight single-player browser racing game. Three circuits, four cars, daily challenges.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app" class="app">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- ===================== HUD ===================== -->
+  <div id="hud" class="hud hidden">
+    <div class="hud-row hud-top">
+      <div class="card card-speed">
+        <div class="card-label">SPEED</div>
+        <div class="speed-readout"><span id="speedValue">0</span><span class="unit">km/h</span></div>
+        <div class="meter"><div class="meter-fill" id="speedBar"></div></div>
+      </div>
+
+      <div class="card card-lap">
+        <div class="card-label">LAP</div>
+        <div class="lap-readout">
+          <span id="lapValue">1</span><span class="unit">/<span id="lapTotal">3</span></span>
+        </div>
+        <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="card-sub card-sub-row">
+          <span id="lapTimeValue">00:00.000</span>
+          <span class="lap-best" id="bestLapValue"><span class="lap-best-label">BEST </span><span id="bestLapTime">--:--.---</span></span>
+        </div>
+      </div>
+
+      <div class="card card-map">
+        <canvas id="minimap" width="132" height="132" aria-label="Track map"></canvas>
+      </div>
+
+      <div class="card card-timer">
+        <div class="card-label">TOTAL</div>
+        <div class="timer-readout" id="timerValue">00:00.000</div>
+        <div class="card-sub" id="distanceValue">0 m to go</div>
+      </div>
+    </div>
+
+    <div class="card card-event hidden" id="eventCard" data-event="">
+      <div class="event-hud-head">
+        <span class="card-label">EVENT</span>
+        <span class="event-name" id="eventName">BLOCK RUSH</span>
+      </div>
+      <div class="event-objective-value" id="eventObjective">TIME 0:00.0 / 0:18.0</div>
+      <div class="event-bar"><div class="event-fill" id="eventBar"></div></div>
+    </div>
+
+    <div class="card hud-race-order">
+      <div class="race-order-head">
+        <div class="position-readout" aria-label="Race position">
+          <span class="card-label">POS</span>
+          <span id="positionValue">1</span><span class="unit">/<span id="positionTotal">4</span></span>
+        </div>
+        <span class="difficulty-chip" id="hudDifficulty" title="Difficulty">NORMAL</span>
+      </div>
+      <ol id="standingsList" class="standings-list" aria-label="Live race standings"></ol>
+    </div>
+
+    <div class="hud-row hud-bottom">
+      <div class="boost-widget is-ready" id="boostWidget" aria-label="Coded boost">
+        <div class="boost-ring" id="boostRing"><span id="boostValue">40</span></div>
+        <div class="boost-meta">
+          <span class="boost-title">CODED BOOST</span>
+          <small id="boostStatus">READY</small>
+        </div>
+      </div>
+
+      <div class="shard-chip" id="shardChip" title="Shard pickups collected this race">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M8 1l5 7-5 7-5-7z" fill="currentColor"/>
+        </svg>
+        <span id="shardCount">0/14</span>
+      </div>
+
+      <button class="icon-btn" id="pauseBtn" title="Pause (Esc or P)">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <rect x="6.5" y="5" width="4" height="14" rx="1.4" fill="currentColor"/>
+          <rect x="13.5" y="5" width="4" height="14" rx="1.4" fill="currentColor"/>
+        </svg>
+        <span class="sound-label">PAUSE</span>
+      </button>
+
+      <button class="icon-btn" data-action="sound" aria-pressed="false" title="Toggle engine sound">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M4 9h3l4-3.5v13L7 15H4z" fill="currentColor"/>
+          <path class="wave" d="M15.4 8.6a5 5 0 0 1 0 6.8M18 6a8.5 8.5 0 0 1 0 12"
+                stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <path class="cross" d="M16 9.6l5 4.8m0-4.8l-5 4.8"
+                stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span class="sound-label">SOUND OFF</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== TOUCH CONTROLS ===================== -->
+  <div id="touchControls" class="touch-controls hidden">
+    <div class="touch-group touch-left">
+      <button class="tbtn" data-action="left" aria-label="Steer left">&#9664;</button>
+      <button class="tbtn" data-action="right" aria-label="Steer right">&#9654;</button>
+    </div>
+    <div class="touch-group touch-right">
+      <button class="tbtn tbtn-brake" data-action="brake">BRAKE</button>
+      <button class="tbtn tbtn-boost" data-action="boost">BOOST</button>
+    </div>
+  </div>
+
+  <!-- ===================== MAIN MENU ===================== -->
+  <div id="menuScreen" class="screen">
+    <div class="panel" id="menuMain">
+      <div class="badge">SINGLE PLAYER</div>
+      <h1 class="title">OPTIMUM RACE</h1>
+      <p class="subtitle">Race. React. Win.</p>
+      <div class="difficulty">
+        <div class="card-label">DIFFICULTY</div>
+        <div id="difficultyPicker" class="difficulty-picker" role="radiogroup" aria-label="Rival difficulty"></div>
+        <p id="difficultyHint" class="difficulty-hint"></p>
+      </div>
+      <button id="startBtn" class="btn btn-primary">START RACE</button>
+      <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
+      <button id="carsBtn" class="btn btn-ghost">CARS</button>
+      <button id="eventsBtn" class="btn btn-ghost">EVENTS</button>
+      <div class="today-card" id="todayCard" role="button" tabindex="0" aria-label="Open today's event" data-event="" data-featured="">
+        <div class="today-head">
+          <span class="card-label">TODAY'S EVENT</span>
+          <span class="today-countdown" id="todayCountdown">0:00:00</span>
+        </div>
+        <strong class="today-name" id="todayName">BLOCK RUSH</strong>
+        <span class="today-objective" id="todayObjective"></span>
+        <span class="today-bonus" id="todayBonus"></span>
+      </div>
+      <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
+      <p class="racing-as" id="racingAs"></p>
+      <p class="unlock-hint" id="unlockHint"></p>
+      <div class="level-line" id="menuLevelLine">
+        <span class="level-badge" id="menuLevel">LEVEL 1</span>
+        <span class="level-bar"><span class="level-fill" id="menuLevelBar"></span></span>
+        <span class="level-xp" id="menuLevelXp">0 / 283 XP</span>
+      </div>
+      <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
+      <div class="menu-toggles">
+        <button class="icon-btn ghost" data-action="haptics" aria-pressed="false" title="Toggle vibration feedback">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+                  fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M10 7h4M10 17h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span class="haptics-label">HAPTICS OFF</span>
+        </button>
+      </div>
+      <div class="menu-sound">
+        <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M4 9h3l4-3.5v13L7 15H4z" fill="currentColor"/>
+            <path class="wave" d="M15.4 8.6a5 5 0 0 1 0 6.8M18 6a8.5 8.5 0 0 1 0 12"
+                  stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+            <path class="cross" d="M16 9.6l5 4.8m0-4.8l-5 4.8"
+                  stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          </svg>
+          <span class="sound-label">SOUND OFF</span>
+        </button>
+      </div>
+      <div class="hint">
+        <div class="hint-row"><kbd>W</kbd><kbd>&uarr;</kbd><span>accelerate</span></div>
+        <div class="hint-row"><kbd>S</kbd><kbd>&darr;</kbd><span>brake</span></div>
+        <div class="hint-row"><kbd>A</kbd><kbd>D</kbd><span>steer</span></div>
+        <div class="hint-row"><kbd>SPACE</kbd><span>coded boost (25%+)</span></div>
+        <div class="hint-row"><kbd>&#9670;</kbd><span>collect shards to charge</span></div>
+      </div>
+    </div>
+
+    <!-- Step 8: track select (second pane of the menu) -->
+    <div class="panel panel-wide hidden" id="menuTracks">
+      <div class="badge">SELECT TRACK</div>
+      <h2 class="title title-sm">CIRCUITS</h2>
+      <div id="trackList" class="track-list" role="radiogroup" aria-label="Select track"></div>
+      <p id="trackSummary" class="track-summary"></p>
+      <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
+      <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 12: challenge events -->
+    <div class="panel panel-wide hidden" id="menuEvents">
+      <div class="badge">EVENTS</div>
+      <h2 class="title title-sm">CHALLENGES</h2>
+      <div class="streak" id="streakStrip" aria-label="Last seven days"></div>
+      <div id="eventList" class="event-list"></div>
+      <p class="event-hint">Each challenge runs on the circuit you have selected.
+        Beat it once to collect the XP — beating it again is for pride.</p>
+      <button id="eventsBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 11: car select, stat bars and level locks -->
+    <div class="panel panel-wide hidden" id="menuCars">
+      <div class="badge">SELECT CAR</div>
+      <h2 class="title title-sm">GARAGE</h2>
+      <div id="carList" class="car-list" role="radiogroup" aria-label="Select car"></div>
+      <p id="carSummary" class="track-summary"></p>
+      <button id="carsBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 9: profile, stats and the save file -->
+    <div class="panel panel-wide hidden" id="menuProfile">
+      <div class="badge">DRIVER PROFILE</div>
+      <h2 class="title title-sm">PROFILE</h2>
+
+      <div class="profile-row">
+        <label class="profile-label" for="profileName">NAME</label>
+        <input id="profileName" class="profile-input" type="text" maxlength="16"
+               autocomplete="off" spellcheck="false" aria-label="Player name">
+        <span class="profile-counter" id="profileNameCount">0/16</span>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">CAR COLOUR</div>
+        <div id="profileColors" class="color-picker" role="radiogroup" aria-label="Car colour"></div>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">CAREER</div>
+        <div class="level-line level-line-wide">
+          <span class="level-badge level-badge-lg" id="profileLevel">LEVEL 1</span>
+          <span class="level-bar"><span class="level-fill" id="profileLevelBar"></span></span>
+          <span class="level-xp" id="profileLevelXp">0 / 283 XP</span>
+        </div>
+        <div class="stats stats-compact" id="profileStats"></div>
+        <div class="profile-records" id="profileRecords"></div>
+      </div>
+
+      <div class="profile-block">
+        <div class="card-label">SAVE FILE</div>
+        <div class="profile-save-row">
+          <button id="profileExportBtn" class="btn btn-ghost btn-inline">EXPORT</button>
+          <button id="profileImportBtn" class="btn btn-ghost btn-inline">IMPORT</button>
+          <button id="profileResetBtn" class="btn btn-ghost btn-inline btn-danger">RESET</button>
+        </div>
+        <textarea id="profileSaveText" class="profile-save-text" rows="3" spellcheck="false"
+                  aria-label="Save data (Base64)"></textarea>
+        <p class="profile-save-hint" id="profileSaveHint">EXPORT copies a Base64 string. IMPORT replaces this profile and progress with a pasted string.</p>
+      </div>
+
+      <button id="profileBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <p class="disclaimer">Unofficial fan project, not affiliated with Optimum.
+      <a href="https://getoptimum.xyz" target="_blank" rel="noopener noreferrer">getoptimum.xyz</a></p>
+    <p class="footer-disclaimer">Unofficial fan project, not affiliated with Optimum.</p>
+  </footer>
+
+  <!-- ===================== LEVEL-UP TOAST (Step 10) ===================== -->
+  <div id="unlockToast" class="level-toast unlock-toast hidden" role="status" aria-live="polite">
+    <span class="toast-badge">UNLOCKED</span>
+    <strong id="unlockToastValue">VALIDATOR</strong>
+    <span class="toast-sub" id="unlockToastSub"></span>
+  </div>
+
+  <div id="levelToast" class="level-toast hidden" role="status" aria-live="polite">
+    <span class="toast-badge">LEVEL UP</span>
+    <strong id="levelToastValue">LEVEL 2</strong>
+    <span class="toast-sub" id="levelToastSub"></span>
+  </div>
+
+  <!-- ===================== PAUSE MENU (Step 4) ===================== -->
+  <div id="pauseScreen" class="screen hidden">
+    <div class="panel panel-narrow">
+      <div class="badge">PAUSED</div>
+      <h2 class="title title-sm">PAUSE</h2>
+      <div class="stats stats-compact">
+        <div class="stat">
+          <span class="stat-label">LAP</span>
+          <span class="stat-value" id="pauseLap">1/3</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">TIME</span>
+          <span class="stat-value" id="pauseTime">00:00.000</span>
+        </div>
+      </div>
+      <button class="icon-btn ghost pause-haptics" data-action="haptics" aria-pressed="false" title="Toggle vibration feedback">
+        <span class="haptics-label">HAPTICS OFF</span>
+      </button>
+      <button id="resumeBtn" class="btn btn-primary">RESUME</button>
+      <button id="restartBtn" class="btn btn-ghost">RESTART</button>
+      <button id="quitBtn" class="btn btn-ghost">QUIT TO MENU</button>
+      <div class="hint hint-inline">Esc or P also resumes</div>
+    </div>
+  </div>
+
+  <!-- ===================== FINISH SCREEN ===================== -->
+  <div id="finishScreen" class="screen hidden">
+    <div class="panel">
+      <div class="badge badge-win">FINISH LINE CROSSED</div>
+      <h2 class="title title-sm">RACE FINISHED!</h2>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">YOUR PLACE</span>
+          <span class="stat-value" id="finalPosition">1 / 4</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">DIFFICULTY</span>
+          <span class="stat-value" id="finalDifficulty">NORMAL</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">TRACK</span>
+          <span class="stat-value" id="finalTrack">FLEXNODE CIRCUIT</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">DRIVER</span>
+          <span class="stat-value driver-value"><span class="driver-dot" id="finalDriverDot" aria-hidden="true"></span><span id="finalDriver">Racer</span></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">FINAL TIME</span>
+          <span class="stat-value" id="finalTime">00:00.000</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">BEST LAP</span>
+          <span class="stat-value" id="finalBestLap">--:--.---</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">MAX SPEED</span>
+          <span class="stat-value" id="finalTopSpeed">0 km/h</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">PEAK BOOSTED SPEED</span>
+          <span class="stat-value" id="finalBoostSpeed">0 km/h</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">BOOSTS USED</span>
+          <span class="stat-value" id="finalBoosts">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">SHARDS COLLECTED</span>
+          <span class="stat-value" id="finalShards">0</span>
+        </div>
+      </div>
+      <section class="xp-panel" aria-label="Experience earned">
+        <h3>XP EARNED</h3>
+        <div id="finalXpLines" class="xp-lines"></div>
+        <p class="xp-total"><span>THIS RACE</span><strong id="finalXpTotal">+0 XP</strong></p>
+        <div class="level-line level-line-wide">
+          <span class="level-badge" id="finalLevel">LEVEL 1</span>
+          <span class="level-bar level-bar-lg"><span class="level-fill" id="finalLevelBar"></span></span>
+          <span class="level-xp" id="finalLevelXp">0 / 283 XP</span>
+        </div>
+        <p class="xp-note" id="finalXpNote"></p>
+        <p class="fact" id="finalFact"></p>
+        <div id="finalEvent" class="event-result hidden" data-event="" data-met="">
+          <span class="event-result-badge" id="finalEventBadge">EVENT COMPLETE</span>
+          <strong id="finalEventName">BLOCK RUSH</strong>
+          <span class="event-result-sub" id="finalEventSub"></span>
+        </div>
+      </section>
+      <section class="finish-standings" aria-label="Final race standings">
+        <h3>FINAL STANDINGS</h3>
+        <ol id="finalStandings" class="standings-list"></ol>
+        <p class="classification-note">Order at your finish. Unfinished rivals are ranked by checkpoint-valid progress.</p>
+      </section>
+      <p class="best-time" id="finalBestTime">Best on Normal --:--.---</p>
+      <p class="best-time track-best-line" id="finalTrackBest"></p>
+      <div class="splits" id="lapSplits"></div>
+      <button id="againBtn" class="btn btn-primary">RACE AGAIN</button>
+      <button id="menuBtn" class="btn btn-ghost">MAIN MENU</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/xp.js"></script>
+<script src="js/trackdata.js"></script>
+<script src="js/track.js"></script>
+<script src="js/car.js"></script>
+<script src="js/race.js"></script>
+<script src="js/save.js"></script>
+<script src="js/cars.js"></script>
+<script src="js/events.js"></script>
+<script src="js/daily.js"></script>
+<script src="js/haptics.js"></script>
+<script src="js/difficulty.js"></script>
+<script src="js/bests.js"></script>
+<script src="js/rivals.js"></script>
+<script src="js/collisions.js"></script>
+<script src="js/standings.js"></script>
+<script src="js/shards.js"></script>
+<script src="js/input.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/game.js"></script>
+<script src="js/trackselect.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
