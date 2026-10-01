@@ -765,6 +765,154 @@ body.is-paused #hud { opacity: 0.35; }
   .card-map { display: none; }   /* the lap card carries the info on phones */
 }
 
+/* ============================ RACE ORDER (Step 6) ========================= */
+
+.hud-race-order {
+  position: absolute;
+  top: calc(116px + var(--safe-t));
+  left: 14px;
+  width: 228px;
+  padding: 10px 12px;
+}
+
+.position-readout { display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px; }
+.position-readout .card-label { margin-right: 8px; }
+#positionValue { font-family: var(--mono); font-size: 28px; font-weight: 800; color: var(--cyan); }
+.position-readout .unit { color: var(--muted); font-size: 14px; font-weight: 700; }
+.standings-list { list-style: none; margin: 0; padding: 0; }
+.standing-row {
+  display: grid;
+  grid-template-columns: 14px 7px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.standing-rank { font-family: var(--mono); font-weight: 800; }
+.driver-dot { width: 6px; height: 6px; background: var(--driver-color); border-radius: 50%; }
+.standing-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.standing-row.is-player { color: var(--text); }
+.standing-row.is-player .standing-rank { color: var(--cyan); }
+.standing-status { min-width: 16px; text-align: right; color: var(--cyan); font-size: 9px; }
+.standing-row.is-stalled .standing-status { color: #ffb347; font-size: 14px; }
+.rival-hint { margin: 16px 0 0; font-size: 11px; line-height: 1.7; color: var(--muted); }
+.finish-standings { margin: 0 0 22px; text-align: left; }
+.finish-standings h3 { color: var(--muted); font-size: 10px; letter-spacing: 0.18em; }
+.finish-standings .standing-row { font-size: 11px; min-height: 35px; padding: 3px 8px; border-bottom: 1px solid var(--line); }
+.finish-standings .is-player { background: rgba(34, 225, 255, 0.08); border-radius: 7px; }
+.standing-time { font-family: var(--mono); font-size: 10px; }
+.classification-note { font-size: 10px; line-height: 1.5; color: var(--muted); margin-top: 10px; }
+
+@media (max-width: 720px) {
+  .hud-race-order { left: 10px; top: calc(110px + var(--safe-t)); width: 186px; padding: 7px 9px; }
+  #positionValue { font-size: 24px; }
+  .standing-row { font-size: 9px; gap: 4px; min-height: 22px; }
+}
+
+@media (max-height: 480px) {
+  .hud-race-order { top: calc(108px + var(--safe-t)); width: 186px; padding: 6px 9px; }
+  .standing-row { min-height: 20px; }
+  .finish-standings { margin-bottom: 14px; }
+}
+
+/* Blurring a moving canvas behind many HUD surfaces is expensive on phones.
+   Keep the same palette with opaque glass; desktop retains backdrop blur. */
+@media (max-width: 720px) {
+  .card, .boost-widget, .shard-chip, .icon-btn, .tbtn {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .card, .boost-widget, .shard-chip, .hud-bottom .icon-btn {
+    background: rgba(9, 12, 22, 0.9);
+  }
+}
+
+.card-sub-row > span { white-space: nowrap; }
+@media (max-width: 460px) {
+  .card-sub-row { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .lap-best { font-size: 9px; letter-spacing: 0; }
+  .lap-best-label { display: none; }
+  .lap-best::before { content: "B "; font-weight: 800; }
+  .hud-race-order { top: calc(130px + var(--safe-t)); }
+}
+
+@media (max-height: 480px) {
+  .card, .boost-widget, .shard-chip, .icon-btn, .tbtn {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .card-speed { min-width: 72px; }
+  .card-speed .unit { display: none; }
+  .card-timer { min-width: 100px; }
+  .timer-readout { font-size: 16px; }
+  .touch-controls { padding-left: 10px; padding-right: 10px; }
+  .touch-group { gap: 8px; }
+  .tbtn { width: 64px; height: 64px; border-radius: 18px; }
+}
+
+/* ============================ DIFFICULTY (Step 7) ========================= */
+
+.difficulty { margin: 18px 0 6px; text-align: center; }
+.difficulty .card-label { margin-bottom: 8px; }
+.difficulty-picker {
+  display: inline-flex;
+  gap: 6px;
+  padding: 5px;
+  background: rgba(9, 12, 22, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+}
+.diff-btn {
+  min-width: 92px;
+  padding: 9px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.diff-btn:hover { color: var(--text); }
+.diff-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.diff-btn.is-selected {
+  color: #05121a;
+  background: linear-gradient(135deg, var(--cyan), #7fe6ff);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.difficulty-hint { margin: 10px 0 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
+
+.difficulty-chip {
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+  background: rgba(34, 225, 255, 0.10);
+  border: 1px solid rgba(34, 225, 255, 0.35);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.race-order-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+.best-time { margin: 16px 0 6px; text-align: center; font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
+.best-time.is-new { color: var(--cyan); font-weight: 800; }
+
+@media (max-width: 720px) {
+  .difficulty-picker { width: 100%; }
+  .diff-btn { flex: 1; min-width: 0; padding: 9px 8px; font-size: 10px; }
+  .difficulty-hint { font-size: 10px; }
+}
+
 </style>
 </head>
 <body>
@@ -788,7 +936,7 @@ body.is-paused #hud { opacity: 0.35; }
         <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
         <div class="card-sub card-sub-row">
           <span id="lapTimeValue">00:00.000</span>
-          <span class="lap-best" id="bestLapValue">BEST --:--.---</span>
+          <span class="lap-best" id="bestLapValue"><span class="lap-best-label">BEST </span><span id="bestLapTime">--:--.---</span></span>
         </div>
       </div>
 
@@ -801,6 +949,17 @@ body.is-paused #hud { opacity: 0.35; }
         <div class="timer-readout" id="timerValue">00:00.000</div>
         <div class="card-sub" id="distanceValue">0 m to go</div>
       </div>
+    </div>
+
+    <div class="card hud-race-order">
+      <div class="race-order-head">
+        <div class="position-readout" aria-label="Race position">
+          <span class="card-label">POS</span>
+          <span id="positionValue">1</span><span class="unit">/<span id="positionTotal">4</span></span>
+        </div>
+        <span class="difficulty-chip" id="hudDifficulty" title="Difficulty">NORMAL</span>
+      </div>
+      <ol id="standingsList" class="standings-list" aria-label="Live race standings"></ol>
     </div>
 
     <div class="hud-row hud-bottom">
@@ -858,7 +1017,13 @@ body.is-paused #hud { opacity: 0.35; }
       <div class="badge">SINGLE PLAYER</div>
       <h1 class="title">OPTIMUM RACE</h1>
       <p class="subtitle">Race. React. Win.</p>
+      <div class="difficulty">
+        <div class="card-label">DIFFICULTY</div>
+        <div id="difficultyPicker" class="difficulty-picker" role="radiogroup" aria-label="Rival difficulty"></div>
+        <p id="difficultyHint" class="difficulty-hint"></p>
+      </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
+      <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -910,6 +1075,14 @@ body.is-paused #hud { opacity: 0.35; }
       <h2 class="title title-sm">RACE FINISHED!</h2>
       <div class="stats">
         <div class="stat">
+          <span class="stat-label">YOUR PLACE</span>
+          <span class="stat-value" id="finalPosition">1 / 4</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">DIFFICULTY</span>
+          <span class="stat-value" id="finalDifficulty">NORMAL</span>
+        </div>
+        <div class="stat">
           <span class="stat-label">FINAL TIME</span>
           <span class="stat-value" id="finalTime">00:00.000</span>
         </div>
@@ -934,6 +1107,12 @@ body.is-paused #hud { opacity: 0.35; }
           <span class="stat-value" id="finalShards">0</span>
         </div>
       </div>
+      <section class="finish-standings" aria-label="Final race standings">
+        <h3>FINAL STANDINGS</h3>
+        <ol id="finalStandings" class="standings-list"></ol>
+        <p class="classification-note">Order at your finish. Unfinished rivals are ranked by checkpoint-valid progress.</p>
+      </section>
+      <p class="best-time" id="finalBestTime">Best on Normal --:--.---</p>
       <div class="splits" id="lapSplits"></div>
       <button id="againBtn" class="btn btn-primary">RACE AGAIN</button>
       <button id="menuBtn" class="btn btn-ghost">MAIN MENU</button>
@@ -945,7 +1124,7 @@ body.is-paused #hud { opacity: 0.35; }
 <script>
 /* ==== js/config.js ==== */
 /* =============================================================================
- * OPTIMUM RACE — Steps 1 + 2
+ * OPTIMUM RACE — Steps 1 to 6
  * config.js — EVERY tuning value in the game lives in this one object.
  * Change a number here and the handling changes in game; no other file needs
  * to be touched to tune the feel of the car.
@@ -1058,12 +1237,107 @@ OR.CONFIG = {
     }
   },
 
+  /* ---- AI rivals (Step 6; no difficulty or networking) ------------------- */
+  rivals: {
+    roster: [
+      { name: 'STANDARD GOSSIP 1', color: '#ffb347', speed: 0.97, skill: 0.90, lane: -64 },
+      { name: 'STANDARD GOSSIP 2', color: '#52f4b8', speed: 1.02, skill: 0.96, lane: 0 },
+      { name: 'STANDARD GOSSIP 3', color: '#ff684e', speed: 1.05, skill: 1.02, lane: 64 }
+    ],
+    grid: { behind: 140, rowGap: 180, stagger: 75, lane: 82, screenOffset: 0.55 },
+    thinkInterval: 0.06,       // decisions at ~17 Hz; physics still runs at 120 Hz
+    lookAhead: 130,
+    lookAheadTime: 0.33,
+    maxLookAhead: 420,
+    steeringGain: 3.8,
+    slipCorrection: 0.65,
+    cornerScan: 850,
+    cornerScanStep: 70,
+    lateralAccel: 850,        // corner speed = sqrt(radius * lateralAccel * skill)
+    brakePlanning: 850,
+    minCornerSpeed: 310,
+    throttleMargin: 10,
+    brakeMargin: 22,
+    recoverySpeed: 370,
+    coolDownSpeed: 0.42,      // finished rivals keep a slow lap; they never park
+    stall: {
+      intervalMin: 4.5,
+      intervalMax: 8.5,
+      durationMin: 0.5,
+      durationMax: 1.0,
+      speedRatio: 0.50,        // slows, never freezes or teleports a rival
+      flashHz: 2              // gameplay indicator, NOT a network/latency metric
+    },
+    /* Light rubber banding (Step 7): ease off when far ahead, push when far
+       behind. Both directions are capped so the race never feels rigged. */
+    rubberBand: {
+      easeMax: 0.10,           // most a leading rival slows down
+      pushMax: 0.14,           // most a trailing rival speeds up
+      deadZoneLaps: 0.10,      // no effect at all within this gap
+      fullGapLaps: 0.60        // full effect once the gap reaches this
+    }
+  },
+
+  /* ---- Car-to-car contact (Step 6) -------------------------------------- */
+  collisions: {
+    enabled: true,
+    iterations: 4,
+    widthScale: 0.96,
+    lengthScale: 0.96,
+    clearance: 1.5,
+    speedLoss: 0.045,
+    cooldown: 0.30,           // sustained contact cannot drain speed every tick
+    restitution: 0.08
+  },
+
+  /* ---- Difficulty (Step 7; one entry per selectable level) -------------- */
+  difficulty: {
+    default: 'normal',
+    keys: {
+      selection: 'optimumRace.difficulty.v1',
+      best: 'optimumRace.bestTimes.v1'
+    },
+    levels: [
+      {
+        id: 'easy',
+        label: 'EASY',
+        blurb: 'Relaxed rivals: slower, brake earlier and stall for longer.',
+        rivalSpeed: 0.94,          // × the roster profile's top speed
+        cornerSkill: 0.88,         // × corner braking / cornering skill
+        stallIntervalScale: 0.85,  // < 1 means stalls come around more often
+        stallDurationScale: 1.30,  // and last longer
+        rubberBand: 0.60           // assist strength (see CONFIG.rivals.rubberBand)
+      },
+      {
+        id: 'normal',
+        label: 'NORMAL',
+        blurb: 'Balanced rivals that keep the pack close.',
+        rivalSpeed: 1.21,          // matches a decent unboosted player
+        cornerSkill: 1.14,
+        stallIntervalScale: 1.00,
+        stallDurationScale: 1.00,
+        rubberBand: 0.45
+      },
+      {
+        id: 'hard',
+        label: 'HARD',
+        blurb: 'Fast, consistent rivals that rarely put a wheel wrong.',
+        rivalSpeed: 1.26,
+        cornerSkill: 1.16,
+        stallIntervalScale: 1.35,  // stalls are rarer
+        stallDurationScale: 0.65,  // and shorter
+        rubberBand: 0.30           // less help, so the pace difference shows
+      }
+    ]
+  },
+
   /* ---- Camera ------------------------------------------------------------ */
   camera: {
     visibleHeight: 900,    // world units we try to fit vertically
     minVisibleWidth: 620,  // never zoom in further than this horizontally
     carScreenOffset: 0.72, // 0 = top of screen, 1 = bottom of screen
     followRate: 6,         // how quickly the camera catches up
+    gridBlendRate: 4.5,    // smooth transition from the four-car grid to the player
     lookAhead: 240,        // base look-ahead distance (world units)
     lookAheadSpeed: 220,   // extra look-ahead at top speed
     lookAheadRate: 2.5,    // smoothing of the look-ahead offset
@@ -1084,7 +1358,9 @@ OR.CONFIG = {
       minDrift: 55,      // sideways speed needed to lay rubber
       minBrakeSpeed: 420 // forward speed needed for brake marks
     },
-    maxParticles: 320   // hard cap on live boost / spark / pickup particles
+    maxParticles: 320,  // hard cap on live boost / spark / pickup particles
+    renderDpr: { mobileWidth: 720, mobileHeight: 480, mobileMax: 1, desktopMax: 2 },
+    roadCache: { maxSize: 3072 } // bounded static road texture on phones
   },
 
   /* ---- Audio (Web Audio only, no audio files) ---------------------------- */
@@ -1428,7 +1704,7 @@ OR.CONFIG = {
     }
     Track.points = points;
 
-    /* curvature per point (unsigned; used for kerbs and for the AI later) */
+    /* curvature per point (unsigned; used for kerbs and the AI) */
     for (let i = 0; i < n; i++) {
       const a = raw[(i - 1 + n) % n], b = raw[i], c = raw[(i + 1) % n];
       const ab = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -1566,7 +1842,7 @@ OR.CONFIG = {
     };
   };
 
-  /** Public helper for the AI in a later step. */
+  /** Public nearest-point helper used by the AI. */
   Track.getNearestTrackPoint = function (x, y, hint) {
     const info = Track.nearest(x, y, hint);
     return {
@@ -1619,7 +1895,9 @@ OR.CONFIG = {
     let tx = a.tx + (b.tx - a.tx) * t, ty = a.ty + (b.ty - a.ty) * t;
     const len = Math.hypot(tx, ty) || 1;
     tx /= len; ty /= len;
-    return { x: x, y: y, tx: tx, ty: ty, nx: -ty, ny: tx, s: Track.length * f };
+    const curvature = Utils.lerp(a.curvature, b.curvature, t);
+    return { x: x, y: y, tx: tx, ty: ty, nx: -ty, ny: tx, s: Track.length * f,
+      index: i0, radius: curvature > 1e-6 ? 1 / curvature : Infinity };
   };
 
   /**
@@ -1688,7 +1966,7 @@ OR.CONFIG = {
 
 /* ==== js/car.js ==== */
 /* =============================================================================
- * car.js — the player's car.
+ * car.js — shared car physics (player and Step 6 rivals).
  *
  * Step 2 handling model:
  *   - the car has a HEADING (where it points) and a VELOCITY (where it goes);
@@ -1734,6 +2012,8 @@ OR.CONFIG = {
     this.hitWall = false;
     this.braking = false;
     this.maxSpeed = 0;     // km/h, for the finish screen
+    this.topSpeedMultiplier = 1; // rivals set their fixed profile after reset
+    this.hitCar = false;
     /* ---- CODED BOOST (Step 3): a 0-100 meter ------------------------------ */
     this.meter = B.startMeter;   // charge, 0 .. B.meterMax
     this.boost = {
@@ -1825,7 +2105,9 @@ OR.CONFIG = {
     }
 
     /* ---- steering -------------------------------------------------------- */
-    this.steerRaw = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
+    this.steerRaw = typeof controls.steer === 'number'
+      ? Utils.clamp(controls.steer, -1, 1)
+      : (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
     this.steerInput = Utils.damp(this.steerInput, this.steerRaw, C.steerResponse, dt);
 
     const speedRatio = Utils.clamp(this.speed / C.maxSpeed, 0, 1);
@@ -1849,7 +2131,7 @@ OR.CONFIG = {
 
     /* ---- longitudinal ---------------------------------------------------- */
     const boosting = boost.active;
-    let maxSpeed = C.maxSpeed * (boosting ? B.speedMultiplier : 1);
+    let maxSpeed = C.maxSpeed * this.topSpeedMultiplier * (boosting ? B.speedMultiplier : 1);
     if (surf) maxSpeed *= surf.speedMul;
 
     this.braking = !!controls.brake;
@@ -1921,11 +2203,7 @@ OR.CONFIG = {
     }
 
     /* ---- derived values -------------------------------------------------- */
-    this.speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    this.vLong = this.vx * fx + this.vy * fy;
-    this.vLat = this.vx * rx + this.vy * ry;
-    this.slip = Math.atan2(this.vLat, Math.max(1, this.vLong));
-    this.drifting = Math.abs(this.vLat) > C.driftThreshold;
+    this.syncVelocity();
 
     /* ---- cosmetics ------------------------------------------------------- */
     const roll = this.steerInput * C.rollPerSteer +
@@ -1936,11 +2214,803 @@ OR.CONFIG = {
     if (boost.active) boost.peakKmh = Math.max(boost.peakKmh, this.speedKmh());
   };
 
+  /** Keep derived motion coherent after an external car-to-car impulse. */
+  Car.prototype.syncVelocity = function () {
+    const fx = Math.sin(this.heading), fy = -Math.cos(this.heading);
+    const rx = Math.cos(this.heading), ry = Math.sin(this.heading);
+    this.speed = Math.hypot(this.vx, this.vy);
+    this.vLong = this.vx * fx + this.vy * fy;
+    this.vLat = this.vx * rx + this.vy * ry;
+    this.slip = Math.atan2(this.vLat, Math.max(1, this.vLong));
+    this.drifting = Math.abs(this.vLat) > C.driftThreshold;
+  };
+
   Car.prototype.speedKmh = function () {
     return this.speed * CONFIG.track.metersPerUnit * 3.6;
   };
 
   OR.Car = Car;
+})();
+
+/* ==== js/race.js ==== */
+/* =============================================================================
+ * race.js — laps, checkpoints, splits and best lap.
+ *
+ * Step 5 rewrote the track as a closed loop, so a lap is no longer measured
+ * against a finish line's y position: the car's distance around the lap is
+ * read from the track geometry and unwrapped into a continuous "progress" value U, where:
+ *
+ *   U = 0.0   the start line at the beginning of lap 1
+ *   U = 0.5   half way round lap 1
+ *   U = 1.0   the start line again, lap 1 complete (lap 2 begins)
+ *   U = 3.0   the flag, on a 3 lap race
+ *
+ * A checkpoint at fraction f of lap L sits at U = (L - 1) + f, so passing the
+ * gates in order falls out of the maths, and driving backwards simply winds U
+ * back down without ever awarding a lap. A lap still only counts when every
+ * checkpoint has been passed, so a shortcut cannot skip one.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Track } = OR;
+
+  const Race = {
+    laps: CONFIG.race.laps,
+    lap: 1,                 // 1-based, for the HUD
+    nextCheckpoint: 0,      // index of the gate we are waiting for
+    checkpointsPassed: 0,
+    lapTimes: [],           // completed laps, ms
+    bestLapMs: 0,           // best of lapTimes, 0 = none yet
+    lapStartMs: 0,          // race clock when the current lap began
+    finished: false,        // the flag has been crossed for the last time
+    lastEvent: null,        // { type: 'lap' | 'checkpoint', lap, index, timeMs }
+    progress: 0,            // continuous lap progress U
+    lapBase: 0,             // U at which the current lap began
+    hint: 0,                // track index hint for fast nearest-point lookups
+    lastFraction: 0,        // raw 0..1 fraction, before unwrapping
+
+    reset(car) {
+      this.laps = CONFIG.race.laps;
+      this.lap = 1;
+      this.nextCheckpoint = 0;
+      this.checkpointsPassed = 0;
+      this.lapTimes.length = 0;
+      this.bestLapMs = 0;
+      this.lapStartMs = 0;
+      this.finished = false;
+      this.lastEvent = null;
+      this.progress = 0;
+      this.lapBase = 0;
+      this.hint = Track.startIndex;
+      this.lastFraction = 0;
+      this.started = true;
+      this.finishTimeMs = 0;
+      if (car) {
+        const info = Track.nearest(car.x, car.y, car.trackHint);
+        this.hint = info.index;
+        this.lastFraction = (info.fraction - Track.start.s / Track.length + 1) % 1;
+        // A grid slot just before the line is NEGATIVE progress, not lap 1 done.
+        this.progress = this.lastFraction > 0.5 ? this.lastFraction - 1 : this.lastFraction;
+        this.started = this.progress >= 0;
+      }
+      return this;
+    },
+
+    /** Time on the current lap, given the race clock. */
+    lapTimeMs(raceTimeMs) {
+      return Math.max(0, raceTimeMs - this.lapStartMs);
+    },
+
+    /** 1 -> the flag lap, 2 -> the last lap. Used for the HUD badge. */
+    lapsRemaining() {
+      return Math.max(0, this.laps - (this.lap - 1));
+    },
+
+    isFinalLap() {
+      return this.lap >= this.laps;
+    },
+
+    /** How much of the current lap is done, 0 -> 1 (for the lap bar). */
+    lapProgress(x, y) {
+      const info = Track.nearest(x, y, this.hint);
+      return this.started
+        ? (info.fraction - Track.start.s / Track.length + 1) % 1 : 0;
+    },
+
+    /**
+     * Called once per physics step while racing.
+     * Returns 'lap' when a lap was completed, 'finish' on the final lap.
+     */
+    update(car, raceTimeMs) {
+      this.lastEvent = null;
+      if (this.finished) return null;
+
+      const info = Track.nearest(car.x, car.y, this.hint);
+      this.hint = info.index;
+      const fraction = (info.fraction - Track.start.s / Track.length + 1) % 1;
+
+      /* Unwrap the 0..1 lap position into a continuous value. A jump of more
+         than half a lap between steps can only be a crossing of the line. */
+      const delta = fraction - this.lastFraction;
+      if (delta < -0.5) this.progress += 1 + delta;        // crossed forwards
+      else if (delta > 0.5) this.progress -= 1 - delta;    // crossed backwards
+      else this.progress += delta;
+      this.lastFraction = fraction;
+
+      if (this.progress < this.lapBase - 1) this.progress = this.lapBase;
+      if (this.started && this.progress < 0) this.progress = 0;
+      if (!this.started && this.progress >= 0) this.started = true;
+
+      /* Checkpoints, strictly in order, at lapBase + fraction. A gate also
+         has to be physically reached: otherwise a car that is picked up and
+         put down the road could collect the whole lap for free. */
+      const cps = Track.checkpoints;
+      const gateRadius = Track.hardLimit * 1.4;
+      while (this.nextCheckpoint < cps.length) {
+        const cp = cps[this.nextCheckpoint];
+        if (this.progress < this.lapBase + cp.fraction) break;
+        const dx = car.x - cp.x, dy = car.y - cp.y;
+        if (dx * dx + dy * dy > gateRadius * gateRadius) break;
+        this.nextCheckpoint += 1;
+        this.checkpointsPassed += 1;
+        this.lastEvent = {
+          type: 'checkpoint',
+          lap: this.lap,
+          index: this.nextCheckpoint - 1,
+          timeMs: raceTimeMs
+        };
+      }
+
+      /* The line itself. */
+      if (this.progress < this.lapBase + 1) return null;
+
+      if (this.nextCheckpoint < cps.length) {
+        // somehow reached the line without the gates: do not score it
+        this.lastEvent = { type: 'shortcut', lap: this.lap, timeMs: raceTimeMs };
+        this.progress = this.lapBase + 0.999;
+        this.lastFraction = 0.999;
+        return 'shortcut';
+      }
+
+      const lapMs = raceTimeMs - this.lapStartMs;
+      this.lapTimes.push(lapMs);
+      if (!this.bestLapMs || lapMs < this.bestLapMs) this.bestLapMs = lapMs;
+      this.lapStartMs = raceTimeMs;
+      this.nextCheckpoint = 0;
+      this.checkpointsPassed = 0;
+      this.lapBase += 1;
+
+      if (this.lap >= this.laps) {
+        this.finished = true;
+        this.finishTimeMs = raceTimeMs;
+        this.lastEvent = { type: 'finish', lap: this.lap, timeMs: raceTimeMs, lapMs: lapMs };
+        return 'finish';
+      }
+
+      this.lap += 1;
+      this.lastEvent = { type: 'lap', lap: this.lap - 1, timeMs: raceTimeMs, lapMs: lapMs };
+      return 'lap';
+    },
+
+    /** Ranking cannot credit progress beyond a checkpoint that was skipped. */
+    validProgress() {
+      if (this.finished) return this.laps;
+      const cp = Track.checkpoints[this.nextCheckpoint];
+      return Math.min(this.progress, this.lapBase + (cp ? cp.fraction : 1));
+    },
+
+    /** Everything the finish screen needs about the laps. */
+    summary() {
+      return {
+        laps: this.lapTimes.length,
+        lapTimes: this.lapTimes.slice(),
+        bestLapMs: this.bestLapMs
+      };
+    }
+  };
+
+  /** Independent checkpoint/lap state; the existing singleton stays the player. */
+  Race.create = function (car) {
+    const tracker = Object.create(Race);
+    tracker.lapTimes = [];
+    return tracker.reset(car);
+  };
+
+  OR.Race = Race.reset();
+})();
+
+/* ==== js/difficulty.js ==== */
+/* =============================================================================
+ * difficulty.js — Step 7: EASY / NORMAL / HARD for the rivals.
+ *
+ * One place owns everything difficulty-shaped:
+ *   - the selectable levels, straight from CONFIG.difficulty.levels;
+ *   - which level is selected, remembered in localStorage (always try/catch,
+ *     so blocked storage simply falls back to the default);
+ *   - the best race time per level.
+ *
+ * The rivals read the selected level once, at Rivals.reset(), so a race keeps
+ * the difficulty it started with even if the menu selection changes later.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG } = OR;
+  const D = CONFIG.difficulty;
+
+  /** localStorage that never throws: private mode, file://, quotas, all fine. */
+  function readRaw(key) {
+    try {
+      const value = window.localStorage.getItem(key);
+      return value === null ? null : value;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeRaw(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /** Positive finite number or 0. */
+  function topos(value) {
+    return typeof value === 'number' && isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function readJson(key, fallback) {
+    const raw = readRaw(key);
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : fallback;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function byId(id) {
+    for (let i = 0; i < D.levels.length; i++) {
+      if (D.levels[i].id === id) return D.levels[i];
+    }
+    return null;
+  }
+
+  const Difficulty = {
+    levels: D.levels,
+    defaultId: D.default,
+    _id: D.default,
+    /* Session mirror: blocked storage must not break the current race. */
+    _memoryBest: {},
+
+    /** The level object for an id, or the default when the id is unknown. */
+    get(id) {
+      return byId(id) || byId(Difficulty._id) || byId(D.default) || D.levels[0];
+    },
+
+    /** Re-read the saved selection (called at boot and after storage errors). */
+    load() {
+      const saved = readRaw(D.keys.selection);
+      Difficulty._id = byId(saved) ? saved : Difficulty.defaultId;
+      return Difficulty._id;
+    },
+
+    currentId() {
+      return Difficulty._id;
+    },
+
+    current() {
+      return Difficulty.get(Difficulty._id);
+    },
+
+    /** Config numbers used by the rivals; a fresh object each call. */
+    settings() {
+      const level = Difficulty.current();
+      return {
+        id: level.id,
+        label: level.label,
+        rivalSpeed: level.rivalSpeed,
+        cornerSkill: level.cornerSkill,
+        stallIntervalScale: level.stallIntervalScale,
+        stallDurationScale: level.stallDurationScale,
+        rubberBand: level.rubberBand
+      };
+    },
+
+    /** Choose a level and remember it. Never throws if storage is blocked. */
+    select(id) {
+      const level = byId(id) || Difficulty.current();
+      Difficulty._id = level.id;
+      writeRaw(D.keys.selection, level.id);
+      return level;
+    },
+
+    /* ---- best race time per difficulty ---------------------------------- */
+
+    bestTimes() {
+      const stored = readJson(D.keys.best, {});
+      const out = {};
+      for (let i = 0; i < D.levels.length; i++) {
+        const id = D.levels[i].id;
+        const ms = Math.max(topos(stored[id]), topos(Difficulty._memoryBest[id]));
+        out[id] = ms;
+      }
+      return out;
+    },
+
+    best(id) {
+      return Difficulty.bestTimes()[Difficulty.get(id).id] || 0;
+    },
+
+    /**
+     * Store a finish time if it beats the saved one.
+     * Returns { bestMs, previousMs, isNewBest } even when storage is blocked.
+     */
+    recordBest(id, timeMs) {
+      const level = Difficulty.get(id);
+      const previousMs = Difficulty.best(level.id);
+      const best = Difficulty.bestTimes();
+      const isNewBest = timeMs > 0 && (!previousMs || timeMs < previousMs);
+      if (isNewBest) {
+        best[level.id] = timeMs;
+        Difficulty._memoryBest[level.id] = timeMs;
+        writeRaw(D.keys.best, JSON.stringify(best));
+      }
+      return {
+        bestMs: isNewBest ? timeMs : previousMs,
+        previousMs: previousMs,
+        isNewBest: isNewBest
+      };
+    },
+
+    /** "Best on Normal 00:38.141" style text for the results screen. */
+    bestText(id) {
+      const level = Difficulty.get(id);
+      const ms = Difficulty.best(level.id);
+      const name = level.label.charAt(0) + level.label.slice(1).toLowerCase();
+      return ms ? 'Best on ' + name + ' ' + OR.Utils.formatTime(ms) : 'No ' + name + ' time yet';
+    }
+  };
+
+  Difficulty.load();
+  OR.Difficulty = Difficulty;
+})();
+
+/* ==== js/rivals.js ==== */
+/* =============================================================================
+ * rivals.js — Step 6: STANDARD GOSSIP, three local computer-controlled drivers.
+ *
+ * The AI reads ONLY Track's public query helpers, never its sample array or
+ * track control points. Every car uses the player's Car physics and its own
+ * Race tracker.
+ *
+ * Step 7 layers difficulty on top: the roster profile is the BASE speed/skill,
+ * CONFIG.difficulty scales it (speed, corner skill, stall frequency/duration),
+ * and a light, capped rubber band nudges the target speed when a rival is far
+ * ahead of or behind the player. Rival profiles are still fixed for the whole
+ * race once Rivals.reset() has read the level. No networking or latency.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Utils, Track, Car, Race } = OR;
+  const A = CONFIG.rivals;
+
+  function angleError(a) {
+    return Math.atan2(Math.sin(a), Math.cos(a));
+  }
+
+  function range(random, min, max) {
+    return min + random() * (max - min);
+  }
+
+  const Rivals = {
+    items: [],
+    seed: 0,
+
+    /** Put all four cars in staggered slots, entirely behind the start line. */
+    placeOnGrid(car, slot) {
+      const g = A.grid;
+      const behind = g.behind + Math.floor(slot / 2) * g.rowGap + (slot % 2) * g.stagger;
+      const lane = slot % 2 ? g.lane : -g.lane;
+      const p = Track.pointAt(Track.start.s - behind);
+      car.x = p.x + p.nx * lane;
+      car.y = p.y + p.ny * lane;
+      car.heading = Math.atan2(p.tx, -p.ty);
+      car.trackHint = Track.getNearestTrackPoint(car.x, car.y, p.index).index;
+      car.gridSlot = slot;
+    },
+
+    /** `level` defaults to the saved selection; Game passes the race's level. */
+    reset(player, seed, level) {
+      Rivals.seed = seed === undefined ? Math.floor(Math.random() * 4294967296) : seed >>> 0;
+      Rivals.items.length = 0;
+      Rivals.player = player;
+      level = level || OR.Difficulty.settings();
+      Rivals.difficulty = level;
+      player.id = 'player';
+      player.name = 'YOU';
+      player.color = CONFIG.theme.violet;
+      player.isPlayer = true;
+      Rivals.placeOnGrid(player, 0);
+
+      A.roster.forEach((profile, i) => {
+        const car = new Car();
+        const random = Utils.mulberry32((Rivals.seed + Math.imul(i + 1, 2654435761)) >>> 0);
+        car.id = 'gossip-' + (i + 1);
+        car.name = profile.name;
+        car.color = profile.color;
+        car.isPlayer = false;
+        car.number = i + 1;
+        car.baseTopSpeedMultiplier = profile.speed * level.rivalSpeed;
+        car.topSpeedMultiplier = car.baseTopSpeedMultiplier;
+        // Stall timing scales with difficulty but stays in a fair band.
+        const stallIntervalMin = A.stall.intervalMin * level.stallIntervalScale;
+        const stallIntervalMax = A.stall.intervalMax * level.stallIntervalScale;
+        car.ai = {
+          level: level.id,
+          // corner braking / cornering skill, scaled by the difficulty
+          skill: Utils.clamp(profile.skill * level.cornerSkill, 0.5, 1.25),
+          baseSkill: profile.skill,
+          stallIntervalMin: stallIntervalMin,
+          stallIntervalMax: stallIntervalMax,
+          stallDurationMin: A.stall.durationMin * level.stallDurationScale,
+          stallDurationMax: A.stall.durationMax * level.stallDurationScale,
+          rubberBand: level.rubberBand,
+          lane: profile.lane,
+          random: random,
+          thinkTimer: 0,
+          targetSpeed: 0,
+          cornerTarget: 0,
+          controls: { steer: 0, throttle: false, brake: false },
+          stallRemaining: 0,
+          nextStall: range(random, stallIntervalMin, stallIntervalMax),
+          stallCount: 0,
+          stallDuration: 0,
+          stalled: false
+        };
+        Rivals.placeOnGrid(car, i + 1);
+        car.race = Race.create(car);
+        Rivals.items.push(car);
+      });
+      return Rivals.items;
+    },
+
+    _stall(car, dt) {
+      const ai = car.ai;
+      if (ai.stallRemaining > 0) {
+        ai.stallRemaining = Math.max(0, ai.stallRemaining - dt);
+        if (ai.stallRemaining === 0) {
+          ai.nextStall = range(ai.random, ai.stallIntervalMin, ai.stallIntervalMax);
+        }
+      } else {
+        ai.nextStall -= dt;
+        if (ai.nextStall <= 0) {
+          ai.stallDuration = range(ai.random, ai.stallDurationMin, ai.stallDurationMax);
+          ai.stallRemaining = ai.stallDuration;
+          ai.stallCount += 1;
+        }
+      }
+      const stalled = ai.stallRemaining > 0;
+      if (stalled !== ai.stalled) ai.thinkTimer = 0;
+      ai.stalled = stalled;
+    },
+
+    /**
+     * Light rubber banding: ease off when far ahead of the player, push when
+     * far behind. Returns a multiplier capped by CONFIG.rivals.rubberBand so
+     * it can never feel unfair. 1 means no assist.
+     */
+    rubberBandFactor(car) {
+      const caps = A.rubberBand;
+      const strength = car.ai.rubberBand;
+      if (!strength || !Rivals.player || car.race.finished || Race.finished) return 1;
+      const hero = Rivals.player.race;
+      if (hero.finished || hero.progress < 0) return 1;
+      const gap = car.race.progress - hero.progress; // > 0: rival is ahead
+      const span = Math.max(0.01, caps.fullGapLaps - caps.deadZoneLaps);
+      const t = Utils.clamp((Math.abs(gap) - caps.deadZoneLaps) / span, 0, 1);
+      if (t <= 0) return 1;
+      const factor = gap > 0
+        ? 1 - caps.easeMax * strength * t
+        : 1 + caps.pushMax * strength * t;
+      return Utils.clamp(factor, 1 - caps.easeMax, 1 + caps.pushMax);
+    },
+
+    /** Pure pursuit + a braking-distance envelope for upcoming corners. */
+    _think(car) {
+      const ai = car.ai;
+      const info = Track.getNearestTrackPoint(car.x, car.y, car.trackHint);
+      car.trackHint = info.index;
+      const lead = Utils.clamp(A.lookAhead + car.speed * A.lookAheadTime,
+        A.lookAhead, A.maxLookAhead);
+      const target = Track.pointAhead(car.x, car.y, lead, car.trackHint);
+      const want = Math.atan2(target.x + target.nx * ai.lane - car.x,
+        -(target.y + target.ny * ai.lane - car.y));
+      const error = angleError(want - car.heading);
+      ai.controls.steer = Utils.clamp(
+        (error - car.slip * A.slipCorrection) * A.steeringGain * ai.skill, -1, 1);
+
+      const baseMax = CONFIG.car.maxSpeed * car.baseTopSpeedMultiplier;
+      let speed = baseMax;
+      const s = info.fraction * Track.length;
+      for (let distance = 0; distance <= A.cornerScan; distance += A.cornerScanStep) {
+        const p = Track.pointAt(s + distance);
+        // The inner lane tightens a bend slightly; leave room for both lanes.
+        const radius = Math.max(100, p.radius - Math.abs(ai.lane));
+        const cornerSpeed = Math.max(A.minCornerSpeed,
+          Math.sqrt(radius * A.lateralAccel * ai.skill));
+        speed = Math.min(speed,
+          Math.sqrt(cornerSpeed * cornerSpeed + 2 * A.brakePlanning * distance));
+      }
+      if (Math.abs(error) > 0.85 || !Track.isOnRoad(car.x, car.y, car.trackHint)) {
+        speed = Math.min(speed, A.recoverySpeed);
+      }
+      // Step 7: difficulty-capped rubber band, applied to the whole envelope
+      // (straights and corners alike) so a pushed rival really can catch up.
+      const band = Rivals.rubberBandFactor(car);
+      car.topSpeedMultiplier = car.baseTopSpeedMultiplier * band;
+      speed *= band;
+      ai.bandFactor = band;
+      ai.cornerTarget = speed;
+      if (ai.stalled) speed = Math.min(speed,
+        CONFIG.car.maxSpeed * car.topSpeedMultiplier * A.stall.speedRatio);
+      ai.targetSpeed = speed;
+      ai.controls.throttle = car.speed < speed - A.throttleMargin;
+      ai.controls.brake = car.speed > speed + A.brakeMargin;
+    },
+
+    update(dt) {
+      for (let i = 0; i < Rivals.items.length; i++) {
+        const car = Rivals.items[i];
+        const ai = car.ai;
+        if (car.race.finished) {
+          Rivals._coolDown(car, dt);
+          continue;
+        }
+        Rivals._stall(car, dt);
+        ai.thinkTimer -= dt;
+        if (ai.thinkTimer <= 0) {
+          ai.thinkTimer = A.thinkInterval;
+          Rivals._think(car);
+        }
+        car.update(dt, ai.controls);
+      }
+    },
+
+    /** Score AFTER contact resolution, with independent gates and lap times. */
+    score(timeMs) {
+      for (let i = 0; i < Rivals.items.length; i++) {
+        const car = Rivals.items[i];
+        car.race.update(car, timeMs);
+      }
+    },
+
+    /**
+     * After the flag a rival keeps a slow cool-down lap. It is still an
+     * obstacle the player can bump, but it never parks across the racing line.
+     */
+    _coolDown(car, dt) {
+      const ai = car.ai;
+      ai.stalled = false;
+      ai.stallRemaining = 0;
+      ai.thinkTimer -= dt;
+      if (ai.thinkTimer <= 0) {
+        ai.thinkTimer = A.thinkInterval;
+        Rivals._think(car);
+      }
+      const cruise = CONFIG.car.maxSpeed * car.baseTopSpeedMultiplier * A.coolDownSpeed;
+      if (ai.targetSpeed > cruise) ai.targetSpeed = cruise;
+      ai.controls.throttle = car.speed < ai.targetSpeed - A.throttleMargin;
+      ai.controls.brake = car.speed > ai.targetSpeed + A.brakeMargin;
+      car.update(dt, ai.controls);
+    },
+
+    coast(dt) {
+      for (let i = 0; i < Rivals.items.length; i++) {
+        Rivals._coolDown(Rivals.items[i], dt);
+      }
+    },
+
+    clear() {
+      Rivals.items.length = 0;
+    }
+  };
+
+  OR.Rivals = Rivals;
+})();
+
+/* ==== js/collisions.js ==== */
+/* =============================================================================
+ * collisions.js — Step 6: lightweight oriented-box car-to-car contact.
+ *
+ * Equal positional separation, a small impact speed loss, and a low-bounce
+ * impulse. A per-pair cooldown prevents scraping from draining speed to zero.
+ * The four-car field has just six pairs; bounded solver passes handle chains
+ * and exact overlaps without queues, locks or an ever-growing contact list.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Track } = OR;
+  const C = CONFIG.collisions;
+  const halfW = CONFIG.car.width * C.widthScale / 2;
+  const halfL = CONFIG.car.length * C.lengthScale / 2;
+
+  function axes(car) {
+    return {
+      fx: Math.sin(car.heading), fy: -Math.cos(car.heading),
+      rx: Math.cos(car.heading), ry: Math.sin(car.heading)
+    };
+  }
+
+  /** Separating-axis test; returns the shallowest separation normal. */
+  function overlap(a, b) {
+    const aa = axes(a), ba = axes(b);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const list = [[aa.rx, aa.ry], [aa.fx, aa.fy], [ba.rx, ba.ry], [ba.fx, ba.fy]];
+    let depth = Infinity, nx = 0, ny = 0;
+    for (let i = 0; i < list.length; i++) {
+      const x = list[i][0], y = list[i][1];
+      const ar = halfW * Math.abs(aa.rx * x + aa.ry * y) +
+        halfL * Math.abs(aa.fx * x + aa.fy * y);
+      const br = halfW * Math.abs(ba.rx * x + ba.ry * y) +
+        halfL * Math.abs(ba.fx * x + ba.fy * y);
+      const d = dx * x + dy * y;
+      const penetration = ar + br - Math.abs(d);
+      if (penetration <= 0) return null;
+      if (penetration < depth) {
+        depth = penetration;
+        const sign = d < 0 ? -1 : 1;
+        nx = x * sign; ny = y * sign;
+      }
+    }
+    return { depth: depth, nx: nx, ny: ny };
+  }
+
+  function constrain(car) {
+    const hit = Track.nearest(car.x, car.y, car.trackHint);
+    car.trackHint = hit.index;
+    const excess = Math.abs(hit.offset) - Track.hardLimit;
+    if (excess > 0) {
+      const sign = hit.offset < 0 ? -1 : 1;
+      car.x -= sign * hit.nx * excess;
+      car.y -= sign * hit.ny * excess;
+      const outward = (car.vx * hit.nx + car.vy * hit.ny) * sign;
+      if (outward > 0) {
+        car.vx -= sign * hit.nx * outward;
+        car.vy -= sign * hit.ny * outward;
+      }
+    }
+    car.syncVelocity();
+  }
+
+  const Collisions = {
+    cooldowns: new Map(),
+    overlap: overlap,
+
+    reset() { Collisions.cooldowns.clear(); },
+
+    resolve(cars, dt) {
+      if (!C.enabled) return 0;
+      let contacts = 0;
+      for (const [key, seconds] of Collisions.cooldowns) {
+        if (seconds <= dt) Collisions.cooldowns.delete(key);
+        else Collisions.cooldowns.set(key, seconds - dt);
+      }
+      for (let i = 0; i < cars.length; i++) cars[i].hitCar = false;
+
+      for (let pass = 0; pass < C.iterations; pass++) {
+        for (let i = 0; i < cars.length; i++) {
+          for (let j = i + 1; j < cars.length; j++) {
+            const a = cars[i], b = cars[j];
+            // A cheap broad-phase before the four-axis test.
+            if (Math.abs(a.x - b.x) > CONFIG.car.length * 1.5 ||
+                Math.abs(a.y - b.y) > CONFIG.car.length * 1.5) continue;
+            const hit = overlap(a, b);
+            if (!hit) continue;
+            a.hitCar = b.hitCar = true;
+            contacts++;
+            const push = (hit.depth + C.clearance) / 2;
+            a.x -= hit.nx * push; a.y -= hit.ny * push;
+            b.x += hit.nx * push; b.y += hit.ny * push;
+
+            const key = i + ':' + j;
+            if (!Collisions.cooldowns.has(key)) {
+              const keep = 1 - C.speedLoss;
+              a.vx *= keep; a.vy *= keep;
+              b.vx *= keep; b.vy *= keep;
+              Collisions.cooldowns.set(key, C.cooldown);
+            }
+            const closing = (b.vx - a.vx) * hit.nx + (b.vy - a.vy) * hit.ny;
+            if (closing < 0) {
+              const impulse = -closing * (1 + C.restitution) / 2;
+              a.vx -= hit.nx * impulse; a.vy -= hit.ny * impulse;
+              b.vx += hit.nx * impulse; b.vy += hit.ny * impulse;
+            }
+            constrain(a);
+            constrain(b);
+          }
+        }
+      }
+      return contacts;
+    }
+  };
+
+  OR.Collisions = Collisions;
+})();
+
+/* ==== js/standings.js ==== */
+/* =============================================================================
+ * standings.js — Step 6: checkpoint-valid race order and finish classification.
+ *
+ * Finished cars rank by recorded finish time. Others rank by validated lap +
+ * distance, not by screen position or raw centreline fraction. When the player
+ * takes the flag the classification is frozen. Unfinished rivals retain their
+ * real remaining distance; no times are invented for them.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Track } = OR;
+
+  const Standings = {
+    cars: [],
+    rows: [],
+    playerPlace: 1,
+    frozen: false,
+
+    reset(cars) {
+      Standings.cars = cars;
+      Standings.frozen = false;
+      Standings.rows = [];
+      Standings.update();
+    },
+
+    update() {
+      if (Standings.frozen) return Standings.rows;
+      Standings.rows = Standings.cars.map(car => {
+        const race = car.race;
+        const progress = race.validProgress();
+        return {
+          id: car.id,
+          name: car.name,
+          color: car.color,
+          isPlayer: !!car.isPlayer,
+          gridSlot: car.gridSlot,
+          progress: progress,
+          lap: race.lap,
+          finished: race.finished,
+          timeMs: race.finished ? race.finishTimeMs : null,
+          remainingMeters: Math.max(0,
+            (race.laps - progress) * Track.length * CONFIG.track.metersPerUnit),
+          stalled: !!(car.ai && car.ai.stalled)
+        };
+      }).sort((a, b) => {
+        if (a.finished !== b.finished) return a.finished ? -1 : 1;
+        if (a.finished && a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;
+        if (a.progress !== b.progress) return b.progress - a.progress;
+        return a.gridSlot - b.gridSlot; // stable ties within a physics tick
+      });
+      Standings.rows.forEach((row, i) => { row.place = i + 1; });
+      const player = Standings.rows.find(row => row.isPlayer);
+      Standings.playerPlace = player ? player.place : 1;
+      return Standings.rows;
+    },
+
+    finalize() {
+      Standings.update();
+      Standings.frozen = true;
+      return Standings.rows.map(row => Object.assign({}, row, { stalled: false }));
+    }
+  };
+
+  OR.Standings = Standings;
 })();
 
 /* ==== js/shards.js ==== */
@@ -2029,168 +3099,6 @@ OR.CONFIG = {
   };
 
   OR.Shards = Shards.reset();
-})();
-
-/* ==== js/race.js ==== */
-/* =============================================================================
- * race.js — laps, checkpoints, splits and best lap.
- *
- * Step 5 rewrote the track as a closed loop, so a lap is no longer measured
- * against a finish line's y position: the car's distance around the lap is
- * read from the track geometry and unwrapped into a continuous, always
- * increasing "progress" value U, where:
- *
- *   U = 0.0   the start line at the beginning of lap 1
- *   U = 0.5   half way round lap 1
- *   U = 1.0   the start line again, lap 1 complete (lap 2 begins)
- *   U = 3.0   the flag, on a 3 lap race
- *
- * A checkpoint at fraction f of lap L sits at U = (L - 1) + f, so passing the
- * gates in order falls out of the maths, and driving backwards simply winds U
- * back down without ever awarding a lap. A lap still only counts when every
- * checkpoint has been passed, so a shortcut cannot skip one.
- * ========================================================================== */
-(function () {
-  'use strict';
-
-  const { CONFIG, Track, Utils } = OR;
-
-  const Race = {
-    laps: CONFIG.race.laps,
-    lap: 1,                 // 1-based, for the HUD
-    nextCheckpoint: 0,      // index of the gate we are waiting for
-    checkpointsPassed: 0,
-    lapTimes: [],           // completed laps, ms
-    bestLapMs: 0,           // best of lapTimes, 0 = none yet
-    lapStartMs: 0,          // race clock when the current lap began
-    finished: false,        // the flag has been crossed for the last time
-    lastEvent: null,        // { type: 'lap' | 'checkpoint', lap, index, timeMs }
-    progress: 0,            // continuous lap progress U
-    lapBase: 0,             // U at which the current lap began
-    hint: 0,                // track index hint for fast nearest-point lookups
-    lastFraction: 0,        // raw 0..1 fraction, before unwrapping
-
-    reset() {
-      Race.laps = CONFIG.race.laps;
-      Race.lap = 1;
-      Race.nextCheckpoint = 0;
-      Race.checkpointsPassed = 0;
-      Race.lapTimes.length = 0;
-      Race.bestLapMs = 0;
-      Race.lapStartMs = 0;
-      Race.finished = false;
-      Race.lastEvent = null;
-      Race.progress = 0;
-      Race.lapBase = 0;
-      Race.hint = Track.startIndex;
-      Race.lastFraction = 0;
-      return Race;
-    },
-
-    /** Time on the current lap, given the race clock. */
-    lapTimeMs(raceTimeMs) {
-      return Math.max(0, raceTimeMs - Race.lapStartMs);
-    },
-
-    /** 1 -> the flag lap, 2 -> the last lap. Used for the HUD badge. */
-    lapsRemaining() {
-      return Math.max(0, Race.laps - (Race.lap - 1));
-    },
-
-    isFinalLap() {
-      return Race.lap >= Race.laps;
-    },
-
-    /** How much of the current lap is done, 0 -> 1 (for the lap bar). */
-    lapProgress(x, y) {
-      const info = Track.nearest(x, y, Race.hint);
-      return Utils.clamp(info.fraction, 0, 1);
-    },
-
-    /**
-     * Called once per physics step while racing.
-     * Returns 'lap' when a lap was completed, 'finish' on the final lap.
-     */
-    update(car, raceTimeMs) {
-      Race.lastEvent = null;
-      if (Race.finished) return null;
-
-      const info = Track.nearest(car.x, car.y, Race.hint);
-      Race.hint = info.index;
-      const fraction = info.fraction;
-
-      /* Unwrap the 0..1 lap position into a continuous value. A jump of more
-         than half a lap between steps can only be a crossing of the line. */
-      const delta = fraction - Race.lastFraction;
-      if (delta < -0.5) Race.progress += 1 + delta;        // crossed forwards
-      else if (delta > 0.5) Race.progress -= 1 - delta;    // crossed backwards
-      else Race.progress += delta;
-      Race.lastFraction = fraction;
-
-      if (Race.progress < Race.lapBase - 1) Race.progress = Race.lapBase;
-      if (Race.progress < 0) { Race.progress = 0; }
-
-      /* Checkpoints, strictly in order, at lapBase + fraction. A gate also
-         has to be physically reached: otherwise a car that is picked up and
-         put down the road could collect the whole lap for free. */
-      const cps = Track.checkpoints;
-      const gateRadius = Track.hardLimit * 1.4;
-      while (Race.nextCheckpoint < cps.length) {
-        const cp = cps[Race.nextCheckpoint];
-        if (Race.progress < Race.lapBase + cp.fraction) break;
-        const dx = car.x - cp.x, dy = car.y - cp.y;
-        if (dx * dx + dy * dy > gateRadius * gateRadius) break;
-        Race.nextCheckpoint += 1;
-        Race.checkpointsPassed += 1;
-        Race.lastEvent = {
-          type: 'checkpoint',
-          lap: Race.lap,
-          index: Race.nextCheckpoint - 1,
-          timeMs: raceTimeMs
-        };
-      }
-
-      /* The line itself. */
-      if (Race.progress < Race.lapBase + 1) return null;
-
-      if (Race.nextCheckpoint < cps.length) {
-        // somehow reached the line without the gates: do not score it
-        Race.lastEvent = { type: 'shortcut', lap: Race.lap, timeMs: raceTimeMs };
-        Race.progress = Race.lapBase + 0.999;
-        Race.lastFraction = 0.999;
-        return 'shortcut';
-      }
-
-      const lapMs = raceTimeMs - Race.lapStartMs;
-      Race.lapTimes.push(lapMs);
-      if (!Race.bestLapMs || lapMs < Race.bestLapMs) Race.bestLapMs = lapMs;
-      Race.lapStartMs = raceTimeMs;
-      Race.nextCheckpoint = 0;
-      Race.checkpointsPassed = 0;
-      Race.lapBase += 1;
-
-      if (Race.lap >= Race.laps) {
-        Race.finished = true;
-        Race.lastEvent = { type: 'finish', lap: Race.lap, timeMs: raceTimeMs, lapMs: lapMs };
-        return 'finish';
-      }
-
-      Race.lap += 1;
-      Race.lastEvent = { type: 'lap', lap: Race.lap - 1, timeMs: raceTimeMs, lapMs: lapMs };
-      return 'lap';
-    },
-
-    /** Everything the finish screen needs about the laps. */
-    summary() {
-      return {
-        laps: Race.lapTimes.length,
-        lapTimes: Race.lapTimes.slice(),
-        bestLapMs: Race.bestLapMs
-      };
-    }
-  };
-
-  OR.Race = Race.reset();
 })();
 
 /* ==== js/input.js ==== */
@@ -2569,10 +3477,12 @@ OR.CONFIG = {
     /** Step 3: effects that move are suppressed for prefers-reduced-motion. */
     reducedMotion: false,
     zoom: 1,
+    gridBlend: 0,
+    _gridFocus: { x: 0, y: 0 },
 
     init(canvas) {
       Renderer.canvas = canvas;
-      Renderer.ctx = canvas.getContext('2d');
+      Renderer.ctx = canvas.getContext('2d', { alpha: false });
       for (let i = 0; i < 14; i++) {
         Renderer._streaks.push({
           x: (i + 0.5) / 14 + ((i * 37) % 11) / 220,
@@ -2589,22 +3499,26 @@ OR.CONFIG = {
       const rect = canvas.getBoundingClientRect();
       const w = Math.max(1, Math.round(rect.width));
       const h = Math.max(1, Math.round(rect.height));
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const budget = CONFIG.effects.renderDpr;
+      Renderer.lowRenderBudget = w <= budget.mobileWidth || h <= budget.mobileHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1,
+        Renderer.lowRenderBudget ? budget.mobileMax : budget.desktopMax);
       Renderer.dpr = dpr;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       Renderer.view.w = w;
       Renderer.view.h = h;
       Renderer._vignette = null;
+      Renderer._vignetteLayer = null;
       return Renderer;
     },
 
     /* ---- camera ----------------------------------------------------------
-     * The camera sits exactly on the car (no positional lag, so the car never
+     * During ordinary racing the camera sits exactly on the car (no lag, so it never
      * drifts off screen) plus a SMOOTHED look-ahead offset that leans toward
      * the direction of travel and toward the road ahead.
      * -------------------------------------------------------------------- */
-    updateCamera(car, dt, snap) {
+    updateCamera(car, dt, snap, gridFocus) {
       const view = Renderer.view;
       const cam = CONFIG.camera;
       view.scale = Math.min(view.h / cam.visibleHeight, view.w / cam.minVisibleWidth);
@@ -2617,8 +3531,11 @@ OR.CONFIG = {
       const visibleWidth = view.w / view.scale;
       const dist = Math.min(cam.lookAhead + cam.lookAheadSpeed * ratio,
                             visibleWidth * cam.lookAheadMaxFrac);
-      const dirX = speed > 1 ? car.vx / speed : 0;
-      const dirY = speed > 1 ? car.vy / speed : -1;
+      // A stationary grid car faces along the circuit, not necessarily north.
+      const dirX = speed > 1 ? car.vx / speed :
+        (typeof car.heading === 'number' ? Math.sin(car.heading) : 0);
+      const dirY = speed > 1 ? car.vy / speed :
+        (typeof car.heading === 'number' ? -Math.cos(car.heading) : -1);
 
       /* Look ahead along the direction of travel, blended towards the way the
          track actually goes so the camera leads into corners without ever
@@ -2645,8 +3562,18 @@ OR.CONFIG = {
       Renderer.zoom = snap ? wantZoom : Utils.damp(Renderer.zoom, wantZoom, fx.zoomRate, dt);
       view.scale *= Renderer.zoom;
 
-      view.camX = car.x + view.laX;
-      view.camY = car.y + view.laY - (cam.carScreenOffset * view.h) / view.scale;
+      // Frame all four grid slots during countdown, then ease into the usual
+      // player-follow camera at GO. No positional lag during ordinary racing.
+      if (gridFocus) Renderer._gridFocus = gridFocus;
+      const wantGrid = gridFocus ? 1 : 0;
+      Renderer.gridBlend = snap ? wantGrid :
+        Utils.damp(Renderer.gridBlend, wantGrid, cam.gridBlendRate, dt);
+      const blend = Renderer.gridBlend;
+      const centerX = Utils.lerp(car.x, Renderer._gridFocus.x, blend);
+      const centerY = Utils.lerp(car.y, Renderer._gridFocus.y, blend);
+      const offset = Utils.lerp(cam.carScreenOffset, CONFIG.rivals.grid.screenOffset, blend);
+      view.camX = centerX + view.laX;
+      view.camY = centerY + view.laY - (offset * view.h) / view.scale;
       return view;
     },
 
@@ -2769,7 +3696,7 @@ OR.CONFIG = {
       if (!ctx) return;
 
       ctx.setTransform(Renderer.dpr, 0, 0, Renderer.dpr, 0, 0);
-      ctx.clearRect(0, 0, view.w, view.h);
+      // _drawGround fills the entire opaque canvas; a full clear is redundant.
 
       // cached track geometry and the pre-rendered scenery layer
       if (!Renderer.paths) Renderer.buildTrackPaths();
@@ -2778,14 +3705,22 @@ OR.CONFIG = {
       Renderer._drawGround();
 
       Renderer._applyWorldTransform();
-      Renderer._drawRoad();
+      if (Renderer.lowRenderBudget) Renderer._drawCachedRoad();
+      else Renderer._drawRoad();
       Renderer._drawStartFinish();
       Renderer._drawCheckpoints(game);
       Renderer._drawScenery();
       Renderer._drawMarks();
       Renderer._drawShards(game);
       Renderer._drawParticles();
-      Renderer._drawCar(game);
+      const bounds = Renderer._visibleBounds();
+      for (let i = 0; i < game.rivals.length; i++) {
+        const rival = game.rivals[i];
+        if (rival.x < bounds.minX || rival.x > bounds.maxX ||
+            rival.y < bounds.minY || rival.y > bounds.maxY) continue;
+        Renderer._drawCar(game, rival);
+      }
+      Renderer._drawCar(game, game.car);
       ctx.restore();
 
       Renderer._drawSpeedLines(game);
@@ -2825,8 +3760,8 @@ OR.CONFIG = {
     },
 
     /* ---- road ------------------------------------------------------------ */
-    _drawRoad() {
-      const ctx = Renderer.ctx;
+    _drawRoad(targetContext) {
+      const ctx = targetContext || Renderer.ctx;
       const paths = Renderer.paths || Renderer.buildTrackPaths();
       const half = Track.halfRoad;
 
@@ -2886,13 +3821,40 @@ OR.CONFIG = {
       ctx.stroke(barrier.outer);
       ctx.stroke(barrier.inner);
 
-      const edge = Math.max(1, 3.5 / Renderer.zoom);
+      const edge = Math.max(1, 3.5 / (targetContext ? 1 : Renderer.zoom));
       ctx.lineWidth = edge;
       ctx.strokeStyle = Utils.rgba(T.cyan, 0.75);
       ctx.stroke(barrier.outer);
       ctx.strokeStyle = Utils.rgba(T.violet, 0.75);
       ctx.stroke(barrier.inner);
       ctx.restore();
+    },
+
+    /**
+     * Step 6 phone budget: tessellate the static dashed road only once. Cars,
+     * gates, pickups and effects remain live vectors. The texture is bounded
+     * to 3072px (about 22MB on this track), never viewport- or lap-sized growth.
+     */
+    buildRoadLayer() {
+      const b = Track.bounds;
+      const pad = Track.hardLimit + 24;
+      const w = b.width + pad * 2, h = b.height + pad * 2;
+      const scale = Math.min(1, CONFIG.effects.roadCache.maxSize / Math.max(w, h));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(w * scale);
+      canvas.height = Math.ceil(h * scale);
+      const ctx = canvas.getContext('2d');
+      const x = b.minX - pad, y = b.minY - pad;
+      ctx.scale(scale, scale);
+      ctx.translate(-x, -y);
+      Renderer._drawRoad(ctx);
+      Renderer.roadLayer = { canvas: canvas, x: x, y: y, w: w, h: h };
+      return Renderer.roadLayer;
+    },
+
+    _drawCachedRoad() {
+      const road = Renderer.roadLayer || Renderer.buildRoadLayer();
+      Renderer.ctx.drawImage(road.canvas, road.x, road.y, road.w, road.h);
     },
 
     /** The two barrier rails, offset either side of the centreline. */
@@ -3275,9 +4237,11 @@ OR.CONFIG = {
     },
 
     /* ---- car ------------------------------------------------------------- */
-    _drawCar(game) {
+    _drawCar(game, car) {
       const ctx = Renderer.ctx;
-      const car = game.car;
+      car = car || game.car;
+      const player = car.isPlayer !== false;
+      const accent = player ? T.cyan : car.color;
       const w = CONFIG.car.width;
       const L = CONFIG.car.length;
 
@@ -3286,7 +4250,7 @@ OR.CONFIG = {
       ctx.rotate(car.heading + car.tilt);
 
       // underglow
-      const glowColor = car.boost.active ? T.cyan : T.violet;
+      const glowColor = car.boost.active ? T.cyan : (player ? T.violet : accent);
       const glowR = car.boost.active ? 150 : 105;
       const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowR);
       glow.addColorStop(0, Utils.rgba(glowColor, car.boost.active ? 0.55 : 0.3));
@@ -3311,21 +4275,21 @@ OR.CONFIG = {
 
       // body
       const body = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
-      body.addColorStop(0, '#3a2f6b');
-      body.addColorStop(0.45, '#6f5bd6');
-      body.addColorStop(0.55, '#5a49b8');
-      body.addColorStop(1, '#2a2350');
+      body.addColorStop(0, player ? '#3a2f6b' : Utils.rgba(accent, 0.55));
+      body.addColorStop(0.45, player ? '#6f5bd6' : accent);
+      body.addColorStop(0.55, player ? '#5a49b8' : accent);
+      body.addColorStop(1, player ? '#2a2350' : Utils.rgba(accent, 0.55));
       ctx.fillStyle = body;
       Utils.roundRect(ctx, -w / 2, -L / 2, w, L, 18);
       ctx.fill();
 
       // body outline
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = Utils.rgba(T.cyan, 0.65);
+      ctx.strokeStyle = Utils.rgba(accent, 0.65);
       ctx.stroke();
 
       // nose + side stripes
-      ctx.fillStyle = Utils.rgba(T.cyan, 0.85);
+      ctx.fillStyle = Utils.rgba(accent, 0.85);
       Utils.roundRect(ctx, -w * 0.30, -L / 2 + 6, w * 0.60, 8, 4);
       ctx.fill();
       ctx.fillStyle = Utils.rgba('#ffffff', 0.12);
@@ -3342,7 +4306,7 @@ OR.CONFIG = {
       Utils.roundRect(ctx, -w * 0.27, -L * 0.16, w * 0.54, L * 0.30, 9);
       ctx.fill();
       ctx.lineWidth = 1.6;
-      ctx.strokeStyle = Utils.rgba(T.cyan, 0.5);
+      ctx.strokeStyle = Utils.rgba(accent, 0.5);
       ctx.stroke();
 
       // driver helmet
@@ -3352,7 +4316,7 @@ OR.CONFIG = {
       ctx.fill();
 
       // brake lights
-      if (game.controls.brake && car.speed > 20) {
+      if (car.braking && car.speed > 20) {
         ctx.fillStyle = '#ff2d55';
         ctx.shadowColor = '#ff2d55';
         ctx.shadowBlur = 18;
@@ -3363,8 +4327,8 @@ OR.CONFIG = {
 
       // headlight cones
       const beam = ctx.createLinearGradient(0, -L / 2, 0, -L / 2 - 220);
-      beam.addColorStop(0, Utils.rgba(T.cyan, 0.22));
-      beam.addColorStop(1, Utils.rgba(T.cyan, 0));
+      beam.addColorStop(0, Utils.rgba(accent, 0.22));
+      beam.addColorStop(1, Utils.rgba(accent, 0));
       ctx.fillStyle = beam;
       ctx.beginPath();
       ctx.moveTo(-w * 0.34, -L / 2);
@@ -3375,13 +4339,44 @@ OR.CONFIG = {
       ctx.fill();
 
       ctx.restore();
+      if (!player) Renderer._drawRivalTag(game, car);
+    },
+
+    /** Compact driver tag and a slow-pulsing gameplay-stall bolt. */
+    _drawRivalTag(game, car) {
+      const ctx = Renderer.ctx;
+      ctx.save();
+      ctx.translate(car.x, car.y - CONFIG.car.length * 0.86);
+      ctx.fillStyle = Utils.rgba('#05060d', 0.9);
+      Utils.roundRect(ctx, -29, -16, 58, 25, 7);
+      ctx.fill();
+      ctx.font = '800 16px "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = car.color;
+      ctx.fillText('SG ' + car.number, 0, 3);
+      if (car.ai.stalled) {
+        ctx.translate(47, -4);
+        ctx.globalAlpha = Renderer.reducedMotion ? 1 :
+          0.65 + 0.35 * (0.5 + 0.5 * Math.sin(game.clock * Math.PI * 2 * CONFIG.rivals.stall.flashHz));
+        ctx.fillStyle = '#1d1520';
+        ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = T.amber;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = T.amber;
+        ctx.beginPath();
+        ctx.moveTo(2, -12); ctx.lineTo(-8, 2); ctx.lineTo(-1, 2);
+        ctx.lineTo(-3, 12); ctx.lineTo(8, -3); ctx.lineTo(1, -3);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
     },
 
     /* ---- screen-space overlays ------------------------------------------- */
 
     /* ---- minimap (Step 5) ------------------------------------------------ */
 
-    /** Cheap overview: the track outline plus a dot for the player. */
+    /** Cheap overview: the track outline and four distinct driver dots. */
     initMinimap(canvas) {
       Renderer.minimap = canvas
         ? { canvas: canvas, ctx: canvas.getContext('2d'), dpr: 1, path: null, w: 0, h: 0 }
@@ -3464,6 +4459,19 @@ OR.CONFIG = {
         ctx.arc(cx, cy, passed ? 2.2 : 3.2, 0, Math.PI * 2);
         ctx.fillStyle = passed ? Utils.rgba('#ffffff', 0.35) : Utils.rgba(T.cyan, 0.95);
         ctx.fill();
+      }
+
+      // Step 6: distinct rival dots, with a ring during gameplay stalls.
+      for (let i = 0; i < game.rivals.length; i++) {
+        const rival = game.rivals[i];
+        const x = rival.x * mm.scale + mm.offsetX;
+        const y = rival.y * mm.scale + mm.offsetY;
+        ctx.beginPath(); ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = rival.color; ctx.fill();
+        if (rival.ai.stalled) {
+          ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+          ctx.strokeStyle = T.amber; ctx.lineWidth = 1.2; ctx.stroke();
+        }
       }
 
       // the player
@@ -3565,8 +4573,22 @@ OR.CONFIG = {
         g.addColorStop(1, 'rgba(0,0,0,0.55)');
         Renderer._vignette = g;
       }
-      ctx.fillStyle = Renderer._vignette;
-      ctx.fillRect(0, 0, view.w, view.h);
+      if (Renderer.lowRenderBudget) {
+        if (!Renderer._vignetteLayer) {
+          const canvas = document.createElement('canvas');
+          canvas.width = Renderer.canvas.width;
+          canvas.height = Renderer.canvas.height;
+          const layer = canvas.getContext('2d');
+          layer.scale(Renderer.dpr, Renderer.dpr);
+          layer.fillStyle = Renderer._vignette;
+          layer.fillRect(0, 0, view.w, view.h);
+          Renderer._vignetteLayer = canvas;
+        }
+        ctx.drawImage(Renderer._vignetteLayer, 0, 0, view.w, view.h);
+      } else {
+        ctx.fillStyle = Renderer._vignette;
+        ctx.fillRect(0, 0, view.w, view.h);
+      }
     }
   };
 
@@ -3669,17 +4691,22 @@ OR.CONFIG = {
 (function () {
   'use strict';
 
-  const { CONFIG, Utils, Track, Race } = OR;
+  const { CONFIG, Utils, Track, Race, Standings } = OR;
   const B = CONFIG.boost;
 
   const HUD = {
     el: {},
     _cache: {},
+    _standingNodes: {},
 
     init() {
       const id = name => document.getElementById(name);
       HUD.el = {
         root: id('hud'),
+        positionValue: id('positionValue'),
+        difficultyLabel: id('hudDifficulty'),
+        positionTotal: id('positionTotal'),
+        standingsList: id('standingsList'),
         speedValue: id('speedValue'),
         speedBar: id('speedBar'),
         timerValue: id('timerValue'),
@@ -3687,6 +4714,7 @@ OR.CONFIG = {
         lapTotal: id('lapTotal'),
         lapTimeValue: id('lapTimeValue'),
         bestLapValue: id('bestLapValue'),
+        bestLapTime: id('bestLapTime'),
         progressFill: id('progressFill'),
         distanceValue: id('distanceValue'),
         boostWidget: id('boostWidget'),
@@ -3698,6 +4726,7 @@ OR.CONFIG = {
         pauseTime: id('pauseTime')
       };
       HUD._cache = {};
+      HUD._standingNodes = {};
       return HUD;
     },
 
@@ -3710,10 +4739,59 @@ OR.CONFIG = {
       apply(value);
     },
 
+    /** Reorder existing nodes only when race order changes, not every frame. */
+    _standings(game) {
+      const rows = Standings.rows;
+      const list = HUD.el.standingsList;
+      HUD._set('difficulty', game.difficulty ? game.difficulty.label : '',
+        v => { HUD.el.difficultyLabel.textContent = v; });
+      HUD._set('position', Standings.playerPlace,
+        v => { HUD.el.positionValue.textContent = String(v); });
+      HUD._set('fieldSize', game.entities.length,
+        v => { HUD.el.positionTotal.textContent = String(v); });
+      HUD._set('standingOrder', rows.map(row => row.id).join(','), () => {
+        list.replaceChildren();
+        rows.forEach(row => {
+          let node = HUD._standingNodes[row.id];
+          if (!node) {
+            const root = document.createElement('li');
+            root.className = 'standing-row' + (row.isPlayer ? ' is-player' : '');
+            root.dataset.driver = row.id;
+            root.style.setProperty('--driver-color', row.color);
+            const rank = document.createElement('span');
+            rank.className = 'standing-rank';
+            const dot = document.createElement('span');
+            dot.className = 'driver-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            const name = document.createElement('span');
+            name.className = 'standing-name';
+            name.textContent = row.name;
+            const status = document.createElement('span');
+            status.className = 'standing-status';
+            root.append(rank, dot, name, status);
+            node = HUD._standingNodes[row.id] = { root: root, rank: rank, status: status };
+          }
+          list.appendChild(node.root);
+        });
+      });
+      rows.forEach(row => {
+        const node = HUD._standingNodes[row.id];
+        const stalled = !Standings.frozen && row.stalled;
+        HUD._set('standing-' + row.id, row.place + '/' + stalled + '/' + row.finished, () => {
+          node.rank.textContent = String(row.place);
+          node.status.textContent = stalled ? '⚡' : (row.finished ? 'FIN' : '');
+          node.status.title = stalled ? 'Gameplay stall' : (row.finished ? 'Finished' : '');
+          node.status.setAttribute('aria-label', stalled ? 'Gameplay stall' : node.status.title);
+          node.root.classList.toggle('is-stalled', stalled);
+        });
+      });
+    },
+
     update(game) {
       const el = HUD.el;
       const car = game.car;
       const kmh = Math.round(car.speedKmh());
+      HUD._standings(game);
 
       HUD._set('speed', kmh, v => { el.speedValue.textContent = v; });
       HUD._set('speedBar', Math.round((car.speed / CONFIG.car.maxSpeed) * 100),
@@ -3741,14 +4819,18 @@ OR.CONFIG = {
 
       HUD._set('bestLap', Race.bestLapMs ? Utils.formatTime(Race.bestLapMs) : '',
         v => {
-          el.bestLapValue.textContent = v ? 'BEST ' + v : 'BEST --:--.---';
+          el.bestLapTime.textContent = v || '--:--.---';
+          el.bestLapValue.setAttribute('aria-label', 'Best lap ' + (v || 'not set'));
           el.bestLapValue.classList.toggle('is-set', !!v);
         });
 
       HUD._set('progress', Math.round(Race.lapProgress(car.x, car.y) * 100),
         v => { el.progressFill.style.width = Utils.clamp(v, 0, 100) + '%'; });
 
-      HUD._set('distance', Math.round(Track.distanceRemaining(car.x, car.y, car.trackHint)),
+      const remaining = Race.progress < 0
+        ? (1 - Race.progress) * Track.length * CONFIG.track.metersPerUnit
+        : Track.distanceRemaining(car.x, car.y, car.trackHint);
+      HUD._set('distance', Math.round(remaining),
         v => { el.distanceValue.textContent = v + ' m to go'; });
 
       /* ---- CODED BOOST meter (Step 3) ------------------------------------ */
@@ -3821,13 +4903,15 @@ OR.CONFIG = {
  *
  * Extension points for later steps are marked with "STEP n" comments:
  *   STEP 5 — track data   : checkpoints come from Track.checkpoints.
- *   STEP 6 — AI rivals    : add rivals to `Game.entities` and update them here.
+ * Step 6: Game.entities contains the player and three independently scored rivals.
+ * Step 7: startRace() captures the selected difficulty for the whole race, and
+ * the flag records the best time for that difficulty.
  *   STEP 12 — events      : onRaceStart / onUpdate / onFinish hooks.
  * ========================================================================== */
 (function () {
   'use strict';
 
-  const { CONFIG, Track, Car, Input, Renderer, HUD, Audio, Race } = OR;
+  const { CONFIG, Track, Car, Input, Renderer, HUD, Audio, Race, Rivals, Collisions, Standings } = OR;
 
   /** Control presets */
   const IDLE = { left: false, right: false, throttle: false, brake: false };
@@ -3849,6 +4933,11 @@ OR.CONFIG = {
     STATES: STATES,
     state: STATES.MENU,
     car: null,
+    rivals: [],
+    entities: [],
+    difficulty: null,   // the level captured when the race started (Step 7)
+    difficultyId: 'normal',
+    gridView: null,
     controls: { left: false, right: false, throttle: false, brake: false },
 
     clock: 0,          // seconds since page load, drives cosmetic animation
@@ -3869,6 +4958,8 @@ OR.CONFIG = {
 
     init(canvas) {
       Game.car = new Car();
+      Game.car.race = Race;
+      Game.entities = [Game.car];
       Game.menuS = Track.length * 0.62;
       Renderer.init(canvas);
       HUD.init();
@@ -3901,10 +4992,20 @@ OR.CONFIG = {
     /* ---- race flow ------------------------------------------------------- */
 
     /** Start (or restart) a race. Every bit of race state is reset here. */
-    startRace() {
+    startRace(seed, difficultyId) {
+      Game.difficultyId = difficultyId || OR.Difficulty.currentId();
+      Game.difficulty = OR.Difficulty.get(Game.difficultyId);
       Game.car.reset();
       OR.Shards.reset();          // Step 3: shards respawn on Race Again
-      Race.reset();               // Step 4: laps, checkpoints, splits
+      Game.rivals = Rivals.reset(Game.car, seed, Game.difficulty);
+      Game.entities = [Game.car].concat(Game.rivals);
+      Race.reset(Game.car);       // all grid slots begin before the line
+      Collisions.reset();
+      Standings.reset(Game.entities);
+      Game.gridView = {
+        x: Game.entities.reduce((sum, car) => sum + car.x, 0) / Game.entities.length,
+        y: Game.entities.reduce((sum, car) => sum + car.y, 0) / Game.entities.length
+      };
       Renderer.particles.length = 0;
       Renderer.marks.length = 0;
       Game.raceTimeMs = 0;
@@ -3917,7 +5018,7 @@ OR.CONFIG = {
       Game.prevY = Game.car.y;
       Input.reset();
       Game._setState(STATES.COUNTDOWN);
-      Renderer.updateCamera(Game.car, 0, true);
+      Renderer.updateCamera(Game.car, 0, true, Game.gridView);
       Game._emit('raceStart');
     },
 
@@ -3930,6 +5031,12 @@ OR.CONFIG = {
       Game.car.reset();
       OR.Shards.reset();
       Race.reset();
+      Rivals.clear();
+      Game.gridView = null;
+      Renderer.gridBlend = 0;
+      Game.entities = [Game.car];
+      Collisions.reset();
+      Standings.reset(Game.entities);
       Renderer.particles.length = 0;
       Renderer.marks.length = 0;
       Game.coasting = false;
@@ -3990,8 +5097,20 @@ OR.CONFIG = {
         /* Step 3: CODED BOOST stats */
         boostsUsed: Game.car.boost.used,
         peakBoostKmh: Game.car.boost.peakKmh,
-        shardsCollected: OR.Shards.collected
+        shardsCollected: OR.Shards.collected,
+        /* Step 6: classify once, at the player's flag; never invent AI times. */
+        standings: Standings.finalize(),
+        place: Standings.playerPlace,
+        fieldSize: Game.entities.length,
+        /* Step 7: difficulty + the best time for that difficulty. */
+        difficultyId: Game.difficultyId,
+        difficulty: Game.difficulty.label
       };
+      const best = OR.Difficulty.recordBest(Game.difficultyId, Game.finalTimeMs);
+      Game.results.bestMs = best.bestMs;
+      Game.results.previousBestMs = best.previousMs;
+      Game.results.isNewBest = best.isNewBest;
+      Game.results.bestText = OR.Difficulty.bestText(Game.difficultyId);
       Game._emit('finish', Game.results);
     },
 
@@ -4008,7 +5127,9 @@ OR.CONFIG = {
      */
     _scoreLap() {
       const car = Game.car;
+      Rivals.score(Game.raceTimeMs);
       const outcome = Race.update(car, Game.raceTimeMs);
+      Standings.update();
       if (!outcome) return;
 
       if (outcome === 'finish') {
@@ -4037,7 +5158,7 @@ OR.CONFIG = {
       Game._last = now;
       const dt = Math.min(raw, CONFIG.race.maxStep);
 
-      Game.clock += dt;
+      if (Game.state !== STATES.PAUSED) Game.clock += dt;
       Game._acc += dt;
       const step = CONFIG.race.fixedStep;
       let guard = 0;
@@ -4093,9 +5214,12 @@ OR.CONFIG = {
             Game.raceTimeMs += dt * 1000;
             if (Input.consumeBoost()) car.requestBoost(true);
             car.update(dt, Game.controls);
+            Rivals.update(dt);
+            Collisions.resolve(Game.entities, dt);
             Game._scoreLap();
           } else {
             car.update(dt, COAST);
+            Rivals.coast(dt);
             Game.finishTimer -= dt;
             if (Game.finishTimer <= 0) Game._showResults();
           }
@@ -4108,8 +5232,12 @@ OR.CONFIG = {
 
         case 'finished':
           car.update(dt, COAST);
+          Rivals.coast(dt);
           break;
       }
+
+      // Pause freezes rival stall indicators, pickups and visual effects too.
+      if (Game.state === STATES.PAUSED) { Audio.idle(); return; }
 
       // Step 3: shard pickups top up the CODED BOOST meter
       OR.Shards.update(car, dt, Game.state === STATES.RACING && !Game.coasting);
@@ -4143,8 +5271,9 @@ OR.CONFIG = {
         const p = Track.pointAt(Game.menuS);
         const look = { x: p.x + p.tx * 260, y: p.y + p.ty * 260 };
         Renderer.updateCamera(look, dt, false);
-      } else {
-        Renderer.updateCamera(car, dt, false);
+      } else if (Game.state !== STATES.PAUSED) {
+        Renderer.updateCamera(car, dt, false,
+          Game.state === STATES.COUNTDOWN ? Game.gridView : null);
       }
       Renderer.draw(Game);
       if (Game.state !== 'menu') {
@@ -4165,7 +5294,7 @@ OR.CONFIG = {
 (function () {
   'use strict';
 
-  const { Game, Input, Utils, Renderer, Audio } = OR;
+  const { Game, Input, Utils, Renderer, Audio, Difficulty } = OR;
 
   const Screens = {
     menu: null,
@@ -4213,6 +5342,39 @@ OR.CONFIG = {
           quitBtn.blur();
           Game.returnToMenu();
         });
+      }
+
+      // ---- difficulty picker (Step 7) ------------------------------------
+      Screens.picker = document.getElementById('difficultyPicker');
+      Screens.pickerHint = document.getElementById('difficultyHint');
+      if (Screens.picker) {
+        Difficulty.levels.forEach(level => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'diff-btn';
+          btn.dataset.difficulty = level.id;
+          btn.setAttribute('role', 'radio');
+          btn.textContent = level.label;
+          btn.title = level.blurb;
+          btn.addEventListener('click', e => {
+            e.preventDefault();
+            Screens.selectDifficulty(level.id);
+          });
+          Screens.picker.appendChild(btn);
+        });
+        // Arrow keys move the selection while a button has focus.
+        Screens.picker.addEventListener('keydown', e => {
+          const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
+            : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+          if (!step) return;
+          e.preventDefault();
+          const ids = Difficulty.levels.map(l => l.id);
+          const next = ids[(ids.indexOf(Difficulty.currentId()) + step + ids.length) % ids.length];
+          Screens.selectDifficulty(next);
+          const el = Screens.picker.querySelector('[data-difficulty="' + next + '"]');
+          if (el) el.focus();
+        });
+        Screens.selectDifficulty(Difficulty.currentId());
       }
 
       const startBtn = document.getElementById('startBtn');
@@ -4297,7 +5459,53 @@ OR.CONFIG = {
       document.body.classList.toggle('is-paused', state === 'paused');
     },
 
+    /** Highlight one difficulty button and explain what it does. */
+    selectDifficulty(id) {
+      const level = Difficulty.select(id);
+      if (Screens.picker) {
+        Array.from(Screens.picker.children).forEach(btn => {
+          const on = btn.dataset.difficulty === level.id;
+          btn.classList.toggle('is-selected', on);
+          btn.setAttribute('aria-checked', on ? 'true' : 'false');
+          btn.tabIndex = on ? 0 : -1;
+        });
+      }
+      if (Screens.pickerHint) Screens.pickerHint.textContent = level.blurb;
+      return level;
+    },
+
     showFinish(results) {
+      document.getElementById('finalDifficulty').textContent = results.difficulty || 'NORMAL';
+      const bestTime = document.getElementById('finalBestTime');
+      if (bestTime) {
+        bestTime.textContent = results.isNewBest
+          ? 'NEW ' + (results.bestText || '') : (results.bestText || '');
+        bestTime.classList.toggle('is-new', !!results.isNewBest);
+      }
+      document.getElementById('finalPosition').textContent = results.place + ' / ' + results.fieldSize;
+      const standings = document.getElementById('finalStandings');
+      standings.replaceChildren();
+      results.standings.forEach(driver => {
+        const row = document.createElement('li');
+        row.className = 'standing-row' + (driver.isPlayer ? ' is-player' : '');
+        row.dataset.driver = driver.id;
+        row.style.setProperty('--driver-color', driver.color);
+        const rank = document.createElement('span');
+        rank.className = 'standing-rank';
+        rank.textContent = String(driver.place);
+        const dot = document.createElement('span');
+        dot.className = 'driver-dot';
+        dot.setAttribute('aria-hidden', 'true');
+        const name = document.createElement('span');
+        name.className = 'standing-name';
+        name.textContent = driver.name;
+        const time = document.createElement('span');
+        time.className = 'standing-time';
+        time.textContent = driver.finished ? Utils.formatTime(driver.timeMs)
+          : Math.ceil(driver.remainingMeters) + ' m left';
+        row.append(rank, dot, name, time);
+        standings.appendChild(row);
+      });
       document.getElementById('finalTime').textContent = Utils.formatTime(results.timeMs);
       document.getElementById('finalTopSpeed').textContent =
         Math.round(results.maxSpeedKmh) + ' km/h';

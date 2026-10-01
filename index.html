@@ -30,7 +30,7 @@
         <div class="progress"><div class="progress-fill" id="progressFill"></div></div>
         <div class="card-sub card-sub-row">
           <span id="lapTimeValue">00:00.000</span>
-          <span class="lap-best" id="bestLapValue">BEST --:--.---</span>
+          <span class="lap-best" id="bestLapValue"><span class="lap-best-label">BEST </span><span id="bestLapTime">--:--.---</span></span>
         </div>
       </div>
 
@@ -43,6 +43,17 @@
         <div class="timer-readout" id="timerValue">00:00.000</div>
         <div class="card-sub" id="distanceValue">0 m to go</div>
       </div>
+    </div>
+
+    <div class="card hud-race-order">
+      <div class="race-order-head">
+        <div class="position-readout" aria-label="Race position">
+          <span class="card-label">POS</span>
+          <span id="positionValue">1</span><span class="unit">/<span id="positionTotal">4</span></span>
+        </div>
+        <span class="difficulty-chip" id="hudDifficulty" title="Difficulty">NORMAL</span>
+      </div>
+      <ol id="standingsList" class="standings-list" aria-label="Live race standings"></ol>
     </div>
 
     <div class="hud-row hud-bottom">
@@ -100,7 +111,13 @@
       <div class="badge">SINGLE PLAYER</div>
       <h1 class="title">OPTIMUM RACE</h1>
       <p class="subtitle">Race. React. Win.</p>
+      <div class="difficulty">
+        <div class="card-label">DIFFICULTY</div>
+        <div id="difficultyPicker" class="difficulty-picker" role="radiogroup" aria-label="Rival difficulty"></div>
+        <p id="difficultyHint" class="difficulty-hint"></p>
+      </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
+      <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -152,6 +169,14 @@
       <h2 class="title title-sm">RACE FINISHED!</h2>
       <div class="stats">
         <div class="stat">
+          <span class="stat-label">YOUR PLACE</span>
+          <span class="stat-value" id="finalPosition">1 / 4</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">DIFFICULTY</span>
+          <span class="stat-value" id="finalDifficulty">NORMAL</span>
+        </div>
+        <div class="stat">
           <span class="stat-label">FINAL TIME</span>
           <span class="stat-value" id="finalTime">00:00.000</span>
         </div>
@@ -176,6 +201,12 @@
           <span class="stat-value" id="finalShards">0</span>
         </div>
       </div>
+      <section class="finish-standings" aria-label="Final race standings">
+        <h3>FINAL STANDINGS</h3>
+        <ol id="finalStandings" class="standings-list"></ol>
+        <p class="classification-note">Order at your finish. Unfinished rivals are ranked by checkpoint-valid progress.</p>
+      </section>
+      <p class="best-time" id="finalBestTime">Best on Normal --:--.---</p>
       <div class="splits" id="lapSplits"></div>
       <button id="againBtn" class="btn btn-primary">RACE AGAIN</button>
       <button id="menuBtn" class="btn btn-ghost">MAIN MENU</button>
@@ -189,6 +220,10 @@
 <script src="js/track.js"></script>
 <script src="js/car.js"></script>
 <script src="js/race.js"></script>
+<script src="js/difficulty.js"></script>
+<script src="js/rivals.js"></script>
+<script src="js/collisions.js"></script>
+<script src="js/standings.js"></script>
 <script src="js/shards.js"></script>
 <script src="js/input.js"></script>
 <script src="js/audio.js"></script>

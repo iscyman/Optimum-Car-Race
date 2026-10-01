@@ -23,10 +23,12 @@
     /** Step 3: effects that move are suppressed for prefers-reduced-motion. */
     reducedMotion: false,
     zoom: 1,
+    gridBlend: 0,
+    _gridFocus: { x: 0, y: 0 },
 
     init(canvas) {
       Renderer.canvas = canvas;
-      Renderer.ctx = canvas.getContext('2d');
+      Renderer.ctx = canvas.getContext('2d', { alpha: false });
       for (let i = 0; i < 14; i++) {
         Renderer._streaks.push({
           x: (i + 0.5) / 14 + ((i * 37) % 11) / 220,
@@ -43,22 +45,26 @@
       const rect = canvas.getBoundingClientRect();
       const w = Math.max(1, Math.round(rect.width));
       const h = Math.max(1, Math.round(rect.height));
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const budget = CONFIG.effects.renderDpr;
+      Renderer.lowRenderBudget = w <= budget.mobileWidth || h <= budget.mobileHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1,
+        Renderer.lowRenderBudget ? budget.mobileMax : budget.desktopMax);
       Renderer.dpr = dpr;
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
       Renderer.view.w = w;
       Renderer.view.h = h;
       Renderer._vignette = null;
+      Renderer._vignetteLayer = null;
       return Renderer;
     },
 
     /* ---- camera ----------------------------------------------------------
-     * The camera sits exactly on the car (no positional lag, so the car never
+     * During ordinary racing the camera sits exactly on the car (no lag, so it never
      * drifts off screen) plus a SMOOTHED look-ahead offset that leans toward
      * the direction of travel and toward the road ahead.
      * -------------------------------------------------------------------- */
-    updateCamera(car, dt, snap) {
+    updateCamera(car, dt, snap, gridFocus) {
       const view = Renderer.view;
       const cam = CONFIG.camera;
       view.scale = Math.min(view.h / cam.visibleHeight, view.w / cam.minVisibleWidth);
@@ -71,8 +77,11 @@
       const visibleWidth = view.w / view.scale;
       const dist = Math.min(cam.lookAhead + cam.lookAheadSpeed * ratio,
                             visibleWidth * cam.lookAheadMaxFrac);
-      const dirX = speed > 1 ? car.vx / speed : 0;
-      const dirY = speed > 1 ? car.vy / speed : -1;
+      // A stationary grid car faces along the circuit, not necessarily north.
+      const dirX = speed > 1 ? car.vx / speed :
+        (typeof car.heading === 'number' ? Math.sin(car.heading) : 0);
+      const dirY = speed > 1 ? car.vy / speed :
+        (typeof car.heading === 'number' ? -Math.cos(car.heading) : -1);
 
       /* Look ahead along the direction of travel, blended towards the way the
          track actually goes so the camera leads into corners without ever
@@ -99,8 +108,18 @@
       Renderer.zoom = snap ? wantZoom : Utils.damp(Renderer.zoom, wantZoom, fx.zoomRate, dt);
       view.scale *= Renderer.zoom;
 
-      view.camX = car.x + view.laX;
-      view.camY = car.y + view.laY - (cam.carScreenOffset * view.h) / view.scale;
+      // Frame all four grid slots during countdown, then ease into the usual
+      // player-follow camera at GO. No positional lag during ordinary racing.
+      if (gridFocus) Renderer._gridFocus = gridFocus;
+      const wantGrid = gridFocus ? 1 : 0;
+      Renderer.gridBlend = snap ? wantGrid :
+        Utils.damp(Renderer.gridBlend, wantGrid, cam.gridBlendRate, dt);
+      const blend = Renderer.gridBlend;
+      const centerX = Utils.lerp(car.x, Renderer._gridFocus.x, blend);
+      const centerY = Utils.lerp(car.y, Renderer._gridFocus.y, blend);
+      const offset = Utils.lerp(cam.carScreenOffset, CONFIG.rivals.grid.screenOffset, blend);
+      view.camX = centerX + view.laX;
+      view.camY = centerY + view.laY - (offset * view.h) / view.scale;
       return view;
     },
 
@@ -223,7 +242,7 @@
       if (!ctx) return;
 
       ctx.setTransform(Renderer.dpr, 0, 0, Renderer.dpr, 0, 0);
-      ctx.clearRect(0, 0, view.w, view.h);
+      // _drawGround fills the entire opaque canvas; a full clear is redundant.
 
       // cached track geometry and the pre-rendered scenery layer
       if (!Renderer.paths) Renderer.buildTrackPaths();
@@ -232,14 +251,22 @@
       Renderer._drawGround();
 
       Renderer._applyWorldTransform();
-      Renderer._drawRoad();
+      if (Renderer.lowRenderBudget) Renderer._drawCachedRoad();
+      else Renderer._drawRoad();
       Renderer._drawStartFinish();
       Renderer._drawCheckpoints(game);
       Renderer._drawScenery();
       Renderer._drawMarks();
       Renderer._drawShards(game);
       Renderer._drawParticles();
-      Renderer._drawCar(game);
+      const bounds = Renderer._visibleBounds();
+      for (let i = 0; i < game.rivals.length; i++) {
+        const rival = game.rivals[i];
+        if (rival.x < bounds.minX || rival.x > bounds.maxX ||
+            rival.y < bounds.minY || rival.y > bounds.maxY) continue;
+        Renderer._drawCar(game, rival);
+      }
+      Renderer._drawCar(game, game.car);
       ctx.restore();
 
       Renderer._drawSpeedLines(game);
@@ -279,8 +306,8 @@
     },
 
     /* ---- road ------------------------------------------------------------ */
-    _drawRoad() {
-      const ctx = Renderer.ctx;
+    _drawRoad(targetContext) {
+      const ctx = targetContext || Renderer.ctx;
       const paths = Renderer.paths || Renderer.buildTrackPaths();
       const half = Track.halfRoad;
 
@@ -340,13 +367,40 @@
       ctx.stroke(barrier.outer);
       ctx.stroke(barrier.inner);
 
-      const edge = Math.max(1, 3.5 / Renderer.zoom);
+      const edge = Math.max(1, 3.5 / (targetContext ? 1 : Renderer.zoom));
       ctx.lineWidth = edge;
       ctx.strokeStyle = Utils.rgba(T.cyan, 0.75);
       ctx.stroke(barrier.outer);
       ctx.strokeStyle = Utils.rgba(T.violet, 0.75);
       ctx.stroke(barrier.inner);
       ctx.restore();
+    },
+
+    /**
+     * Step 6 phone budget: tessellate the static dashed road only once. Cars,
+     * gates, pickups and effects remain live vectors. The texture is bounded
+     * to 3072px (about 22MB on this track), never viewport- or lap-sized growth.
+     */
+    buildRoadLayer() {
+      const b = Track.bounds;
+      const pad = Track.hardLimit + 24;
+      const w = b.width + pad * 2, h = b.height + pad * 2;
+      const scale = Math.min(1, CONFIG.effects.roadCache.maxSize / Math.max(w, h));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(w * scale);
+      canvas.height = Math.ceil(h * scale);
+      const ctx = canvas.getContext('2d');
+      const x = b.minX - pad, y = b.minY - pad;
+      ctx.scale(scale, scale);
+      ctx.translate(-x, -y);
+      Renderer._drawRoad(ctx);
+      Renderer.roadLayer = { canvas: canvas, x: x, y: y, w: w, h: h };
+      return Renderer.roadLayer;
+    },
+
+    _drawCachedRoad() {
+      const road = Renderer.roadLayer || Renderer.buildRoadLayer();
+      Renderer.ctx.drawImage(road.canvas, road.x, road.y, road.w, road.h);
     },
 
     /** The two barrier rails, offset either side of the centreline. */
@@ -729,9 +783,11 @@
     },
 
     /* ---- car ------------------------------------------------------------- */
-    _drawCar(game) {
+    _drawCar(game, car) {
       const ctx = Renderer.ctx;
-      const car = game.car;
+      car = car || game.car;
+      const player = car.isPlayer !== false;
+      const accent = player ? T.cyan : car.color;
       const w = CONFIG.car.width;
       const L = CONFIG.car.length;
 
@@ -740,7 +796,7 @@
       ctx.rotate(car.heading + car.tilt);
 
       // underglow
-      const glowColor = car.boost.active ? T.cyan : T.violet;
+      const glowColor = car.boost.active ? T.cyan : (player ? T.violet : accent);
       const glowR = car.boost.active ? 150 : 105;
       const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, glowR);
       glow.addColorStop(0, Utils.rgba(glowColor, car.boost.active ? 0.55 : 0.3));
@@ -765,21 +821,21 @@
 
       // body
       const body = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
-      body.addColorStop(0, '#3a2f6b');
-      body.addColorStop(0.45, '#6f5bd6');
-      body.addColorStop(0.55, '#5a49b8');
-      body.addColorStop(1, '#2a2350');
+      body.addColorStop(0, player ? '#3a2f6b' : Utils.rgba(accent, 0.55));
+      body.addColorStop(0.45, player ? '#6f5bd6' : accent);
+      body.addColorStop(0.55, player ? '#5a49b8' : accent);
+      body.addColorStop(1, player ? '#2a2350' : Utils.rgba(accent, 0.55));
       ctx.fillStyle = body;
       Utils.roundRect(ctx, -w / 2, -L / 2, w, L, 18);
       ctx.fill();
 
       // body outline
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = Utils.rgba(T.cyan, 0.65);
+      ctx.strokeStyle = Utils.rgba(accent, 0.65);
       ctx.stroke();
 
       // nose + side stripes
-      ctx.fillStyle = Utils.rgba(T.cyan, 0.85);
+      ctx.fillStyle = Utils.rgba(accent, 0.85);
       Utils.roundRect(ctx, -w * 0.30, -L / 2 + 6, w * 0.60, 8, 4);
       ctx.fill();
       ctx.fillStyle = Utils.rgba('#ffffff', 0.12);
@@ -796,7 +852,7 @@
       Utils.roundRect(ctx, -w * 0.27, -L * 0.16, w * 0.54, L * 0.30, 9);
       ctx.fill();
       ctx.lineWidth = 1.6;
-      ctx.strokeStyle = Utils.rgba(T.cyan, 0.5);
+      ctx.strokeStyle = Utils.rgba(accent, 0.5);
       ctx.stroke();
 
       // driver helmet
@@ -806,7 +862,7 @@
       ctx.fill();
 
       // brake lights
-      if (game.controls.brake && car.speed > 20) {
+      if (car.braking && car.speed > 20) {
         ctx.fillStyle = '#ff2d55';
         ctx.shadowColor = '#ff2d55';
         ctx.shadowBlur = 18;
@@ -817,8 +873,8 @@
 
       // headlight cones
       const beam = ctx.createLinearGradient(0, -L / 2, 0, -L / 2 - 220);
-      beam.addColorStop(0, Utils.rgba(T.cyan, 0.22));
-      beam.addColorStop(1, Utils.rgba(T.cyan, 0));
+      beam.addColorStop(0, Utils.rgba(accent, 0.22));
+      beam.addColorStop(1, Utils.rgba(accent, 0));
       ctx.fillStyle = beam;
       ctx.beginPath();
       ctx.moveTo(-w * 0.34, -L / 2);
@@ -829,13 +885,44 @@
       ctx.fill();
 
       ctx.restore();
+      if (!player) Renderer._drawRivalTag(game, car);
+    },
+
+    /** Compact driver tag and a slow-pulsing gameplay-stall bolt. */
+    _drawRivalTag(game, car) {
+      const ctx = Renderer.ctx;
+      ctx.save();
+      ctx.translate(car.x, car.y - CONFIG.car.length * 0.86);
+      ctx.fillStyle = Utils.rgba('#05060d', 0.9);
+      Utils.roundRect(ctx, -29, -16, 58, 25, 7);
+      ctx.fill();
+      ctx.font = '800 16px "Segoe UI", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = car.color;
+      ctx.fillText('SG ' + car.number, 0, 3);
+      if (car.ai.stalled) {
+        ctx.translate(47, -4);
+        ctx.globalAlpha = Renderer.reducedMotion ? 1 :
+          0.65 + 0.35 * (0.5 + 0.5 * Math.sin(game.clock * Math.PI * 2 * CONFIG.rivals.stall.flashHz));
+        ctx.fillStyle = '#1d1520';
+        ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = T.amber;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = T.amber;
+        ctx.beginPath();
+        ctx.moveTo(2, -12); ctx.lineTo(-8, 2); ctx.lineTo(-1, 2);
+        ctx.lineTo(-3, 12); ctx.lineTo(8, -3); ctx.lineTo(1, -3);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
     },
 
     /* ---- screen-space overlays ------------------------------------------- */
 
     /* ---- minimap (Step 5) ------------------------------------------------ */
 
-    /** Cheap overview: the track outline plus a dot for the player. */
+    /** Cheap overview: the track outline and four distinct driver dots. */
     initMinimap(canvas) {
       Renderer.minimap = canvas
         ? { canvas: canvas, ctx: canvas.getContext('2d'), dpr: 1, path: null, w: 0, h: 0 }
@@ -918,6 +1005,19 @@
         ctx.arc(cx, cy, passed ? 2.2 : 3.2, 0, Math.PI * 2);
         ctx.fillStyle = passed ? Utils.rgba('#ffffff', 0.35) : Utils.rgba(T.cyan, 0.95);
         ctx.fill();
+      }
+
+      // Step 6: distinct rival dots, with a ring during gameplay stalls.
+      for (let i = 0; i < game.rivals.length; i++) {
+        const rival = game.rivals[i];
+        const x = rival.x * mm.scale + mm.offsetX;
+        const y = rival.y * mm.scale + mm.offsetY;
+        ctx.beginPath(); ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = rival.color; ctx.fill();
+        if (rival.ai.stalled) {
+          ctx.beginPath(); ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+          ctx.strokeStyle = T.amber; ctx.lineWidth = 1.2; ctx.stroke();
+        }
       }
 
       // the player
@@ -1019,8 +1119,22 @@
         g.addColorStop(1, 'rgba(0,0,0,0.55)');
         Renderer._vignette = g;
       }
-      ctx.fillStyle = Renderer._vignette;
-      ctx.fillRect(0, 0, view.w, view.h);
+      if (Renderer.lowRenderBudget) {
+        if (!Renderer._vignetteLayer) {
+          const canvas = document.createElement('canvas');
+          canvas.width = Renderer.canvas.width;
+          canvas.height = Renderer.canvas.height;
+          const layer = canvas.getContext('2d');
+          layer.scale(Renderer.dpr, Renderer.dpr);
+          layer.fillStyle = Renderer._vignette;
+          layer.fillRect(0, 0, view.w, view.h);
+          Renderer._vignetteLayer = canvas;
+        }
+        ctx.drawImage(Renderer._vignetteLayer, 0, 0, view.w, view.h);
+      } else {
+        ctx.fillStyle = Renderer._vignette;
+        ctx.fillRect(0, 0, view.w, view.h);
+      }
     }
   };
 

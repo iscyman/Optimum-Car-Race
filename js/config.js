@@ -1,5 +1,5 @@
 /* =============================================================================
- * OPTIMUM RACE — Steps 1 + 2
+ * OPTIMUM RACE — Steps 1 to 6
  * config.js — EVERY tuning value in the game lives in this one object.
  * Change a number here and the handling changes in game; no other file needs
  * to be touched to tune the feel of the car.
@@ -112,12 +112,107 @@ OR.CONFIG = {
     }
   },
 
+  /* ---- AI rivals (Step 6; no difficulty or networking) ------------------- */
+  rivals: {
+    roster: [
+      { name: 'STANDARD GOSSIP 1', color: '#ffb347', speed: 0.97, skill: 0.90, lane: -64 },
+      { name: 'STANDARD GOSSIP 2', color: '#52f4b8', speed: 1.02, skill: 0.96, lane: 0 },
+      { name: 'STANDARD GOSSIP 3', color: '#ff684e', speed: 1.05, skill: 1.02, lane: 64 }
+    ],
+    grid: { behind: 140, rowGap: 180, stagger: 75, lane: 82, screenOffset: 0.55 },
+    thinkInterval: 0.06,       // decisions at ~17 Hz; physics still runs at 120 Hz
+    lookAhead: 130,
+    lookAheadTime: 0.33,
+    maxLookAhead: 420,
+    steeringGain: 3.8,
+    slipCorrection: 0.65,
+    cornerScan: 850,
+    cornerScanStep: 70,
+    lateralAccel: 850,        // corner speed = sqrt(radius * lateralAccel * skill)
+    brakePlanning: 850,
+    minCornerSpeed: 310,
+    throttleMargin: 10,
+    brakeMargin: 22,
+    recoverySpeed: 370,
+    coolDownSpeed: 0.42,      // finished rivals keep a slow lap; they never park
+    stall: {
+      intervalMin: 4.5,
+      intervalMax: 8.5,
+      durationMin: 0.5,
+      durationMax: 1.0,
+      speedRatio: 0.50,        // slows, never freezes or teleports a rival
+      flashHz: 2              // gameplay indicator, NOT a network/latency metric
+    },
+    /* Light rubber banding (Step 7): ease off when far ahead, push when far
+       behind. Both directions are capped so the race never feels rigged. */
+    rubberBand: {
+      easeMax: 0.10,           // most a leading rival slows down
+      pushMax: 0.14,           // most a trailing rival speeds up
+      deadZoneLaps: 0.10,      // no effect at all within this gap
+      fullGapLaps: 0.60        // full effect once the gap reaches this
+    }
+  },
+
+  /* ---- Car-to-car contact (Step 6) -------------------------------------- */
+  collisions: {
+    enabled: true,
+    iterations: 4,
+    widthScale: 0.96,
+    lengthScale: 0.96,
+    clearance: 1.5,
+    speedLoss: 0.045,
+    cooldown: 0.30,           // sustained contact cannot drain speed every tick
+    restitution: 0.08
+  },
+
+  /* ---- Difficulty (Step 7; one entry per selectable level) -------------- */
+  difficulty: {
+    default: 'normal',
+    keys: {
+      selection: 'optimumRace.difficulty.v1',
+      best: 'optimumRace.bestTimes.v1'
+    },
+    levels: [
+      {
+        id: 'easy',
+        label: 'EASY',
+        blurb: 'Relaxed rivals: slower, brake earlier and stall for longer.',
+        rivalSpeed: 0.94,          // × the roster profile's top speed
+        cornerSkill: 0.88,         // × corner braking / cornering skill
+        stallIntervalScale: 0.85,  // < 1 means stalls come around more often
+        stallDurationScale: 1.30,  // and last longer
+        rubberBand: 0.60           // assist strength (see CONFIG.rivals.rubberBand)
+      },
+      {
+        id: 'normal',
+        label: 'NORMAL',
+        blurb: 'Balanced rivals that keep the pack close.',
+        rivalSpeed: 1.21,          // matches a decent unboosted player
+        cornerSkill: 1.14,
+        stallIntervalScale: 1.00,
+        stallDurationScale: 1.00,
+        rubberBand: 0.45
+      },
+      {
+        id: 'hard',
+        label: 'HARD',
+        blurb: 'Fast, consistent rivals that rarely put a wheel wrong.',
+        rivalSpeed: 1.26,
+        cornerSkill: 1.16,
+        stallIntervalScale: 1.35,  // stalls are rarer
+        stallDurationScale: 0.65,  // and shorter
+        rubberBand: 0.30           // less help, so the pace difference shows
+      }
+    ]
+  },
+
   /* ---- Camera ------------------------------------------------------------ */
   camera: {
     visibleHeight: 900,    // world units we try to fit vertically
     minVisibleWidth: 620,  // never zoom in further than this horizontally
     carScreenOffset: 0.72, // 0 = top of screen, 1 = bottom of screen
     followRate: 6,         // how quickly the camera catches up
+    gridBlendRate: 4.5,    // smooth transition from the four-car grid to the player
     lookAhead: 240,        // base look-ahead distance (world units)
     lookAheadSpeed: 220,   // extra look-ahead at top speed
     lookAheadRate: 2.5,    // smoothing of the look-ahead offset
@@ -138,7 +233,9 @@ OR.CONFIG = {
       minDrift: 55,      // sideways speed needed to lay rubber
       minBrakeSpeed: 420 // forward speed needed for brake marks
     },
-    maxParticles: 320   // hard cap on live boost / spark / pickup particles
+    maxParticles: 320,  // hard cap on live boost / spark / pickup particles
+    renderDpr: { mobileWidth: 720, mobileHeight: 480, mobileMax: 1, desktopMax: 2 },
+    roadCache: { maxSize: 3072 } // bounded static road texture on phones
   },
 
   /* ---- Audio (Web Audio only, no audio files) ---------------------------- */

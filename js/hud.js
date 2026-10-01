@@ -5,17 +5,22 @@
 (function () {
   'use strict';
 
-  const { CONFIG, Utils, Track, Race } = OR;
+  const { CONFIG, Utils, Track, Race, Standings } = OR;
   const B = CONFIG.boost;
 
   const HUD = {
     el: {},
     _cache: {},
+    _standingNodes: {},
 
     init() {
       const id = name => document.getElementById(name);
       HUD.el = {
         root: id('hud'),
+        positionValue: id('positionValue'),
+        difficultyLabel: id('hudDifficulty'),
+        positionTotal: id('positionTotal'),
+        standingsList: id('standingsList'),
         speedValue: id('speedValue'),
         speedBar: id('speedBar'),
         timerValue: id('timerValue'),
@@ -23,6 +28,7 @@
         lapTotal: id('lapTotal'),
         lapTimeValue: id('lapTimeValue'),
         bestLapValue: id('bestLapValue'),
+        bestLapTime: id('bestLapTime'),
         progressFill: id('progressFill'),
         distanceValue: id('distanceValue'),
         boostWidget: id('boostWidget'),
@@ -34,6 +40,7 @@
         pauseTime: id('pauseTime')
       };
       HUD._cache = {};
+      HUD._standingNodes = {};
       return HUD;
     },
 
@@ -46,10 +53,59 @@
       apply(value);
     },
 
+    /** Reorder existing nodes only when race order changes, not every frame. */
+    _standings(game) {
+      const rows = Standings.rows;
+      const list = HUD.el.standingsList;
+      HUD._set('difficulty', game.difficulty ? game.difficulty.label : '',
+        v => { HUD.el.difficultyLabel.textContent = v; });
+      HUD._set('position', Standings.playerPlace,
+        v => { HUD.el.positionValue.textContent = String(v); });
+      HUD._set('fieldSize', game.entities.length,
+        v => { HUD.el.positionTotal.textContent = String(v); });
+      HUD._set('standingOrder', rows.map(row => row.id).join(','), () => {
+        list.replaceChildren();
+        rows.forEach(row => {
+          let node = HUD._standingNodes[row.id];
+          if (!node) {
+            const root = document.createElement('li');
+            root.className = 'standing-row' + (row.isPlayer ? ' is-player' : '');
+            root.dataset.driver = row.id;
+            root.style.setProperty('--driver-color', row.color);
+            const rank = document.createElement('span');
+            rank.className = 'standing-rank';
+            const dot = document.createElement('span');
+            dot.className = 'driver-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            const name = document.createElement('span');
+            name.className = 'standing-name';
+            name.textContent = row.name;
+            const status = document.createElement('span');
+            status.className = 'standing-status';
+            root.append(rank, dot, name, status);
+            node = HUD._standingNodes[row.id] = { root: root, rank: rank, status: status };
+          }
+          list.appendChild(node.root);
+        });
+      });
+      rows.forEach(row => {
+        const node = HUD._standingNodes[row.id];
+        const stalled = !Standings.frozen && row.stalled;
+        HUD._set('standing-' + row.id, row.place + '/' + stalled + '/' + row.finished, () => {
+          node.rank.textContent = String(row.place);
+          node.status.textContent = stalled ? '⚡' : (row.finished ? 'FIN' : '');
+          node.status.title = stalled ? 'Gameplay stall' : (row.finished ? 'Finished' : '');
+          node.status.setAttribute('aria-label', stalled ? 'Gameplay stall' : node.status.title);
+          node.root.classList.toggle('is-stalled', stalled);
+        });
+      });
+    },
+
     update(game) {
       const el = HUD.el;
       const car = game.car;
       const kmh = Math.round(car.speedKmh());
+      HUD._standings(game);
 
       HUD._set('speed', kmh, v => { el.speedValue.textContent = v; });
       HUD._set('speedBar', Math.round((car.speed / CONFIG.car.maxSpeed) * 100),
@@ -77,14 +133,18 @@
 
       HUD._set('bestLap', Race.bestLapMs ? Utils.formatTime(Race.bestLapMs) : '',
         v => {
-          el.bestLapValue.textContent = v ? 'BEST ' + v : 'BEST --:--.---';
+          el.bestLapTime.textContent = v || '--:--.---';
+          el.bestLapValue.setAttribute('aria-label', 'Best lap ' + (v || 'not set'));
           el.bestLapValue.classList.toggle('is-set', !!v);
         });
 
       HUD._set('progress', Math.round(Race.lapProgress(car.x, car.y) * 100),
         v => { el.progressFill.style.width = Utils.clamp(v, 0, 100) + '%'; });
 
-      HUD._set('distance', Math.round(Track.distanceRemaining(car.x, car.y, car.trackHint)),
+      const remaining = Race.progress < 0
+        ? (1 - Race.progress) * Track.length * CONFIG.track.metersPerUnit
+        : Track.distanceRemaining(car.x, car.y, car.trackHint);
+      HUD._set('distance', Math.round(remaining),
         v => { el.distanceValue.textContent = v + ' m to go'; });
 
       /* ---- CODED BOOST meter (Step 3) ------------------------------------ */

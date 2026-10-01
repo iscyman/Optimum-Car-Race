@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { Game, Input, Utils, Renderer, Audio } = OR;
+  const { Game, Input, Utils, Renderer, Audio, Difficulty } = OR;
 
   const Screens = {
     menu: null,
@@ -52,6 +52,39 @@
           quitBtn.blur();
           Game.returnToMenu();
         });
+      }
+
+      // ---- difficulty picker (Step 7) ------------------------------------
+      Screens.picker = document.getElementById('difficultyPicker');
+      Screens.pickerHint = document.getElementById('difficultyHint');
+      if (Screens.picker) {
+        Difficulty.levels.forEach(level => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'diff-btn';
+          btn.dataset.difficulty = level.id;
+          btn.setAttribute('role', 'radio');
+          btn.textContent = level.label;
+          btn.title = level.blurb;
+          btn.addEventListener('click', e => {
+            e.preventDefault();
+            Screens.selectDifficulty(level.id);
+          });
+          Screens.picker.appendChild(btn);
+        });
+        // Arrow keys move the selection while a button has focus.
+        Screens.picker.addEventListener('keydown', e => {
+          const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
+            : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+          if (!step) return;
+          e.preventDefault();
+          const ids = Difficulty.levels.map(l => l.id);
+          const next = ids[(ids.indexOf(Difficulty.currentId()) + step + ids.length) % ids.length];
+          Screens.selectDifficulty(next);
+          const el = Screens.picker.querySelector('[data-difficulty="' + next + '"]');
+          if (el) el.focus();
+        });
+        Screens.selectDifficulty(Difficulty.currentId());
       }
 
       const startBtn = document.getElementById('startBtn');
@@ -136,7 +169,53 @@
       document.body.classList.toggle('is-paused', state === 'paused');
     },
 
+    /** Highlight one difficulty button and explain what it does. */
+    selectDifficulty(id) {
+      const level = Difficulty.select(id);
+      if (Screens.picker) {
+        Array.from(Screens.picker.children).forEach(btn => {
+          const on = btn.dataset.difficulty === level.id;
+          btn.classList.toggle('is-selected', on);
+          btn.setAttribute('aria-checked', on ? 'true' : 'false');
+          btn.tabIndex = on ? 0 : -1;
+        });
+      }
+      if (Screens.pickerHint) Screens.pickerHint.textContent = level.blurb;
+      return level;
+    },
+
     showFinish(results) {
+      document.getElementById('finalDifficulty').textContent = results.difficulty || 'NORMAL';
+      const bestTime = document.getElementById('finalBestTime');
+      if (bestTime) {
+        bestTime.textContent = results.isNewBest
+          ? 'NEW ' + (results.bestText || '') : (results.bestText || '');
+        bestTime.classList.toggle('is-new', !!results.isNewBest);
+      }
+      document.getElementById('finalPosition').textContent = results.place + ' / ' + results.fieldSize;
+      const standings = document.getElementById('finalStandings');
+      standings.replaceChildren();
+      results.standings.forEach(driver => {
+        const row = document.createElement('li');
+        row.className = 'standing-row' + (driver.isPlayer ? ' is-player' : '');
+        row.dataset.driver = driver.id;
+        row.style.setProperty('--driver-color', driver.color);
+        const rank = document.createElement('span');
+        rank.className = 'standing-rank';
+        rank.textContent = String(driver.place);
+        const dot = document.createElement('span');
+        dot.className = 'driver-dot';
+        dot.setAttribute('aria-hidden', 'true');
+        const name = document.createElement('span');
+        name.className = 'standing-name';
+        name.textContent = driver.name;
+        const time = document.createElement('span');
+        time.className = 'standing-time';
+        time.textContent = driver.finished ? Utils.formatTime(driver.timeMs)
+          : Math.ceil(driver.remainingMeters) + ' m left';
+        row.append(rank, dot, name, time);
+        standings.appendChild(row);
+      });
       document.getElementById('finalTime').textContent = Utils.formatTime(results.timeMs);
       document.getElementById('finalTopSpeed').textContent =
         Math.round(results.maxSpeedKmh) + ' km/h';
