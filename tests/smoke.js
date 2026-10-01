@@ -1,5 +1,5 @@
 /* =============================================================================
- * tests/smoke.js — headless smoke test for Optimum Race (Steps 1 + 2).
+ * tests/smoke.js — headless smoke test for Optimum Race (Steps 1 to 6).
  *
  * Runs the real game files inside jsdom with a stubbed 2D canvas context so the
  * full loop (input -> physics -> state machine -> HUD) can be exercised without
@@ -12,7 +12,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'shards', 'race', 'input', 'audio', 'renderer', 'hud', 'game', 'main']
+const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'main']
   .map(f => path.join(ROOT, 'js', f + '.js'));
 
 let pass = 0;
@@ -95,6 +95,15 @@ function runTests() {
 // Take manual control of the loop.
 win.cancelAnimationFrame(Game._raf);
 const STEP = CONFIG.race.fixedStep;
+// Stable race seeds; rendering randomness must not make regressions flaky.
+win.Math.random = OR.Utils.mulberry32(20261001);
+
+/** Isolated handling/input probes exclude traffic impulses deliberately. */
+function withoutContact(fn) {
+  const enabled = CONFIG.collisions.enabled;
+  CONFIG.collisions.enabled = false;
+  try { return fn(); } finally { CONFIG.collisions.enabled = enabled; }
+}
 
 /**
  * Step 5 made the track a closed loop, so there is no finish line to run past
@@ -315,9 +324,9 @@ check('menu screen visible, HUD hidden',
 section('2. Start race');
 doc.getElementById('startBtn').click();
 check('clicking START RACE enters countdown', Game.state === 'countdown', Game.state);
-check('car starts on the start line, facing along the circuit',
-  Math.abs(Game.car.x - Track.start.x) < 1 && Math.abs(Game.car.y - Track.start.y) < 1 &&
-  Math.abs(Game.car.heading - Math.atan2(Track.start.tx, -Track.start.ty)) < 0.001,
+check('car starts in its staggered grid slot, behind the line',
+  Race.progress < 0 && Race.progress > -0.05 && Game.car.gridSlot === 0 &&
+  Game.car.speed === 0 && Track.isOnRoad(Game.car.x, Game.car.y),
   'x=' + Game.car.x.toFixed(1) + ' y=' + Game.car.y.toFixed(1));
 check('race timer is still zero', Game.raceTimeMs === 0);
 
@@ -327,6 +336,8 @@ check('HUD is visible while racing', !doc.getElementById('hud').classList.contai
 
 /* =========================== 3. acceleration ============================== */
 section('3. Acceleration');
+// Steps 1–5 handling probes measure the engine, not rival impact impulses.
+CONFIG.collisions.enabled = false;
 const speed0 = Game.car.speed;
 key('ArrowUp', true);
 advance(1.0);
@@ -433,7 +444,7 @@ check('steering is tighter at low speed than at high speed',
 place(0);
 const hStopped = Game.car.heading;
 key('ArrowLeft', true);
-advance(1.0);
+withoutContact(() => advance(1.0));
 key('ArrowLeft', false);
 check('no steering while the car is stationary',
   Game.car.speed < 5 && Math.abs(Game.car.heading - hStopped) < 1e-9,
@@ -664,8 +675,8 @@ check('finish screen shows max speed and boosts used',
 section('9. Race again');
 doc.getElementById('againBtn').click();
 check('RACE AGAIN restarts into countdown', Game.state === 'countdown', Game.state);
-check('car is reset to the start', Game.car.x === Track.start.x &&
-  Game.car.y === Track.start.y && Game.car.speed === 0);
+check('car is reset to its grid slot', Race.progress < 0 &&
+  Game.car.gridSlot === 0 && Game.car.speed === 0);
 check('timer is reset', Game.raceTimeMs === 0);
 check('boost counter is reset', Game.car.boost.used === 0);
 check('finish screen hidden again', doc.getElementById('finishScreen').classList.contains('hidden'));
@@ -699,7 +710,7 @@ check('grip pulls the car straight again once you stop steering',
 const lowSpeedSlip = (function () {
   place(180);
   key('ArrowRight', true);
-  advance(0.45);
+  withoutContact(() => advance(0.45));
   key('ArrowRight', false);
   return Math.abs(Game.car.vLat);
 })();
@@ -1112,6 +1123,8 @@ advance(CONFIG.race.countdownSeconds + 0.05);
 
 /* =========================== 12. mobile controls ========================== */
 section('12. Mobile controls');
+// Traffic contact is on for touch racing, race flow, and the full-race check.
+CONFIG.collisions.enabled = true;
 Input.enableTouchMode();
 const pad = doc.getElementById('touchControls');
 Input.attachTouchPad(pad);
@@ -1155,7 +1168,7 @@ Game.startRace();
 advance(CONFIG.race.countdownSeconds + 0.05);
 const touchX = Game.car.x;
 touch('right', 'pointerdown');
-advance(1.0);
+withoutContact(() => advance(1.0));
 touch('right', 'pointerup');
 check('touch steering actually moves the car', Game.car.x > touchX + 20,
   touchX.toFixed(0) + ' -> ' + Game.car.x.toFixed(0));
@@ -1354,7 +1367,7 @@ check('restart clears the lap times', Race.lapTimes.length === 0 && Race.lap ===
   'laps=' + Race.lapTimes.length + ' lap=' + Race.lap);
 check('restart clears the race clock', Game.raceTimeMs === 0 && Game.finalTimeMs === 0);
 check('restart resets the car and the pickups',
-  Game.car.x === Track.start.x && Game.car.y === Track.start.y &&
+  Race.progress < 0 && Game.car.gridSlot === 0 &&
   Game.car.speed === 0 &&
   Game.car.meter === CONFIG.boost.startMeter &&
   OR.Shards.collected === 0 &&
@@ -1448,6 +1461,162 @@ check('the car crosses the line having taken every checkpoint',
   Race.finished && Race.lapTimes.length === CONFIG.race.laps &&
   Math.abs(finishInfo.offset) < Track.halfRoad,
   'offset=' + finishInfo.offset.toFixed(0));
+
+/* =========================== 16. Step 6 integration ======================= */
+section('16. Step 6 — rivals, HUD standings, pause, finish, reset');
+Input.enableTouchMode(false);
+Input.reset();
+Game.startRace(501);
+const gridSnapshot = Game.rivals.map(car => [car.x, car.y, car.ai.nextStall]);
+advance(CONFIG.race.countdownSeconds - 0.4);
+check('all three rivals stay on their grid slots during countdown',
+  Game.rivals.every((car, i) => car.x === gridSnapshot[i][0] && car.y === gridSnapshot[i][1] &&
+    car.speed === 0 && car.ai.nextStall === gridSnapshot[i][2]));
+check('the race contains the player plus three rival entities', Game.entities.length === 4 && Game.rivals.length === 3);
+check('every entity has an independent lap tracker',
+  new Set(Game.entities.map(car => car.race)).size === 4);
+advance(0.5);
+check('rivals start moving only after GO', Game.state === 'racing' && Game.rivals.every(car => car.speed > 0));
+const gossip = Game.rivals[0];
+gossip.ai.nextStall = 0;
+Game.step(STEP);
+HUD.update(Game);
+const stalledRow = doc.querySelector('#standingsList [data-driver="gossip-1"]');
+check('the HUD identifies a gameplay stall with a bolt', gossip.ai.stalled &&
+  stalledRow.classList.contains('is-stalled') &&
+  stalledRow.querySelector('.standing-status').getAttribute('aria-label') === 'Gameplay stall');
+check('all four full driver names appear in the live standings',
+  doc.querySelectorAll('#standingsList .standing-name').length === 4 &&
+  Array.from(doc.querySelectorAll('#standingsList .standing-name')).some(el => el.textContent === 'STANDARD GOSSIP 3'));
+Renderer._spawnParticle(gossip.x, gossip.y, 20, 0, 3, 12, CONFIG.theme.amber);
+Game.pause();
+const pausedRivals = JSON.stringify(Game.rivals.map(car => [car.x, car.y, car.speed,
+  car.ai.nextStall, car.ai.stallRemaining, car.ai.stallCount]));
+const pausedParticles = JSON.stringify(Renderer.particles);
+advance(2);
+check('pause freezes every rival and its stall timers', pausedRivals === JSON.stringify(Game.rivals.map(car =>
+  [car.x, car.y, car.speed, car.ai.nextStall, car.ai.stallRemaining, car.ai.stallCount])));
+check('pause also freezes the visual effects', pausedParticles === JSON.stringify(Renderer.particles));
+Game.resume();
+advance(1.1);
+check('stalls release after resuming, without a frozen car', !gossip.ai.stalled && gossip.speed > 100);
+const standings = OR.Standings;
+Race.progress = 0.35; Race.lapBase = 0; Race.nextCheckpoint = 1;
+gossip.race.progress = 1.1; gossip.race.lapBase = 1; gossip.race.lap = 2;
+standings.update();
+HUD.update(Game);
+check('the live position and list reflect validated overtaking across laps',
+  doc.getElementById('positionValue').textContent === '2' &&
+  doc.getElementById('positionTotal').textContent === '4' &&
+  doc.querySelector('#standingsList li').dataset.driver === gossip.id);
+Race.finished = true; Race.finishTimeMs = Game.raceTimeMs; Race.progress = 3;
+gossip.race.finished = true; gossip.race.finishTimeMs = Game.raceTimeMs - 100;
+Game._finishRace();
+check('results include a four-driver classification and the player place',
+  Game.results.standings.length === 4 && Game.results.place === 2 && Game.results.fieldSize === 4 &&
+  Game.results.standings[1].isPlayer);
+check('the finish screen shows the player place and all driver names',
+  doc.getElementById('finalPosition').textContent === '2 / 4' &&
+  doc.querySelectorAll('#finalStandings li').length === 4);
+check('unfinished rivals have no invented finish times', Game.results.standings.filter(row => !row.finished)
+  .every(row => row.timeMs === null && row.remainingMeters > 0));
+const finalOrder = JSON.stringify(Game.results.standings);
+advance(CONFIG.race.finishDelayMs / 1000 + 0.2);
+Game.rivals[2].race.progress = 9;
+standings.update();
+check('coast-out cannot change the final classification', finalOrder === JSON.stringify(Game.results.standings) &&
+  standings.frozen && Game.state === 'finished');
+Game.restartRace();
+check('restart clears rival laps, stalls and finish times', Game.rivals.every(car =>
+  car.race.lap === 1 && car.race.lapTimes.length === 0 && !car.race.finished &&
+  car.race.finishTimeMs === 0 && car.ai.stallCount === 0 && !car.ai.stalled && car.speed === 0));
+check('restart restores POS 1/4 and clears the frozen result',
+  standings.playerPlace === 1 && !standings.frozen && Game.results === null && Game.state === 'countdown');
+Game.returnToMenu();
+check('quit removes the rival field and stale contacts', Game.rivals.length === 0 && Game.entities.length === 1 &&
+  OR.Collisions.cooldowns.size === 0 && Game.state === 'menu');
+
+/* =========================== 17. Step 7 — difficulty ===================== */
+section('17. Step 7 — EASY / NORMAL / HARD selection, HUD and results');
+{
+  const Diff = OR.Difficulty;
+  const picker = doc.getElementById('difficultyPicker');
+  const buttons = picker ? Array.from(picker.children) : [];
+  check('the menu offers three difficulty buttons',
+    buttons.length === 3 && buttons.map(b => b.textContent).join(',') === 'EASY,NORMAL,HARD',
+    buttons.map(b => b.textContent).join(' / '));
+  check('the saved level is selected on load',
+    buttons.some(b => b.dataset.difficulty === Diff.currentId() &&
+      b.classList.contains('is-selected') && b.getAttribute('aria-checked') === 'true'),
+    Diff.currentId());
+  check('each level explains itself', buttons.every(b => b.title.length > 10) &&
+    doc.getElementById('difficultyHint').textContent.length > 10,
+    doc.getElementById('difficultyHint').textContent);
+  buttons[2].click();
+  check('clicking HARD selects and stores it',
+    Diff.currentId() === 'hard' && buttons[2].getAttribute('aria-checked') === 'true' &&
+    buttons[2].classList.contains('is-selected'), Diff.currentId());
+  buttons[2].dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+  check('arrow keys move the selection', Diff.currentId() === 'normal', Diff.currentId());
+  buttons[2].click();
+
+  Game.startRace(909);
+  Game.difficultyId = 'hard';
+  check('the race captures the level it started with',
+    Game.difficulty.label === 'HARD' && Game.rivals.every(car => car.ai.level === 'hard'));
+
+  Diff.select('easy');
+  advance(CONFIG.race.countdownSeconds + 0.2);
+  HUD.update(Game);
+  check('the HUD shows the race difficulty, not a later menu change',
+    doc.getElementById('hudDifficulty').textContent === 'HARD' &&
+    Game.state === 'racing' && Game.rivals.every(car => car.ai.level === 'hard'));
+  check('changing the menu level mid-race does not retune the rivals',
+    Game.rivals.every(car => Math.abs(car.baseTopSpeedMultiplier -
+      CONFIG.rivals.roster[car.number - 1].speed *
+      CONFIG.difficulty.levels[2].rivalSpeed) < 1e-9));
+
+  // Force the flag so the results screen can be checked without a full race.
+  Race.lap = CONFIG.race.laps;
+  Race.lapBase = 0;
+  Race.progress = 0.96;
+  Race.lastFraction = 0.96;
+  Race.nextCheckpoint = Track.checkpoints.length;
+  Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+  const otherBests = { easy: Diff.best('easy'), normal: Diff.best('normal') };
+  Game._finishRace();
+  const results = Game.results;
+  check('results carry the difficulty and a best time for it',
+    results.difficulty === 'HARD' && results.difficultyId === 'hard' &&
+    results.bestMs === results.timeMs && results.isNewBest === true &&
+    /^Best on Hard/.test(results.bestText), results.bestText);
+  Game._emit('finish', results); // the real hook the finish screen uses
+  check('the finish screen labels the difficulty',
+    doc.getElementById('finalDifficulty').textContent === 'HARD');
+  check('the finish screen shows the best-on-difficulty line',
+    /Best on Hard/.test(doc.getElementById('finalBestTime').textContent) &&
+    doc.getElementById('finalBestTime').classList.contains('is-new'),
+    doc.getElementById('finalBestTime').textContent);
+  check('the best time is stored for that difficulty only',
+    Diff.best('hard') === results.timeMs &&
+    Diff.best('easy') === otherBests.easy && Diff.best('normal') === otherBests.normal,
+    'hard ' + OR.Utils.formatTime(Diff.best('hard')) +
+    ', easy ' + (otherBests.easy ? OR.Utils.formatTime(otherBests.easy) : '—') +
+    ', normal ' + (otherBests.normal ? OR.Utils.formatTime(otherBests.normal) : '—'));
+
+  const slower = Diff.recordBest('hard', results.timeMs + 5000);
+  check('a slower race does not overwrite the best', !slower.isNewBest &&
+    slower.bestMs === results.timeMs && Diff.best('hard') === results.timeMs);
+  Diff.select('normal');
+  Game._emit('finish', { difficulty: 'NORMAL', difficultyId: 'normal', bestMs: 0,
+    isNewBest: false, bestText: 'No Normal time yet', place: 1, fieldSize: 4,
+    standings: [], lapTimes: [], bestLapMs: 0, maxSpeedKmh: 0, boostsUsed: 0,
+    peakBoostKmh: 0, shardsCollected: 0, timeMs: 0 });
+  check('an empty record still renders sensibly',
+    doc.getElementById('finalDifficulty').textContent === 'NORMAL' &&
+    !doc.getElementById('finalBestTime').classList.contains('is-new'),
+    doc.getElementById('finalBestTime').textContent);
+}
 
 /* =========================== summary ====================================== */
 console.log('\n' + '-'.repeat(56));

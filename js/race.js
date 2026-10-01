@@ -3,8 +3,7 @@
  *
  * Step 5 rewrote the track as a closed loop, so a lap is no longer measured
  * against a finish line's y position: the car's distance around the lap is
- * read from the track geometry and unwrapped into a continuous, always
- * increasing "progress" value U, where:
+ * read from the track geometry and unwrapped into a continuous "progress" value U, where:
  *
  *   U = 0.0   the start line at the beginning of lap 1
  *   U = 0.5   half way round lap 1
@@ -19,7 +18,7 @@
 (function () {
   'use strict';
 
-  const { CONFIG, Track, Utils } = OR;
+  const { CONFIG, Track } = OR;
 
   const Race = {
     laps: CONFIG.race.laps,
@@ -36,41 +35,52 @@
     hint: 0,                // track index hint for fast nearest-point lookups
     lastFraction: 0,        // raw 0..1 fraction, before unwrapping
 
-    reset() {
-      Race.laps = CONFIG.race.laps;
-      Race.lap = 1;
-      Race.nextCheckpoint = 0;
-      Race.checkpointsPassed = 0;
-      Race.lapTimes.length = 0;
-      Race.bestLapMs = 0;
-      Race.lapStartMs = 0;
-      Race.finished = false;
-      Race.lastEvent = null;
-      Race.progress = 0;
-      Race.lapBase = 0;
-      Race.hint = Track.startIndex;
-      Race.lastFraction = 0;
-      return Race;
+    reset(car) {
+      this.laps = CONFIG.race.laps;
+      this.lap = 1;
+      this.nextCheckpoint = 0;
+      this.checkpointsPassed = 0;
+      this.lapTimes.length = 0;
+      this.bestLapMs = 0;
+      this.lapStartMs = 0;
+      this.finished = false;
+      this.lastEvent = null;
+      this.progress = 0;
+      this.lapBase = 0;
+      this.hint = Track.startIndex;
+      this.lastFraction = 0;
+      this.started = true;
+      this.finishTimeMs = 0;
+      if (car) {
+        const info = Track.nearest(car.x, car.y, car.trackHint);
+        this.hint = info.index;
+        this.lastFraction = (info.fraction - Track.start.s / Track.length + 1) % 1;
+        // A grid slot just before the line is NEGATIVE progress, not lap 1 done.
+        this.progress = this.lastFraction > 0.5 ? this.lastFraction - 1 : this.lastFraction;
+        this.started = this.progress >= 0;
+      }
+      return this;
     },
 
     /** Time on the current lap, given the race clock. */
     lapTimeMs(raceTimeMs) {
-      return Math.max(0, raceTimeMs - Race.lapStartMs);
+      return Math.max(0, raceTimeMs - this.lapStartMs);
     },
 
     /** 1 -> the flag lap, 2 -> the last lap. Used for the HUD badge. */
     lapsRemaining() {
-      return Math.max(0, Race.laps - (Race.lap - 1));
+      return Math.max(0, this.laps - (this.lap - 1));
     },
 
     isFinalLap() {
-      return Race.lap >= Race.laps;
+      return this.lap >= this.laps;
     },
 
     /** How much of the current lap is done, 0 -> 1 (for the lap bar). */
     lapProgress(x, y) {
-      const info = Track.nearest(x, y, Race.hint);
-      return Utils.clamp(info.fraction, 0, 1);
+      const info = Track.nearest(x, y, this.hint);
+      return this.started
+        ? (info.fraction - Track.start.s / Track.length + 1) % 1 : 0;
     },
 
     /**
@@ -78,82 +88,98 @@
      * Returns 'lap' when a lap was completed, 'finish' on the final lap.
      */
     update(car, raceTimeMs) {
-      Race.lastEvent = null;
-      if (Race.finished) return null;
+      this.lastEvent = null;
+      if (this.finished) return null;
 
-      const info = Track.nearest(car.x, car.y, Race.hint);
-      Race.hint = info.index;
-      const fraction = info.fraction;
+      const info = Track.nearest(car.x, car.y, this.hint);
+      this.hint = info.index;
+      const fraction = (info.fraction - Track.start.s / Track.length + 1) % 1;
 
       /* Unwrap the 0..1 lap position into a continuous value. A jump of more
          than half a lap between steps can only be a crossing of the line. */
-      const delta = fraction - Race.lastFraction;
-      if (delta < -0.5) Race.progress += 1 + delta;        // crossed forwards
-      else if (delta > 0.5) Race.progress -= 1 - delta;    // crossed backwards
-      else Race.progress += delta;
-      Race.lastFraction = fraction;
+      const delta = fraction - this.lastFraction;
+      if (delta < -0.5) this.progress += 1 + delta;        // crossed forwards
+      else if (delta > 0.5) this.progress -= 1 - delta;    // crossed backwards
+      else this.progress += delta;
+      this.lastFraction = fraction;
 
-      if (Race.progress < Race.lapBase - 1) Race.progress = Race.lapBase;
-      if (Race.progress < 0) { Race.progress = 0; }
+      if (this.progress < this.lapBase - 1) this.progress = this.lapBase;
+      if (this.started && this.progress < 0) this.progress = 0;
+      if (!this.started && this.progress >= 0) this.started = true;
 
       /* Checkpoints, strictly in order, at lapBase + fraction. A gate also
          has to be physically reached: otherwise a car that is picked up and
          put down the road could collect the whole lap for free. */
       const cps = Track.checkpoints;
       const gateRadius = Track.hardLimit * 1.4;
-      while (Race.nextCheckpoint < cps.length) {
-        const cp = cps[Race.nextCheckpoint];
-        if (Race.progress < Race.lapBase + cp.fraction) break;
+      while (this.nextCheckpoint < cps.length) {
+        const cp = cps[this.nextCheckpoint];
+        if (this.progress < this.lapBase + cp.fraction) break;
         const dx = car.x - cp.x, dy = car.y - cp.y;
         if (dx * dx + dy * dy > gateRadius * gateRadius) break;
-        Race.nextCheckpoint += 1;
-        Race.checkpointsPassed += 1;
-        Race.lastEvent = {
+        this.nextCheckpoint += 1;
+        this.checkpointsPassed += 1;
+        this.lastEvent = {
           type: 'checkpoint',
-          lap: Race.lap,
-          index: Race.nextCheckpoint - 1,
+          lap: this.lap,
+          index: this.nextCheckpoint - 1,
           timeMs: raceTimeMs
         };
       }
 
       /* The line itself. */
-      if (Race.progress < Race.lapBase + 1) return null;
+      if (this.progress < this.lapBase + 1) return null;
 
-      if (Race.nextCheckpoint < cps.length) {
+      if (this.nextCheckpoint < cps.length) {
         // somehow reached the line without the gates: do not score it
-        Race.lastEvent = { type: 'shortcut', lap: Race.lap, timeMs: raceTimeMs };
-        Race.progress = Race.lapBase + 0.999;
-        Race.lastFraction = 0.999;
+        this.lastEvent = { type: 'shortcut', lap: this.lap, timeMs: raceTimeMs };
+        this.progress = this.lapBase + 0.999;
+        this.lastFraction = 0.999;
         return 'shortcut';
       }
 
-      const lapMs = raceTimeMs - Race.lapStartMs;
-      Race.lapTimes.push(lapMs);
-      if (!Race.bestLapMs || lapMs < Race.bestLapMs) Race.bestLapMs = lapMs;
-      Race.lapStartMs = raceTimeMs;
-      Race.nextCheckpoint = 0;
-      Race.checkpointsPassed = 0;
-      Race.lapBase += 1;
+      const lapMs = raceTimeMs - this.lapStartMs;
+      this.lapTimes.push(lapMs);
+      if (!this.bestLapMs || lapMs < this.bestLapMs) this.bestLapMs = lapMs;
+      this.lapStartMs = raceTimeMs;
+      this.nextCheckpoint = 0;
+      this.checkpointsPassed = 0;
+      this.lapBase += 1;
 
-      if (Race.lap >= Race.laps) {
-        Race.finished = true;
-        Race.lastEvent = { type: 'finish', lap: Race.lap, timeMs: raceTimeMs, lapMs: lapMs };
+      if (this.lap >= this.laps) {
+        this.finished = true;
+        this.finishTimeMs = raceTimeMs;
+        this.lastEvent = { type: 'finish', lap: this.lap, timeMs: raceTimeMs, lapMs: lapMs };
         return 'finish';
       }
 
-      Race.lap += 1;
-      Race.lastEvent = { type: 'lap', lap: Race.lap - 1, timeMs: raceTimeMs, lapMs: lapMs };
+      this.lap += 1;
+      this.lastEvent = { type: 'lap', lap: this.lap - 1, timeMs: raceTimeMs, lapMs: lapMs };
       return 'lap';
+    },
+
+    /** Ranking cannot credit progress beyond a checkpoint that was skipped. */
+    validProgress() {
+      if (this.finished) return this.laps;
+      const cp = Track.checkpoints[this.nextCheckpoint];
+      return Math.min(this.progress, this.lapBase + (cp ? cp.fraction : 1));
     },
 
     /** Everything the finish screen needs about the laps. */
     summary() {
       return {
-        laps: Race.lapTimes.length,
-        lapTimes: Race.lapTimes.slice(),
-        bestLapMs: Race.bestLapMs
+        laps: this.lapTimes.length,
+        lapTimes: this.lapTimes.slice(),
+        bestLapMs: this.bestLapMs
       };
     }
+  };
+
+  /** Independent checkpoint/lap state; the existing singleton stays the player. */
+  Race.create = function (car) {
+    const tracker = Object.create(Race);
+    tracker.lapTimes = [];
+    return tracker.reset(car);
   };
 
   OR.Race = Race.reset();

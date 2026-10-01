@@ -1,4 +1,4 @@
-# OPTIMUM RACE — Steps 1 to 5
+# OPTIMUM RACE — Steps 1 to 7
 
 **Race. React. Win.**
 
@@ -92,12 +92,41 @@ npm run build      # regenerates optimum-race.html from the sources
 | Track map / minimap | done (HUD minimap: circuit outline, gates, live player dot) |
 | Lap scoring on the loop, no shortcuts | done (`js/race.js` scores continuous lap progress, gates must be driven through) |
 
+### Step 6 — AI rivals
+
+| Requirement | Status |
+| --- | --- |
+| Three **STANDARD GOSSIP 1–3** rivals, distinctly coloured | done (amber, mint, orange-red; player remains violet) |
+| Centreline following, small lane offsets, upcoming-corner braking | done (`js/rivals.js`, public Track helpers only) |
+| Slightly different, fixed speed and skill per driver | done (`CONFIG.rivals.roster`) |
+| Random 0.5–1 s gameplay stalls every few seconds + flash icon | done (independent seeded schedules, 4.5–8.5 s between stalls, never stops a car) |
+| Car-to-car contact: push apart, small speed loss, no contact lock | done (`js/collisions.js`, bounded solver + impact cooldown) |
+| Live **POS 2/4** and compact standings | done (checkpoint-valid lap progress, finished drivers by time) |
+| Staggered grid behind the start line | done (all four cars visible during countdown, no phantom opening lap) |
+| Final classification and player place | done (frozen at the player's flag; no invented times for unfinished rivals) |
+| Finished rivals never block a still-racing player | done (they keep a slow cool-down lap instead of braking on the racing line) |
+| Minimap rival dots, pause/restart/quit integration | done (stall timers and effects freeze on pause; field resets on restart) |
+| Phone rendering budget with four cars | done (bounded caches, 1× canvas density on phones; native-resolution DOM HUD) |
+
+### Step 7 — difficulty
+
+| Requirement | Status |
+| --- | --- |
+| EASY / NORMAL / HARD chosen before the race | done (menu picker: click or arrow keys, `role="radiogroup"`) |
+| Settings in a config object | done (`CONFIG.difficulty.levels`: rival speed, corner skill, stall interval + duration, rubber band strength) |
+| Light rubber banding, capped | done (`CONFIG.rivals.rubberBand`, +14 % / −10 % caps, dead zone, 0.60/0.45/0.30 strength per level) |
+| Selection saved in localStorage, preselected next time | done (try/catch throughout; blocked storage falls back to the default and keeps working in memory) |
+| Difficulty shown in the HUD and on the finish screen | done (`#hudDifficulty` chip, `#finalDifficulty` tile) |
+| Balance target | done (see the measured table below: a decent reference player wins EASY ~100 %, NORMAL ~46 %, HARD ~21 %) |
+| Best race time per difficulty | done (`Best on Normal 00:38.141` on the results screen, `NEW Best on …` when beaten) |
+
 ## Not built yet (deliberately)
 
-AI rivals · Optimum network integration · networking of any kind · latency
-measurement · blockchain / wallets / tokens · XP · levels · unlocks ·
-leaderboards · multiplayer · events. Later steps add config sections and
-modules rather than rewriting what exists.
+Multiple tracks · Optimum network integration ·
+networking of any kind · simulated latency or fake network behaviour ·
+blockchain / wallets / tokens · XP · levels · unlocks · leaderboards ·
+multiplayer · events. Later steps add config sections and modules rather than
+rewriting what exists.
 
 ---
 
@@ -150,7 +179,7 @@ OR.TRACKS.flexnode = {
   Catmull-Rom spline (uniform Catmull-Rom overshoots and leaves cusps on
   unevenly spaced points) and then re-sampled at an even 14 u spacing. Every
   sample carries its tangent, normal, curvature and radius, so the renderer,
-  the race logic and the future AI all read the same geometry.
+  the race logic and the AI all read the same geometry.
 * **Surfaces** — measured from the centreline: asphalt to 210 u, **kerb** to
   244 u (only painted where the track turns), **grass** to 306 u, then the
   run-off and the barrier rails at 346 u. A hard backstop keeps the car inside
@@ -162,10 +191,11 @@ OR.TRACKS.flexnode = {
 * **Scenery** — deterministically generated from a seed (96 items: pylons,
   crystals, trees, billboards and glowing node markers) and drawn **once** into
   an offscreen canvas, then blitted as a single image per frame. The road
-  itself stays vector so its edges stay crisp at any zoom.
+  itself stays vector on desktop; phone-sized views use a bounded road cache
+  to avoid re-tessellating long dashed paths each frame.
 * **Minimap** — drawn from the same geometry in the top-right card: the circuit
   outline, the gates (cyan until passed), the start line and a live player dot
-  with a heading triangle. It hides on phone-width screens where the lap card
+  with a heading triangle, plus three coloured rival dots. It hides on phone-width screens where the lap card
   carries the information.
 
 Adding a track is a matter of adding an entry to `OR.TRACKS` — the geometry,
@@ -177,7 +207,8 @@ surface bands, scenery, checkpoints and minimap all read from the data.
 
 `MENU → COUNTDOWN → RACING ⇄ PAUSED → FINISHED`
 
-* **Countdown** — 3-2-1-GO. The car gets empty controls until GO, so nothing you
+* **Countdown** — 3-2-1-GO. All four cars wait on a staggered grid behind the
+  start line. The player gets empty controls until GO, so nothing you
   hold down early moves it, and the clock stays at zero.
 * **Laps** — the race is **3 laps** round the **FLEXNODE CIRCUIT** (1022 m). Each
   lap has checkpoints (25 %, 50 %, 75 % of the way round) that must be passed
@@ -194,7 +225,80 @@ surface bands, scenery, checkpoints and minimap all read from the data.
   stop, and the results panel shows the total time, **best lap**, per-lap splits
   (best highlighted), max speed, peak boosted speed, boosts used and shards.
 * **Restart** — every bit of race state is rebuilt: laps, splits, clock, car,
-  boost meter, shards and particles.
+  boost meter, shards, particles, rival profiles/stalls, collisions and standings.
+
+---
+
+## Racing the rivals (Step 6)
+
+* **Drivers** — STANDARD GOSSIP 1, 2 and 3 use the same car physics as the player.
+  Their top-speed multipliers are 0.97, 1.02 and 1.05; steering/cornering skill
+  and small lane offsets differ too, and remain fixed throughout a race.
+* **Corners** — the AI aims ahead on the centreline and scans upcoming curvature
+  through the Step 5 helper API. A braking-distance envelope lowers its target
+  speed before sharp bends; there is no teleporting or rubber banding.
+* **Stalls** — a rival occasionally slows to about half its normal top speed
+  for 0.5–1 second, still steering and moving. The bolt above the car and in the
+  standings identifies a **gameplay stall**. This is not network behaviour,
+  latency measurement, or an Optimum integration. Reduced motion keeps the
+  indicator static instead of pulsing. Each rival has its own random schedule.
+* **Contact** — oriented car-sized boxes separate gently with a 4.5% impact
+  speed loss. A per-pair cooldown prevents sustained scraping from draining
+  speed to zero; a bounded solver handles exact overlaps and wall-side contact.
+* **Order** — the HUD ranks validated lap progress, not the raw 0–1 position on
+  the track. Skipped checkpoints cannot inflate the standings. Completed
+  drivers rank by finish time; physics-tick ties use stable grid order.
+* **Cool-down** — a rival that finishes before you stays on track at about
+  42% of its top speed, following the racing line. It is still solid to touch,
+  but it never parks across the road while you are still racing.
+* **Results** — the race ends when **you** take the flag. Final order freezes
+  then: finished drivers show recorded times, while unfinished rivals show
+  remaining metres and rank by checkpoint-valid progress. Their times are not
+  estimated. The finish screen explains this classification rule.
+* **Phone budget** — the main canvas is capped at 1× pixel density on narrow or
+  short views, while the DOM HUD stays native-resolution. The road is cached
+  once in a texture no larger than 3072 px (about 22 MB on this circuit), the
+  vignette is cached, effects remain capped, and phone HUD surfaces avoid
+  expensive backdrop blur. Desktop keeps vector road drawing and up to 2× DPR.
+
+---
+
+## Difficulty (Step 7)
+
+Pick **EASY**, **NORMAL** or **HARD** on the menu before you start; the choice is
+remembered and preselected next time. Each level is one entry in
+`CONFIG.difficulty.levels` and scales the same five numbers:
+
+| | rival top speed | corner skill | stall interval | stall duration | rubber band |
+| --- | --- | --- | --- | --- | --- |
+| EASY | ×0.94 | ×0.88 | ×0.85 (more often) | ×1.30 (longer) | 0.60 |
+| NORMAL | ×1.21 | ×1.14 | ×1.00 | ×1.00 | 0.45 |
+| HARD | ×1.26 | ×1.16 | ×1.35 (rarer) | ×0.65 (shorter) | 0.30 |
+
+The rubber band is deliberately light and symmetric-capped: a rival more than
+0.10 laps ahead eases off by at most 10 %, one more than 0.60 laps behind
+pushes by at most 14 %, and inside the dead zone nothing happens at all. The
+caps live in `CONFIG.rivals.rubberBand`; the per-level strength only scales how
+much of that cap is used. Nothing is applied to the player, and nothing is
+applied after the flag.
+
+Best race time is stored **per difficulty** (`localStorage`, try/catch, with an
+in-memory fallback), and the results screen shows `Best on Normal 00:38.141` or
+`NEW Best on Normal …` when you beat it.
+
+### Measured balance
+
+`node tools/balance.js 28` drives a fixed, deliberately conservative reference
+player (perfect line, no boost, no shard pickups) against each level:
+
+| level | wins | player avg | rival avg | median margin |
+| --- | --- | --- | --- | --- |
+| EASY | 28/28 (100 %) | 00:40.03 | 00:47.49 | −4.67 s |
+| NORMAL | 13/28 (46 %) | 00:40.26 | 00:41.78 | +0.07 s |
+| HARD | 6/28 (21 %) | 00:40.22 | 00:40.81 | +0.92 s |
+
+Because the model never boosts, a real player who uses the coded boost will do
+slightly better on every level.
 
 ---
 
@@ -261,9 +365,13 @@ js/config.js               every tunable number in the game
 js/utils.js                clamp / lerp / damp / seeded RNG / time formatting
 js/trackdata.js            the track as DATA: OR.TRACKS (control points, width, checkpoints)
 js/track.js                geometry engine: spline, samples, surfaces, lookups, scenery
-js/car.js                  player car: physics, grip/drift, surfaces, boost meter
+js/car.js                  shared car physics, grip/drift, surfaces, boost meter
 js/shards.js               CODED BOOST shard pickups: layout, collection
-js/race.js                 laps, checkpoint order, splits and best lap
+js/race.js                 independent lap/checkpoint trackers; player singleton retained
+js/difficulty.js           EASY/NORMAL/HARD levels, saved selection, best times
+js/rivals.js               three AI drivers, corner planning, grid, gameplay stalls
+js/collisions.js           bounded oriented-box contact and impact cooldowns
+js/standings.js            validated live order and frozen finish classification
 js/input.js                keyboard + touch pad -> one flat control state
 js/audio.js                engine sound synthesised with Web Audio (no files)
 js/renderer.js             all canvas drawing, camera, marks, particles
@@ -271,12 +379,16 @@ js/hud.js                  DOM HUD updates (cached, no layout thrash)
 js/game.js                 state machine + fixed-timestep loop
 js/main.js                 bootstrap, wires DOM screens to the state machine
 
-tests/smoke.js             headless unit suite (jsdom) — npm test
+tests/smoke.js             211 jsdom gameplay/UI regression checks
+tests/rivals.js            49 deterministic AI/contact/race checks
+tests/difficulty.js        43 difficulty, persistence, rubber-band and balance checks
 tools/_trackcheck.js       dev tool: prints track metrics and an ASCII map (design aid)
 tools/serve.js             zero-dependency dev server
 tools/build-standalone.js  bundles everything into optimum-race.html
 tools/visual-check.js      headless-Chrome pixel + performance check
 tools/race-check.js        headless-Chrome: autopilots a full 3-lap race
+tools/rivals-check.js      28 real-Chrome rival, difficulty, standings and mobile checks
+tools/balance.js           win-rate workbench for tuning the difficulty levels
 tools/screenshots.js       screenshots of every screen
 tools/ascii-preview.js     prints a PNG as ASCII (brightness + hue map)
 optimum-race.html          GENERATED single-file build (npm run build)
@@ -284,7 +396,7 @@ optimum-race.html          GENERATED single-file build (npm run build)
 
 ### Game states
 
-`menu → countdown → racing → finishing → finished → (race again)`
+`menu → countdown → racing ⇄ paused → finished → (race again)`
 
 The timer starts at **GO**, runs while `racing`, and freezes the instant the car
 crosses the finish line.
@@ -296,27 +408,27 @@ crosses the finish line.
 * **More tracks (step 8)** — add an entry to `OR.TRACKS` in `js/trackdata.js`
   and point `OR.activeTrack` at it. The geometry, surface bands, checkpoints,
   scenery, minimap and lap scoring all read from the data; nothing else changes.
-* **AI rivals (step 6)** — `Car` is a plain constructor, so rivals are more
-  instances driven from `Game.step()`, and `Renderer._drawCar()` already draws
-  an entity rather than a global. The helpers the AI needs are ready:
-  `Track.getNearestTrackPoint(x, y)` (index, position, tangent, normal,
-  distance, signed offset, lap fraction), `Track.isOnRoad(x, y)`,
-  `Track.pointAhead(x, y, distance)` for looking through corners, and
-  `Track.surfaceAt(x, y)` for the surface the car is on. Pass the previous
-  index as the optional third argument (`Track.nearest(x, y, hint)`) and the
-  lookup gets cheaper; without a hint it does a widening ring search and is
-  still exact.
-* **Difficulty, profile, XP, unlocks, events (steps 7–13)** — each gets a config
-  block and a module; `js/config.js` and the `js/main.js` screen wiring are the
-  seams.
+* **AI rivals (step 6, implemented)** — `Game.entities` contains four `Car`
+  instances. `Race.create(car)` supplies independent trackers. The AI uses
+  `Track.getNearestTrackPoint`, `Track.pointAhead`, `Track.pointAt` (including
+  interpolated radius/index) and `Track.isOnRoad`, without reading private
+  samples or control points. Tuning is in `CONFIG.rivals` / `CONFIG.collisions`.
+* **Difficulty (step 7, implemented)** — levels live in `CONFIG.difficulty`,
+  are applied in `Rivals.reset()` via `Rivals.difficulty`, and are owned by
+  `js/difficulty.js` (selection, persistence, best times). Retune with
+  `node tools/balance.js`.
+* **Profile, XP, unlocks, events (steps 8–13)** — each gets a config block and
+  a module; `js/config.js` and the `js/main.js` screen wiring are the seams.
 
 ---
 
 ## Testing
 
 ```bash
-npm test          # 194 headless checks, ~1 s
-npm run visual    # real-browser pixel + performance checks (needs Chrome)
+npm test          # 317 checks: gameplay/UI, rival races, difficulty + balance
+npm run visual    # earlier-step real-browser pixel/performance regressions
+npm run rivals    # Steps 6–7 pixels, races, difficulty, phone emulation (needs Chrome)
+npm run balance   # tune the difficulty levels against the reference player
 npm run screenshots
 ```
 
@@ -326,7 +438,7 @@ coasting, steering (including "no steering while stationary" and steering
 tighter at low speed), grip and drift, every surface, the soft bounce on both
 barriers, the coded boost meter (charging rules per surface, shard pickups,
 the 25 % threshold, drain, 3 s cooldown, HUD states, reduced motion), the race
-timer, three laps of checkpoints and splits, the finish line, the payout
+timer, three laps of checkpoints and splits, the finish line, the results
 screen, RACE AGAIN, the pause menu (Escape, P, the button, Resume, Restart,
 Quit), the touch pad (including a full autopilot run driven only through the
 on-screen buttons), a 420-frame render soak, and a complete 3-lap race on the
@@ -354,3 +466,94 @@ gates, and a player dot that follows the car).
 
 The dev tooling (`jsdom`, `canvas`, `puppeteer`) is only used by the tests and
 tools — the game ships with zero dependencies.
+
+### Step 6 verification and manual checks
+
+`tests/rivals.js` drives **eight seeded four-car races**, including all three
+laps, ordered gates, stalls, collisions, cool-down laps and exact finish-time
+ordering. Rivals
+complete these races in roughly **42–56 seconds** (including traffic), with no
+wall hits in those normal-racing scenarios. Additional probes cover the grid's
+first crossing, independent split arrays, sharp-corner braking, stall duration
+and separation, sustained contact, four exactly overlapping cars, and contact
+at a barrier. The original handling probes isolate traffic impulses where
+necessary; touch racing and the complete race exercise real contact.
+
+`tests/smoke.js` adds integration checks for countdown locking, live position,
+full driver names, stall indicators, pause freezing, final classification,
+coast-out freezing, restart and quit cleanup. `tools/rivals-check.js` checks
+real canvas pixels (sprites, stall bolts, reduced motion, coloured minimap
+dots), drives a complete browser race and benchmarks a **390×844**, touch,
+2×-device-density phone viewport. The canvas itself uses the 1× mobile budget.
+Native-speed emulation runs at about **58–60 fps**; a separate 4× CPU stress run
+reports main-thread simulation/draw-submission cost and the software-rendered
+frame rate. These are emulation measurements, **not a physical-phone test**.
+
+Manual test:
+
+1. Run `npm start`, open the live preview, and press **START RACE**. Confirm the
+   four staggered cars wait behind the line and move only at GO.
+2. Drive with W/↑, A/D (or arrows), brake with S/↓ and use Space to boost. Let
+   rivals pass, then overtake; **POS** and the list should change together.
+3. Watch the coloured cars approach the hairpin and slow. Every few seconds a
+   rival briefly slows with a bolt; it must continue steering and recover.
+4. Bump a rival from the side or rear, including beside a barrier. Both cars
+   should separate and be able to drive away.
+5. Pause during a stall, wait, and resume. Cars and stall timers must freeze.
+   **RESTART** restores all four grid slots, fresh laps/stalls and POS 1/4.
+6. Complete three laps. Check your place and all four names in final standings,
+   recorded times for finishers, and remaining metres for unfinished rivals.
+7. Use `?touch=1` on a phone-sized viewport (also `?motion=off` to check the
+   static indicator). Check the pads and standings fit. **RACE AGAIN** and
+   **QUIT TO MENU** must not retain old rivals/results.
+8. Run `npm run build` and open `optimum-race.html` offline; the same rivals and
+   standings are bundled with no network or external assets.
+
+### Step 7 verification and manual checks
+
+`tests/difficulty.js` (43 checks) covers the config object, selection
+persistence across a simulated reload, blocked/corrupt localStorage, best times
+per difficulty, the level actually reaching the rivals (speed, skill, stall
+timing), rubber-band caps and gradual engagement, an AI-only pace check that
+the three levels really differ (46.9 s / 41.2 s / 40.5 s), and a small balance
+sample. `tools/rivals-check.js` does the browser half: the picker, a real
+reload, the HUD chip, the finish screen, the stored best, and a run with
+`localStorage` throwing.
+
+Manual test:
+
+1. `npm start`, open the preview, and pick **HARD** — then reload. HARD should
+   still be selected.
+2. Start a race: the HUD shows `HARD`, and the rivals pull away from a
+   no-boost lap. Restart on **EASY** and they brake earlier, stall longer and
+   are beatable.
+3. Finish a race: the results show the difficulty and `Best on …` (or
+   `NEW Best on …`). Beat it and the line updates; play a different level and
+   its own record is untouched.
+4. Block storage (or open the file in a private window) — the game still loads,
+   plays and shows the best time for the session.
+5. Watch a pack race on NORMAL: a rival more than a few seconds behind will
+   close up, and one far ahead will ease slightly — never more than the caps.
+
+Only Steps 1–7 are implemented; later steps remain untouched.
+
+### Files changed for Step 6
+
+- Added: `js/rivals.js`, `js/collisions.js`, `js/standings.js`, `tests/rivals.js`,
+  `tools/rivals-check.js`.
+- Updated gameplay: `js/config.js`, `js/car.js`, `js/track.js`, `js/race.js`,
+  `js/game.js`.
+- Updated rendering/UI: `js/renderer.js`, `js/hud.js`, `js/main.js`,
+  `index.html`, `css/style.css`.
+- Updated tooling/docs: `tests/smoke.js`, `tools/build-standalone.js`,
+  `package.json`, `package-lock.json`, `README.md`.
+- Regenerated deliverable: `optimum-race.html`.
+
+### Files changed for Step 7
+
+- Added: `js/difficulty.js`, `tests/difficulty.js`, `tools/balance.js`.
+- Updated: `js/config.js` (levels + rubber-band caps), `js/rivals.js`,
+  `js/game.js`, `js/hud.js`, `js/main.js`, `index.html`, `css/style.css`,
+  `tests/smoke.js` (section 17), `tests/rivals.js`, `tools/rivals-check.js`,
+  `tools/build-standalone.js`, `package.json`, `package-lock.json`, `README.md`.
+- Regenerated: `optimum-race.html` (now 191.7 KB).

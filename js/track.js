@@ -137,7 +137,7 @@
     }
     Track.points = points;
 
-    /* curvature per point (unsigned; used for kerbs and for the AI later) */
+    /* curvature per point (unsigned; used for kerbs and the AI) */
     for (let i = 0; i < n; i++) {
       const a = raw[(i - 1 + n) % n], b = raw[i], c = raw[(i + 1) % n];
       const ab = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -275,7 +275,7 @@
     };
   };
 
-  /** Public helper for the AI in a later step. */
+  /** Public nearest-point helper used by the AI. */
   Track.getNearestTrackPoint = function (x, y, hint) {
     const info = Track.nearest(x, y, hint);
     return {
@@ -328,7 +328,9 @@
     let tx = a.tx + (b.tx - a.tx) * t, ty = a.ty + (b.ty - a.ty) * t;
     const len = Math.hypot(tx, ty) || 1;
     tx /= len; ty /= len;
-    return { x: x, y: y, tx: tx, ty: ty, nx: -ty, ny: tx, s: Track.length * f };
+    const curvature = Utils.lerp(a.curvature, b.curvature, t);
+    return { x: x, y: y, tx: tx, ty: ty, nx: -ty, ny: tx, s: Track.length * f,
+      index: i0, radius: curvature > 1e-6 ? 1 / curvature : Infinity };
   };
 
   /**

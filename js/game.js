@@ -9,13 +9,15 @@
  *
  * Extension points for later steps are marked with "STEP n" comments:
  *   STEP 5 — track data   : checkpoints come from Track.checkpoints.
- *   STEP 6 — AI rivals    : add rivals to `Game.entities` and update them here.
+ * Step 6: Game.entities contains the player and three independently scored rivals.
+ * Step 7: startRace() captures the selected difficulty for the whole race, and
+ * the flag records the best time for that difficulty.
  *   STEP 12 — events      : onRaceStart / onUpdate / onFinish hooks.
  * ========================================================================== */
 (function () {
   'use strict';
 
-  const { CONFIG, Track, Car, Input, Renderer, HUD, Audio, Race } = OR;
+  const { CONFIG, Track, Car, Input, Renderer, HUD, Audio, Race, Rivals, Collisions, Standings } = OR;
 
   /** Control presets */
   const IDLE = { left: false, right: false, throttle: false, brake: false };
@@ -37,6 +39,11 @@
     STATES: STATES,
     state: STATES.MENU,
     car: null,
+    rivals: [],
+    entities: [],
+    difficulty: null,   // the level captured when the race started (Step 7)
+    difficultyId: 'normal',
+    gridView: null,
     controls: { left: false, right: false, throttle: false, brake: false },
 
     clock: 0,          // seconds since page load, drives cosmetic animation
@@ -57,6 +64,8 @@
 
     init(canvas) {
       Game.car = new Car();
+      Game.car.race = Race;
+      Game.entities = [Game.car];
       Game.menuS = Track.length * 0.62;
       Renderer.init(canvas);
       HUD.init();
@@ -89,10 +98,20 @@
     /* ---- race flow ------------------------------------------------------- */
 
     /** Start (or restart) a race. Every bit of race state is reset here. */
-    startRace() {
+    startRace(seed, difficultyId) {
+      Game.difficultyId = difficultyId || OR.Difficulty.currentId();
+      Game.difficulty = OR.Difficulty.get(Game.difficultyId);
       Game.car.reset();
       OR.Shards.reset();          // Step 3: shards respawn on Race Again
-      Race.reset();               // Step 4: laps, checkpoints, splits
+      Game.rivals = Rivals.reset(Game.car, seed, Game.difficulty);
+      Game.entities = [Game.car].concat(Game.rivals);
+      Race.reset(Game.car);       // all grid slots begin before the line
+      Collisions.reset();
+      Standings.reset(Game.entities);
+      Game.gridView = {
+        x: Game.entities.reduce((sum, car) => sum + car.x, 0) / Game.entities.length,
+        y: Game.entities.reduce((sum, car) => sum + car.y, 0) / Game.entities.length
+      };
       Renderer.particles.length = 0;
       Renderer.marks.length = 0;
       Game.raceTimeMs = 0;
@@ -105,7 +124,7 @@
       Game.prevY = Game.car.y;
       Input.reset();
       Game._setState(STATES.COUNTDOWN);
-      Renderer.updateCamera(Game.car, 0, true);
+      Renderer.updateCamera(Game.car, 0, true, Game.gridView);
       Game._emit('raceStart');
     },
 
@@ -118,6 +137,12 @@
       Game.car.reset();
       OR.Shards.reset();
       Race.reset();
+      Rivals.clear();
+      Game.gridView = null;
+      Renderer.gridBlend = 0;
+      Game.entities = [Game.car];
+      Collisions.reset();
+      Standings.reset(Game.entities);
       Renderer.particles.length = 0;
       Renderer.marks.length = 0;
       Game.coasting = false;
@@ -178,8 +203,20 @@
         /* Step 3: CODED BOOST stats */
         boostsUsed: Game.car.boost.used,
         peakBoostKmh: Game.car.boost.peakKmh,
-        shardsCollected: OR.Shards.collected
+        shardsCollected: OR.Shards.collected,
+        /* Step 6: classify once, at the player's flag; never invent AI times. */
+        standings: Standings.finalize(),
+        place: Standings.playerPlace,
+        fieldSize: Game.entities.length,
+        /* Step 7: difficulty + the best time for that difficulty. */
+        difficultyId: Game.difficultyId,
+        difficulty: Game.difficulty.label
       };
+      const best = OR.Difficulty.recordBest(Game.difficultyId, Game.finalTimeMs);
+      Game.results.bestMs = best.bestMs;
+      Game.results.previousBestMs = best.previousMs;
+      Game.results.isNewBest = best.isNewBest;
+      Game.results.bestText = OR.Difficulty.bestText(Game.difficultyId);
       Game._emit('finish', Game.results);
     },
 
@@ -196,7 +233,9 @@
      */
     _scoreLap() {
       const car = Game.car;
+      Rivals.score(Game.raceTimeMs);
       const outcome = Race.update(car, Game.raceTimeMs);
+      Standings.update();
       if (!outcome) return;
 
       if (outcome === 'finish') {
@@ -225,7 +264,7 @@
       Game._last = now;
       const dt = Math.min(raw, CONFIG.race.maxStep);
 
-      Game.clock += dt;
+      if (Game.state !== STATES.PAUSED) Game.clock += dt;
       Game._acc += dt;
       const step = CONFIG.race.fixedStep;
       let guard = 0;
@@ -281,9 +320,12 @@
             Game.raceTimeMs += dt * 1000;
             if (Input.consumeBoost()) car.requestBoost(true);
             car.update(dt, Game.controls);
+            Rivals.update(dt);
+            Collisions.resolve(Game.entities, dt);
             Game._scoreLap();
           } else {
             car.update(dt, COAST);
+            Rivals.coast(dt);
             Game.finishTimer -= dt;
             if (Game.finishTimer <= 0) Game._showResults();
           }
@@ -296,8 +338,12 @@
 
         case 'finished':
           car.update(dt, COAST);
+          Rivals.coast(dt);
           break;
       }
+
+      // Pause freezes rival stall indicators, pickups and visual effects too.
+      if (Game.state === STATES.PAUSED) { Audio.idle(); return; }
 
       // Step 3: shard pickups top up the CODED BOOST meter
       OR.Shards.update(car, dt, Game.state === STATES.RACING && !Game.coasting);
@@ -331,8 +377,9 @@
         const p = Track.pointAt(Game.menuS);
         const look = { x: p.x + p.tx * 260, y: p.y + p.ty * 260 };
         Renderer.updateCamera(look, dt, false);
-      } else {
-        Renderer.updateCamera(car, dt, false);
+      } else if (Game.state !== STATES.PAUSED) {
+        Renderer.updateCamera(car, dt, false,
+          Game.state === STATES.COUNTDOWN ? Game.gridView : null);
       }
       Renderer.draw(Game);
       if (Game.state !== 'menu') {

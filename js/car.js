@@ -1,5 +1,5 @@
 /* =============================================================================
- * car.js — the player's car.
+ * car.js — shared car physics (player and Step 6 rivals).
  *
  * Step 2 handling model:
  *   - the car has a HEADING (where it points) and a VELOCITY (where it goes);
@@ -45,6 +45,8 @@
     this.hitWall = false;
     this.braking = false;
     this.maxSpeed = 0;     // km/h, for the finish screen
+    this.topSpeedMultiplier = 1; // rivals set their fixed profile after reset
+    this.hitCar = false;
     /* ---- CODED BOOST (Step 3): a 0-100 meter ------------------------------ */
     this.meter = B.startMeter;   // charge, 0 .. B.meterMax
     this.boost = {
@@ -136,7 +138,9 @@
     }
 
     /* ---- steering -------------------------------------------------------- */
-    this.steerRaw = (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
+    this.steerRaw = typeof controls.steer === 'number'
+      ? Utils.clamp(controls.steer, -1, 1)
+      : (controls.right ? 1 : 0) - (controls.left ? 1 : 0);
     this.steerInput = Utils.damp(this.steerInput, this.steerRaw, C.steerResponse, dt);
 
     const speedRatio = Utils.clamp(this.speed / C.maxSpeed, 0, 1);
@@ -160,7 +164,7 @@
 
     /* ---- longitudinal ---------------------------------------------------- */
     const boosting = boost.active;
-    let maxSpeed = C.maxSpeed * (boosting ? B.speedMultiplier : 1);
+    let maxSpeed = C.maxSpeed * this.topSpeedMultiplier * (boosting ? B.speedMultiplier : 1);
     if (surf) maxSpeed *= surf.speedMul;
 
     this.braking = !!controls.brake;
@@ -232,11 +236,7 @@
     }
 
     /* ---- derived values -------------------------------------------------- */
-    this.speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
-    this.vLong = this.vx * fx + this.vy * fy;
-    this.vLat = this.vx * rx + this.vy * ry;
-    this.slip = Math.atan2(this.vLat, Math.max(1, this.vLong));
-    this.drifting = Math.abs(this.vLat) > C.driftThreshold;
+    this.syncVelocity();
 
     /* ---- cosmetics ------------------------------------------------------- */
     const roll = this.steerInput * C.rollPerSteer +
@@ -245,6 +245,17 @@
 
     this.maxSpeed = Math.max(this.maxSpeed, this.speedKmh());
     if (boost.active) boost.peakKmh = Math.max(boost.peakKmh, this.speedKmh());
+  };
+
+  /** Keep derived motion coherent after an external car-to-car impulse. */
+  Car.prototype.syncVelocity = function () {
+    const fx = Math.sin(this.heading), fy = -Math.cos(this.heading);
+    const rx = Math.cos(this.heading), ry = Math.sin(this.heading);
+    this.speed = Math.hypot(this.vx, this.vy);
+    this.vLong = this.vx * fx + this.vy * fy;
+    this.vLat = this.vx * rx + this.vy * ry;
+    this.slip = Math.atan2(this.vLat, Math.max(1, this.vLong));
+    this.drifting = Math.abs(this.vLat) > C.driftThreshold;
   };
 
   Car.prototype.speedKmh = function () {

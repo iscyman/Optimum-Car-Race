@@ -754,3 +754,151 @@ body.is-paused #hud { opacity: 0.35; }
 @media (max-width: 720px) {
   .card-map { display: none; }   /* the lap card carries the info on phones */
 }
+
+/* ============================ RACE ORDER (Step 6) ========================= */
+
+.hud-race-order {
+  position: absolute;
+  top: calc(116px + var(--safe-t));
+  left: 14px;
+  width: 228px;
+  padding: 10px 12px;
+}
+
+.position-readout { display: flex; align-items: baseline; gap: 4px; margin-bottom: 6px; }
+.position-readout .card-label { margin-right: 8px; }
+#positionValue { font-family: var(--mono); font-size: 28px; font-weight: 800; color: var(--cyan); }
+.position-readout .unit { color: var(--muted); font-size: 14px; font-weight: 700; }
+.standings-list { list-style: none; margin: 0; padding: 0; }
+.standing-row {
+  display: grid;
+  grid-template-columns: 14px 7px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.standing-rank { font-family: var(--mono); font-weight: 800; }
+.driver-dot { width: 6px; height: 6px; background: var(--driver-color); border-radius: 50%; }
+.standing-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+.standing-row.is-player { color: var(--text); }
+.standing-row.is-player .standing-rank { color: var(--cyan); }
+.standing-status { min-width: 16px; text-align: right; color: var(--cyan); font-size: 9px; }
+.standing-row.is-stalled .standing-status { color: #ffb347; font-size: 14px; }
+.rival-hint { margin: 16px 0 0; font-size: 11px; line-height: 1.7; color: var(--muted); }
+.finish-standings { margin: 0 0 22px; text-align: left; }
+.finish-standings h3 { color: var(--muted); font-size: 10px; letter-spacing: 0.18em; }
+.finish-standings .standing-row { font-size: 11px; min-height: 35px; padding: 3px 8px; border-bottom: 1px solid var(--line); }
+.finish-standings .is-player { background: rgba(34, 225, 255, 0.08); border-radius: 7px; }
+.standing-time { font-family: var(--mono); font-size: 10px; }
+.classification-note { font-size: 10px; line-height: 1.5; color: var(--muted); margin-top: 10px; }
+
+@media (max-width: 720px) {
+  .hud-race-order { left: 10px; top: calc(110px + var(--safe-t)); width: 186px; padding: 7px 9px; }
+  #positionValue { font-size: 24px; }
+  .standing-row { font-size: 9px; gap: 4px; min-height: 22px; }
+}
+
+@media (max-height: 480px) {
+  .hud-race-order { top: calc(108px + var(--safe-t)); width: 186px; padding: 6px 9px; }
+  .standing-row { min-height: 20px; }
+  .finish-standings { margin-bottom: 14px; }
+}
+
+/* Blurring a moving canvas behind many HUD surfaces is expensive on phones.
+   Keep the same palette with opaque glass; desktop retains backdrop blur. */
+@media (max-width: 720px) {
+  .card, .boost-widget, .shard-chip, .icon-btn, .tbtn {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .card, .boost-widget, .shard-chip, .hud-bottom .icon-btn {
+    background: rgba(9, 12, 22, 0.9);
+  }
+}
+
+.card-sub-row > span { white-space: nowrap; }
+@media (max-width: 460px) {
+  .card-sub-row { flex-direction: column; align-items: flex-start; gap: 1px; }
+  .lap-best { font-size: 9px; letter-spacing: 0; }
+  .lap-best-label { display: none; }
+  .lap-best::before { content: "B "; font-weight: 800; }
+  .hud-race-order { top: calc(130px + var(--safe-t)); }
+}
+
+@media (max-height: 480px) {
+  .card, .boost-widget, .shard-chip, .icon-btn, .tbtn {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .card-speed { min-width: 72px; }
+  .card-speed .unit { display: none; }
+  .card-timer { min-width: 100px; }
+  .timer-readout { font-size: 16px; }
+  .touch-controls { padding-left: 10px; padding-right: 10px; }
+  .touch-group { gap: 8px; }
+  .tbtn { width: 64px; height: 64px; border-radius: 18px; }
+}
+
+/* ============================ DIFFICULTY (Step 7) ========================= */
+
+.difficulty { margin: 18px 0 6px; text-align: center; }
+.difficulty .card-label { margin-bottom: 8px; }
+.difficulty-picker {
+  display: inline-flex;
+  gap: 6px;
+  padding: 5px;
+  background: rgba(9, 12, 22, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+}
+.diff-btn {
+  min-width: 92px;
+  padding: 9px 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.diff-btn:hover { color: var(--text); }
+.diff-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.diff-btn.is-selected {
+  color: #05121a;
+  background: linear-gradient(135deg, var(--cyan), #7fe6ff);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+.difficulty-hint { margin: 10px 0 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
+
+.difficulty-chip {
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+  background: rgba(34, 225, 255, 0.10);
+  border: 1px solid rgba(34, 225, 255, 0.35);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.race-order-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+
+.best-time { margin: 16px 0 6px; text-align: center; font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
+.best-time.is-new { color: var(--cyan); font-weight: 800; }
+
+@media (max-width: 720px) {
+  .difficulty-picker { width: 100%; }
+  .diff-btn { flex: 1; min-width: 0; padding: 9px 8px; font-size: 10px; }
+  .difficulty-hint { font-size: 10px; }
+}
