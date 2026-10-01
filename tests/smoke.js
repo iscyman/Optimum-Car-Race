@@ -12,7 +12,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'events', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
   .map(f => path.join(ROOT, 'js', f + '.js'));
 
 let pass = 0;
@@ -2238,6 +2238,234 @@ section('21. Step 11 — the garage, locked cars/tracks and the unlock toast');
         doc.querySelector('#carList .car-card[data-car="validator"]').dataset.locked === 'true' &&
         doc.querySelector('#trackList .track-card[data-track="mesh-highway"]').dataset.locked === 'true';
     })(), 'back to the starter');
+}
+
+/* ============ 22. Step 12 — events end to end (real races) =============== */
+section('22. Step 12 — the four events, complete and failed, XP paid once');
+{
+  const Cars = OR.Cars;
+  const Events = OR.Events;
+  const Save = OR.Save;
+  const Screen = OR.Screens;
+
+  /* A clean slate: no completions, no event running. */
+  Save.reset();
+  Cars.restore();
+  Cars.apply(Cars.activeId());
+  Events.stop();
+  OR.TrackSelect.select('flexnode');
+  Events.refresh();
+
+  /** Drive one event race to its flag, with a tweak applied just before it. */
+  function runEvent(id, tweak) {
+    Events.start(id);
+    advance(CONFIG.race.countdownSeconds + 0.05);
+    if (tweak) tweak();
+    Race.lap = Race.laps;
+    Race.lapBase = 0;
+    Race.progress = 0.96;
+    Race.lastFraction = 0.96;
+    Race.nextCheckpoint = Track.checkpoints.length;
+    Race.lapTimes.length = 0;
+    for (let i = 0; i < Race.laps; i++) Race.lapTimes.push(14000);
+    Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+    if (!Game.raceTimeMs) Game.raceTimeMs = 20000;
+    Game._countLapCleanliness();
+    Game._finishRace();
+    Game._emit('finish', Game.results);
+    return Game.results;
+  }
+
+  check('the EVENTS button opens the challenge screen with four cards',
+    (function () {
+      doc.getElementById('eventsBtn').click();
+      return Screen.view === 'events' &&
+        !doc.getElementById('menuEvents').classList.contains('hidden') &&
+        doc.querySelectorAll('#eventList .event-card').length === 4;
+    })(), doc.querySelectorAll('#eventList .event-card').length + ' events');
+
+  check('each card shows the objective, the reward and AVAILABLE',
+    (function () {
+      const card = doc.querySelector('#eventList .event-card[data-event="block-rush"]');
+      return /BEAT 0:18\.0 OVER 1 LAP/.test(card.querySelector('.event-objective').textContent) &&
+        /\+250 XP/.test(card.querySelector('.event-reward').textContent) &&
+        card.querySelector('.event-badge').textContent === 'AVAILABLE' &&
+        card.dataset.completed === 'false';
+    })(), doc.querySelector('#eventList .event-card[data-event="block-rush"] .event-objective').textContent);
+
+  /* ---- BLOCK RUSH: a one-lap time attack ------------------------------- */
+  const blockWin = runEvent('block-rush', function () {
+    Game.raceTimeMs = 16500;                       // under the 18 s target
+  });
+
+  check('the event race really is one lap, and the objective tracks live',
+    (function () {
+      Events.start('block-rush');
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      Game.raceTimeMs = 5000;
+      Events.onUpdate(1 / 120);          // what Game.step does every tick
+      const card = doc.getElementById('eventCard');
+      const live = Race.laps === 1 && card.dataset.event === 'block-rush' &&
+        !card.classList.contains('hidden') &&
+        doc.getElementById('eventObjective').textContent === 'TIME 0:05.0 / 0:18.0' &&
+        card.dataset.target === '18' && card.dataset.value === '5' &&
+        card.dataset.met === 'true';
+      Events.stop();
+      return live && card.classList.contains('hidden');
+    })(), 'one lap, HUD shows the clock');
+
+  check('beating BLOCK RUSH completes it and pays the bonus once',
+    blockWin.event.met === true && blockWin.event.firstCompletion === true &&
+    blockWin.event.bonusXp === 250 && Save.eventCompleted('block-rush') === true &&
+    blockWin.xp.lines.some(l => l.id === 'event' && l.xp === 250),
+    'XP ' + blockWin.xp.earned + ' (incl. +250 event)');
+
+  check('the results banner says EVENT COMPLETE',
+    (function () {
+      const box = doc.getElementById('finalEvent');
+      return !box.classList.contains('hidden') &&
+        box.dataset.event === 'block-rush' && box.dataset.met === 'true' &&
+        doc.getElementById('finalEventBadge').textContent === 'EVENT COMPLETE' &&
+        /first completion/.test(doc.getElementById('finalEventSub').textContent);
+    })(), doc.getElementById('finalEventSub').textContent);
+
+  const xpAfterFirst = Save.xp();
+  const blockReplay = runEvent('block-rush', function () { Game.raceTimeMs = 17000; });
+
+  check('beating it again completes it but pays no second bonus',
+    blockReplay.event.met === true && blockReplay.event.replay === true &&
+    blockReplay.event.firstCompletion === false && blockReplay.event.bonusXp === 0 &&
+    !blockReplay.xp.lines.some(l => l.id === 'event') &&
+    /Already completed/.test(doc.getElementById('finalEventSub').textContent),
+    'first run banked ' + xpAfterFirst + ' XP');
+
+  const blockFail = runEvent('block-rush', function () { Game.raceTimeMs = 24000; });
+  check('missing the time fails the objective with no bonus',
+    blockFail.event.met === false && blockFail.event.firstCompletion === false &&
+    blockFail.event.bonusXp === 0 &&
+    doc.getElementById('finalEventBadge').textContent === 'EVENT FAILED' &&
+    !blockFail.xp.lines.some(l => l.id === 'event'),
+    'ran ' + (blockFail.event.results.timeMs / 1000) + ' s vs 18 s target');
+
+  /* ---- STEADY STREAM: no barrier touches ------------------------------- */
+  const streamWin = runEvent('steady-stream', function () {
+    Game.car.wallHits = 0;
+    Game.raceTimeMs = 30000;
+  });
+  check('STEADY STREAM completes after a race with no wall hits',
+    streamWin.event.met === true && streamWin.event.firstCompletion === true &&
+    Save.eventCompleted('steady-stream') === true &&
+    streamWin.event.results.wallHits === 0,
+    'wall hits ' + streamWin.event.results.wallHits);
+
+  const streamFail = runEvent('steady-stream', function () {
+    Game.car.wallHits = 3;
+    Game.raceTimeMs = 30000;
+  });
+  check('one barrier touch fails STEADY STREAM',
+    streamFail.event.met === false && streamFail.event.results.wallHits === 3 &&
+    streamFail.event.bonusXp === 0);
+
+  /* ---- RIVAL GAUNTLET: win on HARD ------------------------------------- */
+  const gauntletWin = runEvent('rival-gauntlet', function () {
+    OR.Standings.playerPlace = 1;
+    Game.raceTimeMs = 45000;
+  });
+  check('RIVAL GAUNTLET forces HARD and completes on a win',
+    gauntletWin.difficultyId === 'hard' && gauntletWin.event.met === true &&
+    gauntletWin.event.firstCompletion === true &&
+    gauntletWin.xp.multiplier === 1.3 && Save.eventCompleted('rival-gauntlet') === true,
+    'difficulty ' + gauntletWin.difficulty + ', XP ' + gauntletWin.xp.earned);
+
+  check('the player\'s own difficulty choice is untouched afterwards',
+    (function () {
+      Events.stop();
+      OR.Difficulty.load();
+      return OR.Difficulty.currentId() === 'normal';
+    })(), 'still ' + OR.Difficulty.currentId());
+
+  const realFinalize = OR.Standings.finalize;
+  const gauntletFail = runEvent('rival-gauntlet', function () {
+    /* Simulate the player crossing the line third: the real classification
+       runs, then the player's place is forced (the headless race is always
+       won by the stationary-grid player otherwise). */
+    OR.Standings.finalize = function () {
+      const rows = realFinalize.call(OR.Standings);
+      OR.Standings.playerPlace = 3;
+      return rows;
+    };
+    Game.raceTimeMs = 45000;
+  });
+  OR.Standings.finalize = realFinalize;
+  check('third place fails RIVAL GAUNTLET',
+    gauntletFail.event.met === false && gauntletFail.event.bonusXp === 0 &&
+    gauntletFail.event.results.place === 3);
+
+  /* ---- SHARD HUNTER: five pickups -------------------------------------- */
+  const hunterFail = runEvent('shard-hunter', function () {
+    OR.Shards.collected = 4;
+    Game.raceTimeMs = 26000;
+  });
+  check('four shards fails SHARD HUNTER',
+    hunterFail.event.met === false && hunterFail.event.results.shardsCollected === 4 &&
+    /COLLECT 5 SHARDS/.test(hunterFail.event.objective));
+
+  const hunterWin = runEvent('shard-hunter', function () {
+    OR.Shards.collected = 5;
+    Game.raceTimeMs = 26000;
+  });
+  check('five shards completes SHARD HUNTER',
+    hunterWin.event.met === true && hunterWin.event.firstCompletion === true &&
+    Save.eventCompleted('shard-hunter') === true &&
+    hunterWin.event.results.shardsCollected === 5);
+
+  check('the challenge screen shows all four as COMPLETED',
+    (function () {
+      Screen.refreshEvents();
+      const cards = Array.from(doc.querySelectorAll('#eventList .event-card'));
+      return cards.length === 4 &&
+        cards.every(card => card.dataset.completed === 'true' &&
+          card.querySelector('.event-badge').textContent === 'COMPLETED') &&
+        Save.completedEvents().join(',') === 'block-rush,steady-stream,rival-gauntlet,shard-hunter';
+    })(), Save.completedEvents().join(','));
+
+  /* ---- RACE AGAIN restarts the event ---------------------------------- */
+  check('RACE AGAIN after an event starts that same event again',
+    (function () {
+      Game._emit('finish', hunterWin);
+      doc.getElementById('againBtn').click();
+      const restarted = Events.activeId() === 'shard-hunter' &&
+        Game.state === 'countdown' && OR.CONFIG.boost.shards.count === 16;
+      Events.stop();
+      return restarted;
+    })(), 'event ' + (Events.activeId() || 'none'));
+
+  /* ---- a normal race is never touched by any of this ------------------- */
+  check('a normal race after an event runs on the shipped config',
+    (function () {
+      Events.stop();
+      OR.Shards.reset();
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      const clean = Race.laps === 3 && OR.CONFIG.boost.shards.count === 14 &&
+        Race.lapsOverride === null &&
+        doc.getElementById('eventCard').classList.contains('hidden');
+      Race.lap = Race.laps;
+      Race.lapBase = 0;
+      Race.progress = 0.96;
+      Race.lastFraction = 0.96;
+      Race.nextCheckpoint = Track.checkpoints.length;
+      Race.lapTimes.length = 0;
+      for (let i = 0; i < Race.laps; i++) Race.lapTimes.push(13000);
+      Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+      Game.raceTimeMs = 40000;
+      Game._countLapCleanliness();
+      Game._finishRace();
+      Game._emit('finish', Game.results);
+      return clean && Game.results.event === null &&
+        doc.getElementById('finalEvent').classList.contains('hidden') &&
+        !Game.results.xp.lines.some(l => l.id === 'event');
+    })(), '3 laps, 14 shards, no event');
 }
 
 /* =========================== summary ====================================== */

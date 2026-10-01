@@ -137,17 +137,32 @@
       ];
 
       const base = lines.reduce(function (sum, line) { return sum + line.xp; }, 0);
-      const total = Math.round(base * multiplier);
+      const scaled = Math.round(base * multiplier);
       lines.push({
         id: 'difficulty',
         label: XP.difficultyLabel(difficultyId) + ' × ' + multiplier.toFixed(2),
-        xp: total - base
+        xp: scaled - base
       });
+
+      /* Step 12: extras are flat bonuses that ride on top of the scaled race
+         award (an event completion). They are NOT multiplied by difficulty,
+         and each one is its own line, so the rows still add up exactly. */
+      const extras = (Array.isArray(r.extras) ? r.extras : [])
+        .filter(function (extra) { return extra && toInt(extra.xp) > 0; })
+        .map(function (extra) {
+          return { id: String(extra.id || 'bonus'), label: String(extra.label || 'Bonus'), xp: toInt(extra.xp) };
+        });
+      const extraXp = extras.reduce(function (sum, extra) { return sum + extra.xp; }, 0);
+      extras.forEach(function (extra) { lines.push(extra); });
+      const total = scaled + extraXp;
 
       return {
         lines: lines,
         base: base,
         multiplier: multiplier,
+        scaled: scaled,
+        extras: extras,
+        extraXp: extraXp,
         difficultyId: difficultyId,
         total: total,
         place: place,

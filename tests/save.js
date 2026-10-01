@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars',
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'events',
   'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards'];
 
 let passed = 0, failed = 0;
@@ -69,7 +69,7 @@ section('one versioned save object');
   const key = OR.CONFIG.profile.keys.save;
 
   check('the save is versioned and lives under one key',
-    OR.Save.VERSION === 3 && OR.Save.load().version === 3 &&
+    OR.Save.VERSION >= 4 && OR.Save.load().version === OR.Save.VERSION &&
     typeof storage.data[key] === 'string',
     key + ' (version ' + OR.Save.VERSION + ')');
 
@@ -463,7 +463,7 @@ section('migrations and corrupt data');
   check('a save from a future version is ignored, not misinterpreted',
     boot(future).Save.profile().name === 'Racer');
 
-  check('a version 1 save upgrades to version 3 without losing anything',
+  check('a version 1 save upgrades to the current version without losing anything',
     (function () {
       const v1 = fakeStorage();
       v1.data[OR.CONFIG.profile.keys.save] = JSON.stringify({
@@ -475,7 +475,8 @@ section('migrations and corrupt data');
       });
       const game = boot(v1);
       const upgraded = JSON.parse(v1.data[OR.CONFIG.profile.keys.save]);
-      return game.Save.load().version === 3 && upgraded.version === 3 &&
+      return game.Save.load().version === OR.Save.VERSION &&
+        upgraded.version === OR.Save.VERSION &&
         game.Save.profile().name === 'Nine' &&
         game.Save.stats().races === 7 && game.Save.stats().wins === 3 &&
         game.Bests.bestTime('flexnode', 'normal') === 41000 &&

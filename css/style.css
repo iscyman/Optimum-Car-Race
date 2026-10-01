@@ -1426,3 +1426,141 @@ body.is-paused #hud { opacity: 0.35; }
   .car-card, .stat-fill { transition: none; }
   .car-card.is-refused, .track-card.is-refused { animation: none; }
 }
+
+/* ============================================================================
+   STEP 12 — events: the challenge screen, the live objective and the banner
+   ========================================================================== */
+
+.event-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 10px;
+  width: 100%;
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  text-align: left;
+  background: linear-gradient(160deg, rgba(30, 34, 62, 0.92), rgba(18, 20, 38, 0.94));
+  border: 1px solid rgba(143, 123, 255, 0.28);
+  border-radius: 14px;
+}
+.event-card.is-completed {
+  border-color: rgba(120, 220, 170, 0.55);
+  background: linear-gradient(160deg, rgba(24, 46, 40, 0.92), rgba(16, 26, 26, 0.94));
+}
+
+.event-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.event-name {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.event-badge {
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #cfd4ff;
+  background: rgba(143, 123, 255, 0.18);
+  border: 1px solid rgba(143, 123, 255, 0.45);
+  border-radius: 999px;
+}
+.event-badge.is-done { color: #0f1a16; background: #7fd8a8; border-color: #7fd8a8; }
+
+.event-description { margin: 0; font-size: 11px; color: var(--muted, #8f95b8); }
+.event-objective {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffd9a0;
+}
+.event-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+.event-reward {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ff0c4;
+  font-variant-numeric: tabular-nums;
+}
+.event-hint { margin: 2px 0 8px; font-size: 10px; color: var(--muted, #8f95b8); }
+
+/* ---- the live objective card in the HUD ---------------------------------- */
+
+.card-event {
+  border-color: rgba(255, 190, 110, 0.45);
+  background: linear-gradient(180deg, rgba(38, 30, 16, 0.92), rgba(22, 18, 12, 0.94));
+}
+.event-hud-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.card-event .event-name { font-size: 11px; color: #ffd9a0; }
+.event-objective-value {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.event-bar {
+  position: relative;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.event-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ffb45c, #ff7b5c);
+  transition: width 0.2s ease;
+}
+.card-event.is-met { border-color: rgba(120, 220, 170, 0.6); }
+.card-event.is-met .event-fill { background: linear-gradient(90deg, #7fd8a8, #4fc98d); }
+
+/* ---- the results banner -------------------------------------------------- */
+
+.event-result {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(24, 46, 40, 0.9);
+  border: 1px solid rgba(120, 220, 170, 0.55);
+  text-align: left;
+}
+.event-result[data-met="false"] {
+  background: rgba(46, 26, 26, 0.9);
+  border-color: rgba(255, 130, 130, 0.5);
+}
+.event-result-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #7fd8a8;
+}
+.event-result[data-met="false"] .event-result-badge { color: #ff9b9b; }
+.event-result strong { font-size: 15px; letter-spacing: 0.08em; }
+.event-result-sub { font-size: 10px; color: var(--muted, #8f95b8); }
+
+@media (max-width: 720px) {
+  .event-list { grid-template-columns: minmax(0, 1fr); }
+  .event-objective-value { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-fill { transition: none; }
+}

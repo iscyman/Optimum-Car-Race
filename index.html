@@ -45,6 +45,15 @@
       </div>
     </div>
 
+    <div class="card card-event hidden" id="eventCard" data-event="">
+      <div class="event-hud-head">
+        <span class="card-label">EVENT</span>
+        <span class="event-name" id="eventName">BLOCK RUSH</span>
+      </div>
+      <div class="event-objective-value" id="eventObjective">TIME 0:00.0 / 0:18.0</div>
+      <div class="event-bar"><div class="event-fill" id="eventBar"></div></div>
+    </div>
+
     <div class="card hud-race-order">
       <div class="race-order-head">
         <div class="position-readout" aria-label="Race position">
@@ -119,6 +128,7 @@
       <button id="startBtn" class="btn btn-primary">START RACE</button>
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
       <button id="carsBtn" class="btn btn-ghost">CARS</button>
+      <button id="eventsBtn" class="btn btn-ghost">EVENTS</button>
       <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
       <p class="racing-as" id="racingAs"></p>
       <p class="unlock-hint" id="unlockHint"></p>
@@ -157,6 +167,16 @@
       <p id="trackSummary" class="track-summary"></p>
       <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
       <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 12: challenge events -->
+    <div class="panel panel-wide hidden" id="menuEvents">
+      <div class="badge">EVENTS</div>
+      <h2 class="title title-sm">CHALLENGES</h2>
+      <div id="eventList" class="event-list"></div>
+      <p class="event-hint">Each challenge runs on the circuit you have selected.
+        Beat it once to collect the XP — beating it again is for pride.</p>
+      <button id="eventsBackBtn" class="btn btn-ghost">BACK</button>
     </div>
 
     <!-- Step 11: car select, stat bars and level locks -->
@@ -304,6 +324,11 @@
           <span class="level-xp" id="finalLevelXp">0 / 283 XP</span>
         </div>
         <p class="xp-note" id="finalXpNote"></p>
+        <div id="finalEvent" class="event-result hidden" data-event="" data-met="">
+          <span class="event-result-badge" id="finalEventBadge">EVENT COMPLETE</span>
+          <strong id="finalEventName">BLOCK RUSH</strong>
+          <span class="event-result-sub" id="finalEventSub"></span>
+        </div>
       </section>
       <section class="finish-standings" aria-label="Final race standings">
         <h3>FINAL STANDINGS</h3>
@@ -328,6 +353,7 @@
 <script src="js/race.js"></script>
 <script src="js/save.js"></script>
 <script src="js/cars.js"></script>
+<script src="js/events.js"></script>
 <script src="js/difficulty.js"></script>
 <script src="js/bests.js"></script>
 <script src="js/rivals.js"></script>

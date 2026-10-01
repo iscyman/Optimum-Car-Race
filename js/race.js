@@ -22,6 +22,7 @@
 
   const Race = {
     laps: 0,                // set from the track in reset() (Step 8)
+    lapsOverride: null,     // Step 12: one-race lap count for events
     lap: 1,                 // 1-based, for the HUD
     nextCheckpoint: 0,      // index of the gate we are waiting for
     checkpointsPassed: 0,
@@ -36,7 +37,9 @@
     lastFraction: 0,        // raw 0..1 fraction, before unwrapping
 
     reset(car) {
-      this.laps = Track.laps || CONFIG.race.laps;
+      /* Step 12: an event can patch the lap count for its own race only
+         (BLOCK RUSH is a single lap); a normal race leaves this null. */
+      this.laps = Race.lapsOverride || Track.laps || CONFIG.race.laps;
       this.lap = 1;
       this.nextCheckpoint = 0;
       this.checkpointsPassed = 0;

@@ -10,6 +10,7 @@
  *     stats:     { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
  *     progress:  { xp: 0, level: 1 },        <- Step 10
  *     unlocks:   { cars: ['relay'], tracks: ['flexnode'] },   <- Step 11
+ *     events:    { completed: { 'block-rush': true } },       <- Step 12
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
  *     selection: { track: 'flexnode', difficulty: 'normal', car: 'relay' }
  *   }
@@ -32,7 +33,7 @@
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 3;
+  const VERSION = 4;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -141,6 +142,7 @@
       stats: { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
       progress: { xp: 0, level: 1 },
       unlocks: starterUnlocks(),
+      events: { completed: {} },
       bests: {},
       selection: { track: null, difficulty: null, car: null }
     };
@@ -243,6 +245,16 @@
     base.progress.xp = Math.max(0, topos(progress.xp));
     base.progress.level = Math.max(1, levelForXp(base.progress.xp));
 
+    /* Step 12: event completions — only ids the config knows, and only
+       `true` counts, so a corrupt blob cannot mark an event done twice. */
+    const events = raw.events && typeof raw.events === 'object' ? raw.events : {};
+    const completed = events.completed && typeof events.completed === 'object'
+      ? events.completed : {};
+    base.events = { completed: {} };
+    (CONFIG.events ? CONFIG.events.list : []).forEach(function (event) {
+      if (completed[event.id] === true) base.events.completed[event.id] = true;
+    });
+
     base.bests = sanitiseBests(raw.bests);
 
     /* Step 11: unlocks are a stored list, validated against the config table.
@@ -316,6 +328,13 @@
       if (!data.selection || typeof data.selection !== 'object') data.selection = {};
       /* Everyone drove the only car that existed before Step 11. */
       if (!data.selection.car) data.selection.car = CONFIG.cars.defaultId;
+      return data;
+    },
+    /* 3 -> 4 (Step 12): nobody has completed an event yet. */
+    3: function (data) {
+      if (!data.events || typeof data.events !== 'object') {
+        data.events = { completed: {} };
+      }
       return data;
     }
   };
@@ -561,6 +580,35 @@
       return id;
     },
 
+    /* ---- Step 12: event completions --------------------------------------- */
+
+    events() { return Save.load().events; },
+
+    /** Has this event ever been completed? (The XP bonus is paid once.) */
+    eventCompleted(id) {
+      return Save.load().events.completed[id] === true;
+    },
+
+    /** Every completed event id, in config order. */
+    completedEvents() {
+      const completed = Save.load().events.completed;
+      return (CONFIG.events ? CONFIG.events.list : [])
+        .map(function (event) { return event.id; })
+        .filter(function (id) { return completed[id] === true; });
+    },
+
+    /** Record a completion. Returns true only the first time. */
+    completeEvent(id) {
+      if (!CONFIG.events || !CONFIG.events.list.some(function (e) { return e.id === id; })) {
+        return false;
+      }
+      const completed = Save.load().events.completed;
+      if (completed[id] === true) return false;
+      completed[id] = true;
+      Save.write();
+      return true;
+    },
+
     /* ---- career stats ---------------------------------------------------- */
 
     /**
@@ -630,6 +678,8 @@
     reset() {
       const fresh = defaults();
       fresh.profile = Save.load().profile;
+      /* Step 12: event completions are progress too. */
+      fresh.events = { completed: {} };
       /* Step 11: unlocking is progress too, so it goes back to the starter
          car and track; the chosen track/difficulty/car are cleared. */
       fresh.selection.track = null;

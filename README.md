@@ -1,4 +1,4 @@
-# OPTIMUM RACE — Steps 1 to 11
+# OPTIMUM RACE — Steps 1 to 12
 
 **Race. React. Win.**
 
@@ -174,13 +174,25 @@ npm run build      # regenerates optimum-race.html from the sources
 | Save the selected car and apply its stats through the existing physics config | done (`Cars.apply()` scales `CONFIG.car` / `CONFIG.boost` in place — car.js holds a reference, so no handling code changed; the choice is stored in the save) |
 | A migration for saves with no unlock data | done (save `version: 3`; 2 → 3 grants what the level earned and keeps every track the player had raced or selected, so nobody is locked out) |
 
+### Step 12 — events
+
+| Requirement | Status |
+| --- | --- |
+| Each event is data: id, name, description, objective, modifier, XP reward | done (`CONFIG.events.list`; `js/events.js` never names an event, so a fifth one is a single config entry) |
+| Four events: BLOCK RUSH, STEADY STREAM, RIVAL GAUNTLET, SHARD HUNTER | done (1-lap time attack · two clean laps · win two laps on HARD · collect five shards) |
+| Events screen with objective, reward and status | done (EVENTS pane; each card shows the objective spelled out, the XP and AVAILABLE / COMPLETED) |
+| Starting an event applies its modifier and tracks the objective live in the HUD | done (an EVENT card in the HUD shows the clock / wall hits / position / shard count with a progress bar) |
+| Event complete / failed at the finish, XP paid once | done (a results banner says EVENT COMPLETE or EVENT FAILED; the first completion rides on the XP breakdown as its own flat line, a replay pays nothing) |
+| Save completion state | done (save `version: 4`, `events.completed`; a corrupt log is dropped and only `true` counts) |
+| Modifiers through a small hook system (onRaceStart / onUpdate / onFinish) | done (a patch-and-revert table plus three hooks the core calls; a test proves the config comes back byte-for-byte, so normal races are untouched) |
+
 ## Not built yet (deliberately)
 
 Optimum network integration ·
 networking of any kind · simulated latency or fake network behaviour ·
 blockchain / wallets / tokens · leaderboards ·
-multiplayer · events · real-world rewards. Later steps add config sections and
-modules rather than rewriting what exists.
+multiplayer · daily rotations · real-world rewards. Later steps add config
+sections and modules rather than rewriting what exists.
 
 ---
 
@@ -846,4 +858,55 @@ Manual pass:
   `index.html`, `css/style.css`, `tests/smoke.js` (section 21),
   `tests/save.js` and `tests/xp.js` (version 3), `tests/difficulty.js`,
   `tests/tracks.js`, `tools/build-standalone.js`, `package.json`, `README.md`.
+- Regenerated deliverable: `optimum-race.html`.
+
+### Step 12 verification and manual checks
+
+`npm test` runs eight suites — 626 checks, 0 failures:
+
+| Suite | Checks | What it covers |
+| --- | --- | --- |
+| `tests/smoke.js` | 307 | Steps 1–11 plus section 22: all four events raced end to end, complete and failed, the live HUD objective, the results banner, XP paid once, RACE AGAIN restarting the event, and a normal race afterwards running on the shipped config |
+| `tests/rivals.js` | 49 | AI racing, collisions, standings |
+| `tests/difficulty.js` | 47 | EASY / NORMAL / HARD, per-track records, corrupt and legacy selection data |
+| `tests/tracks.js` | 33 | Track data, geometry, a full AI race per circuit, previews, record book |
+| `tests/save.js` | 42 | The versioned save: defaults, profile/colour rules, stats, export→import round trips, reset, migrations, corrupt data, blocked storage |
+| `tests/xp.js` | 41 | The XP maths: every award source, difficulty multipliers, the level curve, the clean-lap rule, migrations |
+| `tests/cars.js` | 56 | The four cars, the balance rule, stat bars, the physics each car writes, locked selection, unlocking, migrations |
+| `tests/events.js` | 51 | The events as data, every objective met and missed, the objective text, the modifier patch/revert round trip, the hook registry, live progress, the flat one-off bonus, and the 3 → 4 migration |
+
+Manual pass:
+
+1. `npm start` → **EVENTS**. Four cards, each with its objective, its XP and
+   AVAILABLE.
+2. **RACE EVENT** on BLOCK RUSH: the HUD shows `EVENT BLOCK RUSH` and
+   `TIME 0:00.0 / 0:18.0` counting up against the target. Cross the line under
+   the target: the results banner says EVENT COMPLETE with `+250 XP`, and the
+   XP breakdown has an `EVENT COMPLETE — BLOCK RUSH` line.
+3. Race it again and beat it: the banner says it was already completed and no
+   bonus is paid. Miss the target: EVENT FAILED, no bonus.
+4. STEADY STREAM: touch a wall and watch the HUD's wall-hit count; finish dirty
+   and the event fails. RIVAL GAUNTLET: note the HUD says `ON HARD` and the
+   difficulty chip is HARD — but your menu difficulty is unchanged afterwards.
+   SHARD HUNTER: `SHARDS 0 / 5` fills as you collect.
+5. Back in EVENTS, completed challenges show a green COMPLETED badge. **RACE
+   AGAIN** on an event results screen restarts that event.
+6. Start a normal race from the menu: no EVENT card, normal lap count, normal
+   shard count — the modifiers are always given back.
+7. Reload: completions are still there. **PROFILE → RESET** clears them.
+
+### Files changed for Step 12
+
+- Added: `js/events.js` (the engine: modifiers, objectives, hooks, the events
+  screen and the HUD objective), `tests/events.js`.
+- Updated: `js/config.js` (the `events` section), `js/xp.js` (flat `extras`
+  lines on the breakdown), `js/save.js` (**version 4**: `events.completed`,
+  the 3 → 4 migration, completion API, reset), `js/race.js` (`lapsOverride`),
+  `js/game.js` (multi-listener hooks, `onRaceStart`/`onUpdate`/`onFinish`
+  calls, `wallHits` in the results, judging + first-completion bonus at the
+  flag, `returnToMenu` reverting), `js/main.js` (events pane, results banner,
+  RACE AGAIN restarting an event, boot), `index.html`, `css/style.css`,
+  `tests/smoke.js` (section 22), `tests/save.js`/`tests/xp.js`/`tests/cars.js`
+  (version-agnostic save assertions), `tests/difficulty.js`, `tests/tracks.js`,
+  `tools/build-standalone.js`, `package.json`, `README.md`.
 - Regenerated deliverable: `optimum-race.html`.

@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars',
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'events',
   'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards'];
 const STEP = 1 / 120;
 
@@ -425,8 +425,9 @@ section('saves from before Step 11 migrate without losing anything');
   const OR = boot(storage);
   const upgraded = JSON.parse(storage.data['optimumRace.save.v1']);
 
-  check('the save is upgraded to version 3 on load',
-    OR.Save.VERSION === 3 && OR.Save.load().version === 3 && upgraded.version === 3,
+  check('the save is upgraded to the current version on load',
+    OR.Save.VERSION >= 4 && OR.Save.load().version === OR.Save.VERSION &&
+    upgraded.version === OR.Save.VERSION,
     'version ' + upgraded.version);
 
   check('every track they had a time on stays unlocked (never locked out)',
@@ -486,8 +487,8 @@ section('a high-level save migrates with the right unlocks');
   const chain = boot(old);
   const chained = JSON.parse(old.data['optimumRace.save.v1']);
 
-  check('a version 1 save walks the whole chain to version 3',
-    chain.Save.load().version === 3 && chained.version === 3 &&
+  check('a version 1 save walks the whole chain to the current version',
+    chain.Save.load().version === OR.Save.VERSION && chained.version === OR.Save.VERSION &&
     chain.Save.profile().name === 'Ancient' &&
     chain.Save.stats().races === 3 &&
     chain.Bests.bestTime('flexnode', 'normal') === 41000 &&

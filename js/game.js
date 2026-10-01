@@ -81,15 +81,21 @@
       return Game;
     },
 
-    /** Optional lifecycle callbacks: { onFinish, onStateChange }. */
+    /**
+     * Lifecycle callbacks. Step 12 made this a list per event, so the events
+     * engine can listen next to the finish screen (and the HUD) without
+     * anyone stealing the hook from anyone else.
+     */
     on(name, fn) {
-      Game._hooks[name] = fn;
+      if (!Game._hooks[name]) Game._hooks[name] = [];
+      Game._hooks[name].push(fn);
       return Game;
     },
 
     _emit(name, payload) {
-      const fn = Game._hooks[name];
-      if (fn) fn(payload);
+      const list = Game._hooks[name];
+      if (!list) return;
+      list.slice().forEach(function (fn) { fn(payload); });
     },
 
     handleResize() {
@@ -105,6 +111,10 @@
          there (stale save, import, a hand-edited file). Hop to the first
          unlocked circuit before the grid is built. */
       if (OR.Cars) OR.Cars.ensureTrack();
+      /* Step 12: onRaceStart. A modifier patch was applied by Events.start()
+         before it called us, which is what makes the lap/shards override
+         visible to Race.reset() and Shards.reset() below. */
+      if (OR.Events) OR.Events.onRaceStart();
       Game.difficultyId = difficultyId || OR.Difficulty.currentId();
       Game.difficulty = OR.Difficulty.get(Game.difficultyId);
       Game.car.reset();
@@ -142,6 +152,9 @@
     },
 
     returnToMenu() {
+      /* Step 12: leaving the race (menu, quit) reverts any event modifier, so
+         the next normal race runs on the shipped config. */
+      if (OR.Events) OR.Events.stop();
       Game.car.reset();
       OR.Shards.reset();
       Race.reset();
@@ -225,8 +238,16 @@
         trackRating: Track.rating,
         /* Step 10: XP is awarded here, at the flag — and only here, so a race
            the player quit early can never pay out. */
-        cleanLaps: Game.cleanLaps
+        cleanLaps: Game.cleanLaps,
+        /* Step 12: barrier touches are needed by STEADY STREAM. */
+        wallHits: Game.car.wallHits
       };
+      /* Step 12: onFinish — judge the objective while the race facts are
+         fresh, then pay a first completion as its own XP line. */
+      Game.results.event = OR.Events ? OR.Events.judge(Game.results) : null;
+      if (Game.results.event && Game.results.event.firstCompletion) {
+        OR.Save.completeEvent(Game.results.event.id);
+      }
       Game.results.xp = OR.XP.award({
         difficultyId: Game.difficultyId,
         place: Game.results.place,
@@ -234,8 +255,13 @@
         cleanLaps: Game.cleanLaps,
         boostsUsed: Game.results.boostsUsed,
         timeMs: Game.finalTimeMs,
-        trackId: Track.id
+        trackId: Track.id,
+        extras: Game.results.event && Game.results.event.firstCompletion
+          ? [{ id: 'event', label: 'EVENT COMPLETE — ' + Game.results.event.name,
+               xp: Game.results.event.xp }]
+          : []
       });
+      if (OR.Events) OR.Events.onFinish(Game.results.event);
       /* Step 8: records are per track AND per difficulty (time and lap). */
       const trackBest = OR.Bests.record(Track.id, Game.difficultyId, {
         timeMs: Game.finalTimeMs,
@@ -412,6 +438,10 @@
 
       // Pause freezes rival stall indicators, pickups and visual effects too.
       if (Game.state === STATES.PAUSED) { Audio.idle(); return; }
+
+      /* Step 12: onUpdate — the events engine reads the live race state and
+         repaints the objective line (position, time, shards, wall hits). */
+      if (OR.Events) OR.Events.onUpdate(dt);
 
       // Step 3: shard pickups top up the CODED BOOST meter
       OR.Shards.update(car, dt, Game.state === STATES.RACING && !Game.coasting);

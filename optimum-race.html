@@ -1437,6 +1437,144 @@ body.is-paused #hud { opacity: 0.35; }
   .car-card.is-refused, .track-card.is-refused { animation: none; }
 }
 
+/* ============================================================================
+   STEP 12 — events: the challenge screen, the live objective and the banner
+   ========================================================================== */
+
+.event-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 10px;
+  width: 100%;
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  text-align: left;
+  background: linear-gradient(160deg, rgba(30, 34, 62, 0.92), rgba(18, 20, 38, 0.94));
+  border: 1px solid rgba(143, 123, 255, 0.28);
+  border-radius: 14px;
+}
+.event-card.is-completed {
+  border-color: rgba(120, 220, 170, 0.55);
+  background: linear-gradient(160deg, rgba(24, 46, 40, 0.92), rgba(16, 26, 26, 0.94));
+}
+
+.event-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.event-name {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.event-badge {
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #cfd4ff;
+  background: rgba(143, 123, 255, 0.18);
+  border: 1px solid rgba(143, 123, 255, 0.45);
+  border-radius: 999px;
+}
+.event-badge.is-done { color: #0f1a16; background: #7fd8a8; border-color: #7fd8a8; }
+
+.event-description { margin: 0; font-size: 11px; color: var(--muted, #8f95b8); }
+.event-objective {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffd9a0;
+}
+.event-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+.event-reward {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ff0c4;
+  font-variant-numeric: tabular-nums;
+}
+.event-hint { margin: 2px 0 8px; font-size: 10px; color: var(--muted, #8f95b8); }
+
+/* ---- the live objective card in the HUD ---------------------------------- */
+
+.card-event {
+  border-color: rgba(255, 190, 110, 0.45);
+  background: linear-gradient(180deg, rgba(38, 30, 16, 0.92), rgba(22, 18, 12, 0.94));
+}
+.event-hud-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.card-event .event-name { font-size: 11px; color: #ffd9a0; }
+.event-objective-value {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.event-bar {
+  position: relative;
+  height: 5px;
+  margin-top: 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.event-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ffb45c, #ff7b5c);
+  transition: width 0.2s ease;
+}
+.card-event.is-met { border-color: rgba(120, 220, 170, 0.6); }
+.card-event.is-met .event-fill { background: linear-gradient(90deg, #7fd8a8, #4fc98d); }
+
+/* ---- the results banner -------------------------------------------------- */
+
+.event-result {
+  display: grid;
+  gap: 2px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(24, 46, 40, 0.9);
+  border: 1px solid rgba(120, 220, 170, 0.55);
+  text-align: left;
+}
+.event-result[data-met="false"] {
+  background: rgba(46, 26, 26, 0.9);
+  border-color: rgba(255, 130, 130, 0.5);
+}
+.event-result-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #7fd8a8;
+}
+.event-result[data-met="false"] .event-result-badge { color: #ff9b9b; }
+.event-result strong { font-size: 15px; letter-spacing: 0.08em; }
+.event-result-sub { font-size: 10px; color: var(--muted, #8f95b8); }
+
+@media (max-width: 720px) {
+  .event-list { grid-template-columns: minmax(0, 1fr); }
+  .event-objective-value { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-fill { transition: none; }
+}
+
 </style>
 </head>
 <body>
@@ -1473,6 +1611,15 @@ body.is-paused #hud { opacity: 0.35; }
         <div class="timer-readout" id="timerValue">00:00.000</div>
         <div class="card-sub" id="distanceValue">0 m to go</div>
       </div>
+    </div>
+
+    <div class="card card-event hidden" id="eventCard" data-event="">
+      <div class="event-hud-head">
+        <span class="card-label">EVENT</span>
+        <span class="event-name" id="eventName">BLOCK RUSH</span>
+      </div>
+      <div class="event-objective-value" id="eventObjective">TIME 0:00.0 / 0:18.0</div>
+      <div class="event-bar"><div class="event-fill" id="eventBar"></div></div>
     </div>
 
     <div class="card hud-race-order">
@@ -1549,6 +1696,7 @@ body.is-paused #hud { opacity: 0.35; }
       <button id="startBtn" class="btn btn-primary">START RACE</button>
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
       <button id="carsBtn" class="btn btn-ghost">CARS</button>
+      <button id="eventsBtn" class="btn btn-ghost">EVENTS</button>
       <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
       <p class="racing-as" id="racingAs"></p>
       <p class="unlock-hint" id="unlockHint"></p>
@@ -1587,6 +1735,16 @@ body.is-paused #hud { opacity: 0.35; }
       <p id="trackSummary" class="track-summary"></p>
       <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
       <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
+    </div>
+
+    <!-- Step 12: challenge events -->
+    <div class="panel panel-wide hidden" id="menuEvents">
+      <div class="badge">EVENTS</div>
+      <h2 class="title title-sm">CHALLENGES</h2>
+      <div id="eventList" class="event-list"></div>
+      <p class="event-hint">Each challenge runs on the circuit you have selected.
+        Beat it once to collect the XP — beating it again is for pride.</p>
+      <button id="eventsBackBtn" class="btn btn-ghost">BACK</button>
     </div>
 
     <!-- Step 11: car select, stat bars and level locks -->
@@ -1734,6 +1892,11 @@ body.is-paused #hud { opacity: 0.35; }
           <span class="level-xp" id="finalLevelXp">0 / 283 XP</span>
         </div>
         <p class="xp-note" id="finalXpNote"></p>
+        <div id="finalEvent" class="event-result hidden" data-event="" data-met="">
+          <span class="event-result-badge" id="finalEventBadge">EVENT COMPLETE</span>
+          <strong id="finalEventName">BLOCK RUSH</strong>
+          <span class="event-result-sub" id="finalEventSub"></span>
+        </div>
       </section>
       <section class="finish-standings" aria-label="Final race standings">
         <h3>FINAL STANDINGS</h3>
@@ -2138,6 +2301,59 @@ OR.CONFIG = {
     tracks: { flexnode: 1, 'mesh-highway': 2, 'shard-speedway': 5 }
   },
 
+  /* ---- EVENTS (Step 12) -------------------------------------------------
+   * Four challenges, defined as pure data. Each entry carries:
+   *   objective   what must be true at the flag (time / clean / win / collect)
+   *   modifier    the patch applied for the event race only (laps, shards)
+   *   difficulty  optional forced difficulty (and the one a win is judged on)
+   *   xp          the one-off completion bonus, paid once ever
+   * js/events.js never names an event, so a fifth event is one entry here.
+   *
+   * BLOCK RUSH targets are about 1.3x the measured NORMAL rival lap on each
+   * circuit, so they are beatable but not free.
+   */
+  events: {
+    bannerMs: 3400,
+    list: [
+      {
+        id: 'block-rush',
+        name: 'BLOCK RUSH',
+        description: 'One lap. Beat the clock.',
+        objective: {
+          type: 'time',
+          targets: { flexnode: 18, 'mesh-highway': 28, 'shard-speedway': 18 }
+        },
+        modifier: { laps: 1 },
+        xp: 250
+      },
+      {
+        id: 'steady-stream',
+        name: 'STEADY STREAM',
+        description: 'Two clean laps — not one barrier touch.',
+        objective: { type: 'clean', laps: 2 },
+        modifier: { laps: 2 },
+        xp: 220
+      },
+      {
+        id: 'rival-gauntlet',
+        name: 'RIVAL GAUNTLET',
+        description: 'Two laps on HARD, and win them.',
+        objective: { type: 'win', laps: 2, difficulty: 'hard' },
+        modifier: { laps: 2 },
+        difficulty: 'hard',
+        xp: 400
+      },
+      {
+        id: 'shard-hunter',
+        name: 'SHARD HUNTER',
+        description: 'Collect five coded shards in one race.',
+        objective: { type: 'collect', count: 5 },
+        modifier: { shards: 16 },
+        xp: 180
+      }
+    ]
+  },
+
   theme: {
     cyan: '#22e1ff',
     violet: '#8b5cff',
@@ -2393,17 +2609,32 @@ OR.CONFIG = {
       ];
 
       const base = lines.reduce(function (sum, line) { return sum + line.xp; }, 0);
-      const total = Math.round(base * multiplier);
+      const scaled = Math.round(base * multiplier);
       lines.push({
         id: 'difficulty',
         label: XP.difficultyLabel(difficultyId) + ' × ' + multiplier.toFixed(2),
-        xp: total - base
+        xp: scaled - base
       });
+
+      /* Step 12: extras are flat bonuses that ride on top of the scaled race
+         award (an event completion). They are NOT multiplied by difficulty,
+         and each one is its own line, so the rows still add up exactly. */
+      const extras = (Array.isArray(r.extras) ? r.extras : [])
+        .filter(function (extra) { return extra && toInt(extra.xp) > 0; })
+        .map(function (extra) {
+          return { id: String(extra.id || 'bonus'), label: String(extra.label || 'Bonus'), xp: toInt(extra.xp) };
+        });
+      const extraXp = extras.reduce(function (sum, extra) { return sum + extra.xp; }, 0);
+      extras.forEach(function (extra) { lines.push(extra); });
+      const total = scaled + extraXp;
 
       return {
         lines: lines,
         base: base,
         multiplier: multiplier,
+        scaled: scaled,
+        extras: extras,
+        extraXp: extraXp,
         difficultyId: difficultyId,
         total: total,
         place: place,
@@ -3429,6 +3660,7 @@ OR.CONFIG = {
 
   const Race = {
     laps: 0,                // set from the track in reset() (Step 8)
+    lapsOverride: null,     // Step 12: one-race lap count for events
     lap: 1,                 // 1-based, for the HUD
     nextCheckpoint: 0,      // index of the gate we are waiting for
     checkpointsPassed: 0,
@@ -3443,7 +3675,9 @@ OR.CONFIG = {
     lastFraction: 0,        // raw 0..1 fraction, before unwrapping
 
     reset(car) {
-      this.laps = Track.laps || CONFIG.race.laps;
+      /* Step 12: an event can patch the lap count for its own race only
+         (BLOCK RUSH is a single lap); a normal race leaves this null. */
+      this.laps = Race.lapsOverride || Track.laps || CONFIG.race.laps;
       this.lap = 1;
       this.nextCheckpoint = 0;
       this.checkpointsPassed = 0;
@@ -3605,6 +3839,7 @@ OR.CONFIG = {
  *     stats:     { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
  *     progress:  { xp: 0, level: 1 },        <- Step 10
  *     unlocks:   { cars: ['relay'], tracks: ['flexnode'] },   <- Step 11
+ *     events:    { completed: { 'block-rush': true } },       <- Step 12
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
  *     selection: { track: 'flexnode', difficulty: 'normal', car: 'relay' }
  *   }
@@ -3627,7 +3862,7 @@ OR.CONFIG = {
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 3;
+  const VERSION = 4;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -3736,6 +3971,7 @@ OR.CONFIG = {
       stats: { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
       progress: { xp: 0, level: 1 },
       unlocks: starterUnlocks(),
+      events: { completed: {} },
       bests: {},
       selection: { track: null, difficulty: null, car: null }
     };
@@ -3838,6 +4074,16 @@ OR.CONFIG = {
     base.progress.xp = Math.max(0, topos(progress.xp));
     base.progress.level = Math.max(1, levelForXp(base.progress.xp));
 
+    /* Step 12: event completions — only ids the config knows, and only
+       `true` counts, so a corrupt blob cannot mark an event done twice. */
+    const events = raw.events && typeof raw.events === 'object' ? raw.events : {};
+    const completed = events.completed && typeof events.completed === 'object'
+      ? events.completed : {};
+    base.events = { completed: {} };
+    (CONFIG.events ? CONFIG.events.list : []).forEach(function (event) {
+      if (completed[event.id] === true) base.events.completed[event.id] = true;
+    });
+
     base.bests = sanitiseBests(raw.bests);
 
     /* Step 11: unlocks are a stored list, validated against the config table.
@@ -3911,6 +4157,13 @@ OR.CONFIG = {
       if (!data.selection || typeof data.selection !== 'object') data.selection = {};
       /* Everyone drove the only car that existed before Step 11. */
       if (!data.selection.car) data.selection.car = CONFIG.cars.defaultId;
+      return data;
+    },
+    /* 3 -> 4 (Step 12): nobody has completed an event yet. */
+    3: function (data) {
+      if (!data.events || typeof data.events !== 'object') {
+        data.events = { completed: {} };
+      }
       return data;
     }
   };
@@ -4156,6 +4409,35 @@ OR.CONFIG = {
       return id;
     },
 
+    /* ---- Step 12: event completions --------------------------------------- */
+
+    events() { return Save.load().events; },
+
+    /** Has this event ever been completed? (The XP bonus is paid once.) */
+    eventCompleted(id) {
+      return Save.load().events.completed[id] === true;
+    },
+
+    /** Every completed event id, in config order. */
+    completedEvents() {
+      const completed = Save.load().events.completed;
+      return (CONFIG.events ? CONFIG.events.list : [])
+        .map(function (event) { return event.id; })
+        .filter(function (id) { return completed[id] === true; });
+    },
+
+    /** Record a completion. Returns true only the first time. */
+    completeEvent(id) {
+      if (!CONFIG.events || !CONFIG.events.list.some(function (e) { return e.id === id; })) {
+        return false;
+      }
+      const completed = Save.load().events.completed;
+      if (completed[id] === true) return false;
+      completed[id] = true;
+      Save.write();
+      return true;
+    },
+
     /* ---- career stats ---------------------------------------------------- */
 
     /**
@@ -4225,6 +4507,8 @@ OR.CONFIG = {
     reset() {
       const fresh = defaults();
       fresh.profile = Save.load().profile;
+      /* Step 12: event completions are progress too. */
+      fresh.events = { completed: {} };
       /* Step 11: unlocking is progress too, so it goes back to the starter
          car and track; the chosen track/difficulty/car are cleared. */
       fresh.selection.track = null;
@@ -4722,6 +5006,452 @@ OR.CONFIG = {
   };
 
   OR.Cars = Cars;
+})();
+
+/* ==== js/events.js ==== */
+/* =============================================================================
+ * events.js — Step 12: challenge events, defined as data, run through hooks.
+ *
+ * Everything an event is lives in CONFIG.events.list. This module supplies
+ * three things and names no event anywhere:
+ *
+ *   1. MODIFIERS as patch + revert. A modifier is a small declarative patch
+ *      ({ laps: 1, shards: 16 }) applied before the race is built and reverted
+ *      on every way out — finish, quit, menu, race again, reload. Nothing can
+ *      leak into a normal race.
+ *   2. OBJECTIVES with a tiny vocabulary: time / clean / win / collect. The
+ *      engine reads the same race facts the results screen does (time, place,
+ *      wall hits, shards), so an objective can never disagree with the race.
+ *   3. HOOKS — onRaceStart / onUpdate / onFinish — that the core calls and
+ *      that anything can listen to, so a new event is one config entry.
+ *
+ * The completion bonus is paid exactly once ever: the first time an event is
+ * beaten it rides on the results screen as its own XP line, and `Save` records
+ * it. Beating it again still shows EVENT COMPLETE, but pays nothing.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Utils } = OR;
+  const E = CONFIG.events;
+
+  /**
+   * The fields a modifier may patch, with a getter and setter for each. This
+   * table is the whole "hook system" for modifiers: adding a new patched
+   * field later is one row here plus one line of config.
+   */
+  const FIELDS = {
+    laps: {
+      label: 'laps',
+      get() { return OR.Race.lapsOverride; },
+      set(value) { OR.Race.lapsOverride = value; }
+    },
+    shards: {
+      label: 'shards',
+      get() { return CONFIG.boost.shards.count; },
+      set(value) { CONFIG.boost.shards.count = value; }
+    }
+  };
+
+  function secondsText(seconds) {
+    const safe = Math.max(0, seconds);
+    const minutes = Math.floor(safe / 60);
+    const rest = safe - minutes * 60;
+    return minutes + ':' + (rest < 10 ? '0' : '') + rest.toFixed(1);
+  }
+
+  const Events = {
+    _active: null,       // the running event id, or null
+    _patch: null,        // previous values of every patched field
+    _progress: null,     // the last live progress object (HUD)
+    _last: null,         // the last judged result (results screen)
+    _listeners: { raceStart: [], update: [], finish: [] },
+
+    list() { return E.list.slice(); },
+
+    get(id) {
+      for (let i = 0; i < E.list.length; i++) {
+        if (E.list[i].id === id) return E.list[i];
+      }
+      return null;
+    },
+
+    active() { return Events._active ? Events.get(Events._active) : null; },
+    activeId() { return Events._active; },
+    isActive(id) { return Events._active === id; },
+
+    /* ---- hooks ---------------------------------------------------------- */
+
+    /** Listen to one of the three lifecycle hooks. Returns the module. */
+    on(name, fn) {
+      if (Events._listeners[name] && typeof fn === 'function') {
+        Events._listeners[name].push(fn);
+      }
+      return Events;
+    },
+
+    off(name, fn) {
+      const list = Events._listeners[name];
+      if (!list) return Events;
+      const at = list.indexOf(fn);
+      if (at !== -1) list.splice(at, 1);
+      return Events;
+    },
+
+    _emit(name, payload) {
+      Events._listeners[name].slice().forEach(function (fn) { fn(payload); });
+    },
+
+    /* ---- modifiers: patch, then always give it back ---------------------- */
+
+    /** Apply (or replace) a modifier patch, remembering what it overwrote. */
+    _applyPatch(modifier) {
+      Events._revertPatch();
+      Events._patch = {};
+      Object.keys(modifier || {}).forEach(function (key) {
+        const field = FIELDS[key];
+        if (!field) return;
+        Events._patch[key] = { get: field.get, set: field.set, was: field.get() };
+        field.set(modifier[key]);
+      });
+      return Events._patch;
+    },
+
+    /** Put every patched field back exactly as it was. */
+    _revertPatch() {
+      if (!Events._patch) return null;
+      const patch = Events._patch;
+      Object.keys(patch).forEach(function (key) { patch[key].set(patch[key].was); });
+      Events._patch = null;
+      return patch;
+    },
+
+    /** True while an event modifier is changing the config. */
+    patched() { return !!Events._patch; },
+
+    /* ---- running an event ----------------------------------------------- */
+
+    /**
+     * Start an event race: patch the config, then hand over to the normal race
+     * start (which reads the patched laps and shard count). Difficulty, when
+     * the event forces one, is passed per race so the player's own selection
+     * is never touched.
+     */
+    start(id) {
+      const event = Events.get(id);
+      if (!event) return null;
+      Events.stop();
+      Events._active = event.id;
+      Events._progress = null;
+      Events._last = null;
+      Events._applyPatch(event.modifier);
+      if (OR.Game && OR.Game.startRace) {
+        OR.Game.startRace(undefined, event.difficulty || undefined);
+      }
+      return event;
+    },
+
+    /**
+     * Leave whichever event is running and give the config back. Safe to call
+     * when nothing is running. Called from Game.returnToMenu(), and by the
+     * menu when a normal race starts, so a normal race can never inherit an
+     * event's laps or shard count.
+     */
+    stop() {
+      const was = Events._active;
+      Events._active = null;
+      Events._progress = null;
+      Events._revertPatch();
+      Events.setHud(null);
+      return was;
+    },
+
+    /* ---- objectives ------------------------------------------------------ */
+
+    /** The time a BLOCK RUSH run must beat on this circuit (seconds). */
+    targetSeconds(objective, trackId) {
+      const targets = objective && objective.targets ? objective.targets : {};
+      const id = trackId || (OR.Track ? OR.Track.id : null);
+      const value = targets[id];
+      return typeof value === 'number' && isFinite(value) && value > 0 ? value : 0;
+    },
+
+    /** One line of human text for an objective (events screen, results). */
+    objectiveText(event, trackId) {
+      const objective = event.objective;
+      const laps = objective.laps || (event.modifier && event.modifier.laps) || 0;
+      const lapText = laps ? laps + (laps === 1 ? ' lap' : ' laps') : 'the race';
+      if (objective.type === 'time') {
+        return 'BEAT ' + secondsText(Events.targetSeconds(objective, trackId)) +
+          ' OVER ' + lapText.toUpperCase();
+      }
+      if (objective.type === 'clean') {
+        return 'FINISH ' + lapText.toUpperCase() + ' WITHOUT TOUCHING A WALL';
+      }
+      if (objective.type === 'win') {
+        return 'WIN ' + lapText.toUpperCase() +
+          (objective.difficulty ? ' ON ' + String(objective.difficulty).toUpperCase() : '');
+      }
+      if (objective.type === 'collect') {
+        return 'COLLECT ' + objective.count + ' SHARDS IN ONE RACE';
+      }
+      return 'COMPLETE THE RACE';
+    },
+
+    /** Did this finished race meet the objective? */
+    met(objective, results) {
+      if (!objective || !results) return false;
+      if (objective.type === 'time') {
+        const target = Events.targetSeconds(objective, results.trackId);
+        return target > 0 && results.timeMs > 0 && results.timeMs / 1000 <= target;
+      }
+      if (objective.type === 'clean') {
+        return (results.wallHits || 0) === 0 &&
+          (!objective.laps || results.laps >= objective.laps);
+      }
+      if (objective.type === 'win') {
+        return results.place === 1 &&
+          (!objective.difficulty || results.difficultyId === objective.difficulty);
+      }
+      if (objective.type === 'collect') {
+        return (results.shardsCollected || 0) >= (objective.count || 1);
+      }
+      return false;
+    },
+
+    /**
+     * Judge a finished race. Called from Game at the flag, before XP is
+     * awarded, so a first completion can ride along as its own XP line.
+     */
+    judge(results) {
+      const event = Events.active();
+      if (!event) return null;
+      const already = OR.Save ? OR.Save.eventCompleted(event.id) : false;
+      const beat = Events.met(event.objective, results);
+      const first = beat && !already;
+      const last = {
+        id: event.id,
+        name: event.name,
+        description: event.description,
+        xp: event.xp,
+        met: beat,
+        completed: beat,
+        firstCompletion: first,
+        replay: beat && already,
+        bonusXp: first ? event.xp : 0,
+        objective: Events.objectiveText(event, results.trackId),
+        results: {
+          timeMs: results.timeMs || 0,
+          place: results.place || 0,
+          wallHits: results.wallHits || 0,
+          shardsCollected: results.shardsCollected || 0,
+          trackId: results.trackId || null
+        }
+      };
+      Events._last = last;
+      return last;
+    },
+
+    /** The result of the most recent judged race (the results banner). */
+    last() { return Events._last; },
+
+    /* ---- live progress (the HUD line) ------------------------------------- */
+
+    /**
+     * Where the objective stands right now, read from the running race. Also
+     * what the HUD shows, so the two can never drift apart.
+     */
+    progress() {
+      const event = Events.active();
+      if (!event) return null;
+      const objective = event.objective;
+      const game = OR.Game || {};
+      const state = game.state;
+      const racing = state === 'racing' || state === 'countdown';
+
+      if (objective.type === 'time') {
+        const target = Events.targetSeconds(objective);
+        const elapsed = racing ? (game.raceTimeMs || 0) / 1000 : 0;
+        return {
+          id: event.id, type: 'time', label: 'TIME',
+          text: secondsText(elapsed) + ' / ' + secondsText(target),
+          value: elapsed, target: target,
+          ratio: target > 0 ? Utils.clamp(elapsed / target, 0, 1) : 0,
+          met: target > 0 && elapsed <= target
+        };
+      }
+      if (objective.type === 'clean') {
+        const hits = racing && game.car ? game.car.wallHits : 0;
+        return {
+          id: event.id, type: 'clean', label: 'WALL HITS',
+          text: hits + ' ' + (hits === 1 ? 'HIT' : 'HITS') + ' · STAY CLEAN',
+          value: hits, target: 0,
+          ratio: hits === 0 ? 0 : 1,
+          met: racing ? hits === 0 : true
+        };
+      }
+      if (objective.type === 'win') {
+        const place = racing && OR.Standings ? (OR.Standings.playerPlace || 1) : 1;
+        return {
+          id: event.id, type: 'win', label: 'PLACE',
+          text: 'P' + place + ' / 1' +
+            (objective.difficulty ? ' ON ' + String(objective.difficulty).toUpperCase() : ''),
+          value: place, target: 1,
+          ratio: Utils.clamp(place / Math.max(1, game.entities ? game.entities.length : 4), 0, 1),
+          met: place === 1
+        };
+      }
+      if (objective.type === 'collect') {
+        const got = racing && OR.Shards ? OR.Shards.collected : 0;
+        return {
+          id: event.id, type: 'collect', label: 'SHARDS',
+          text: got + ' / ' + objective.count,
+          value: got, target: objective.count,
+          ratio: Utils.clamp(got / Math.max(1, objective.count), 0, 1),
+          met: got >= objective.count
+        };
+      }
+      return null;
+    },
+
+    /** The last computed progress (used by the tests and the HUD). */
+    current() { return Events._progress; },
+
+    /** Hooks: called by the core. */
+    onRaceStart() {
+      Events._progress = null;
+      Events.setHud(null);
+      Events._emit('raceStart', Events.active());
+    },
+
+    onUpdate(dt) {
+      /* The hook fires on every tick of every race, event or not — listeners
+         decide what to do with it. Progress is null while none runs. */
+      Events._progress = Events._active ? Events.progress() : null;
+      Events.setHud(Events._progress);
+      Events._emit('update', Events._progress, dt);
+      return Events._progress;
+    },
+
+    onFinish(result) {
+      Events.setHud(null);
+      Events._emit('finish', result);
+      return result;
+    },
+
+    /* ---- the events screen ----------------------------------------------- */
+
+    /** Build one card per event. Called once, by main.js, with the container. */
+    init(root) {
+      if (!root) return null;
+      const doc = root.ownerDocument || document;
+      Events.el = { root: root, cards: [] };
+      root.replaceChildren();
+
+      E.list.forEach(function (event) {
+        const card = doc.createElement('div');
+        card.className = 'event-card';
+        card.dataset.event = event.id;
+
+        const head = doc.createElement('div');
+        head.className = 'event-head';
+        const name = doc.createElement('h3');
+        name.className = 'event-name';
+        name.textContent = event.name;
+        const badge = doc.createElement('span');
+        badge.className = 'event-badge';
+        head.append(name, badge);
+
+        const description = doc.createElement('p');
+        description.className = 'event-description';
+        description.textContent = event.description;
+
+        const objective = doc.createElement('p');
+        objective.className = 'event-objective';
+        objective.textContent = Events.objectiveText(event);
+
+        const foot = doc.createElement('div');
+        foot.className = 'event-foot';
+        const reward = doc.createElement('span');
+        reward.className = 'event-reward';
+        reward.textContent = '+' + event.xp + ' XP';
+        const race = doc.createElement('button');
+        race.type = 'button';
+        race.className = 'btn btn-ghost btn-inline event-race';
+        race.textContent = 'RACE EVENT';
+        race.addEventListener('click', function (e) {
+          e.preventDefault();
+          race.blur();
+          Events.start(event.id);
+        });
+        foot.append(reward, race);
+
+        card.append(head, description, objective, foot);
+        root.appendChild(card);
+        Events.el.cards.push({ event: event, node: card, badge: badge, race: race });
+      });
+
+      Events.refresh();
+      return Events.el;
+    },
+
+    /** Repaint the completion state of every card. */
+    refresh() {
+      if (!Events.el) return null;
+      Events.el.cards.forEach(function (card) {
+        const done = OR.Save ? OR.Save.eventCompleted(card.event.id) : false;
+        card.node.classList.toggle('is-completed', done);
+        card.node.dataset.completed = done ? 'true' : 'false';
+        card.badge.textContent = done ? 'COMPLETED' : 'AVAILABLE';
+        card.badge.classList.toggle('is-done', done);
+        card.race.textContent = done ? 'RACE AGAIN' : 'RACE EVENT';
+      });
+      return Events.el;
+    },
+
+    /* ---- the HUD objective line ------------------------------------------ */
+
+    /** Hand the HUD element over to the engine (called once by main.js). */
+    initHud(card) {
+      Events.hud = {
+        card: card,
+        name: card ? card.querySelector('.event-name') : null,
+        objective: card ? card.querySelector('.event-objective-value') : null,
+        bar: card ? card.querySelector('.event-fill') : null
+      };
+      return Events.hud;
+    },
+
+    /** Show/hide and fill the objective line. `null` hides it. */
+    setHud(progress) {
+      if (!Events.hud || !Events.hud.card) return null;
+      const card = Events.hud.card;
+      const event = Events.active();
+      if (!progress || !event) {
+        card.classList.add('hidden');
+        card.classList.remove('is-met');
+        card.dataset.event = '';
+        return null;
+      }
+      card.classList.remove('hidden');
+      card.classList.toggle('is-met', !!progress.met);
+      card.dataset.event = event.id;
+      card.dataset.value = String(progress.value);
+      card.dataset.target = String(progress.target);
+      card.dataset.met = progress.met ? 'true' : 'false';
+      if (Events.hud.name) Events.hud.name.textContent = event.name;
+      if (Events.hud.objective) {
+        Events.hud.objective.textContent = progress.label + ' ' + progress.text;
+      }
+      if (Events.hud.bar) {
+        Events.hud.bar.dataset.value = String(Math.round(progress.ratio * 100));
+        Events.hud.bar.style.width = Math.round(progress.ratio * 100) + '%';
+      }
+      return progress;
+    }
+  };
+
+  OR.Events = Events;
 })();
 
 /* ==== js/difficulty.js ==== */
@@ -7451,15 +8181,21 @@ OR.CONFIG = {
       return Game;
     },
 
-    /** Optional lifecycle callbacks: { onFinish, onStateChange }. */
+    /**
+     * Lifecycle callbacks. Step 12 made this a list per event, so the events
+     * engine can listen next to the finish screen (and the HUD) without
+     * anyone stealing the hook from anyone else.
+     */
     on(name, fn) {
-      Game._hooks[name] = fn;
+      if (!Game._hooks[name]) Game._hooks[name] = [];
+      Game._hooks[name].push(fn);
       return Game;
     },
 
     _emit(name, payload) {
-      const fn = Game._hooks[name];
-      if (fn) fn(payload);
+      const list = Game._hooks[name];
+      if (!list) return;
+      list.slice().forEach(function (fn) { fn(payload); });
     },
 
     handleResize() {
@@ -7475,6 +8211,10 @@ OR.CONFIG = {
          there (stale save, import, a hand-edited file). Hop to the first
          unlocked circuit before the grid is built. */
       if (OR.Cars) OR.Cars.ensureTrack();
+      /* Step 12: onRaceStart. A modifier patch was applied by Events.start()
+         before it called us, which is what makes the lap/shards override
+         visible to Race.reset() and Shards.reset() below. */
+      if (OR.Events) OR.Events.onRaceStart();
       Game.difficultyId = difficultyId || OR.Difficulty.currentId();
       Game.difficulty = OR.Difficulty.get(Game.difficultyId);
       Game.car.reset();
@@ -7512,6 +8252,9 @@ OR.CONFIG = {
     },
 
     returnToMenu() {
+      /* Step 12: leaving the race (menu, quit) reverts any event modifier, so
+         the next normal race runs on the shipped config. */
+      if (OR.Events) OR.Events.stop();
       Game.car.reset();
       OR.Shards.reset();
       Race.reset();
@@ -7595,8 +8338,16 @@ OR.CONFIG = {
         trackRating: Track.rating,
         /* Step 10: XP is awarded here, at the flag — and only here, so a race
            the player quit early can never pay out. */
-        cleanLaps: Game.cleanLaps
+        cleanLaps: Game.cleanLaps,
+        /* Step 12: barrier touches are needed by STEADY STREAM. */
+        wallHits: Game.car.wallHits
       };
+      /* Step 12: onFinish — judge the objective while the race facts are
+         fresh, then pay a first completion as its own XP line. */
+      Game.results.event = OR.Events ? OR.Events.judge(Game.results) : null;
+      if (Game.results.event && Game.results.event.firstCompletion) {
+        OR.Save.completeEvent(Game.results.event.id);
+      }
       Game.results.xp = OR.XP.award({
         difficultyId: Game.difficultyId,
         place: Game.results.place,
@@ -7604,8 +8355,13 @@ OR.CONFIG = {
         cleanLaps: Game.cleanLaps,
         boostsUsed: Game.results.boostsUsed,
         timeMs: Game.finalTimeMs,
-        trackId: Track.id
+        trackId: Track.id,
+        extras: Game.results.event && Game.results.event.firstCompletion
+          ? [{ id: 'event', label: 'EVENT COMPLETE — ' + Game.results.event.name,
+               xp: Game.results.event.xp }]
+          : []
       });
+      if (OR.Events) OR.Events.onFinish(Game.results.event);
       /* Step 8: records are per track AND per difficulty (time and lap). */
       const trackBest = OR.Bests.record(Track.id, Game.difficultyId, {
         timeMs: Game.finalTimeMs,
@@ -7782,6 +8538,10 @@ OR.CONFIG = {
 
       // Pause freezes rival stall indicators, pickups and visual effects too.
       if (Game.state === STATES.PAUSED) { Audio.idle(); return; }
+
+      /* Step 12: onUpdate — the events engine reads the live race state and
+         repaints the objective line (position, time, shards, wall hits). */
+      if (OR.Events) OR.Events.onUpdate(dt);
 
       // Step 3: shard pickups top up the CODED BOOST meter
       OR.Shards.update(car, dt, Game.state === STATES.RACING && !Game.coasting);
@@ -8182,6 +8942,7 @@ OR.CONFIG = {
     menuMain: null,
     menuTracks: null,
     menuCars: null,
+    menuEvents: null,
     menuProfile: null,
     view: 'main',
 
@@ -8194,6 +8955,7 @@ OR.CONFIG = {
       Screens.menuMain = document.getElementById('menuMain');
       Screens.menuTracks = document.getElementById('menuTracks');
       Screens.menuCars = document.getElementById('menuCars');
+      Screens.menuEvents = document.getElementById('menuEvents');
       Screens.menuProfile = document.getElementById('menuProfile');
 
       // ---- pause menu (Step 4) -------------------------------------------
@@ -8270,6 +9032,8 @@ OR.CONFIG = {
       const start = e => {
         if (e) e.preventDefault();
         if (startBtn) startBtn.blur();
+        /* Step 12: a normal race never inherits an event's modifier. */
+        if (OR.Events) OR.Events.stop();
         Game.startRace();
       };
       if (startBtn) startBtn.addEventListener('click', start);
@@ -8277,7 +9041,14 @@ OR.CONFIG = {
         againBtn.addEventListener('click', e => {
           e.preventDefault();
           againBtn.blur();
-          Game.startRace();
+          /* Step 12: after an event race, RACE AGAIN restarts that event. */
+          const last = Game.results && Game.results.event;
+          if (OR.Events && last && OR.Events.get(last.id)) {
+            OR.Events.start(last.id);
+          } else {
+            if (OR.Events) OR.Events.stop();
+            Game.startRace();
+          }
         });
       }
       if (menuBtn) {
@@ -8303,6 +9074,7 @@ OR.CONFIG = {
         trackStartBtn.addEventListener('click', e => {
           e.preventDefault();
           trackStartBtn.blur();
+          if (OR.Events) OR.Events.stop();
           Game.startRace();
         });
       }
@@ -8312,6 +9084,28 @@ OR.CONFIG = {
           trackBackBtn.blur();
           Screens.showMenuView('main');
         });
+      }
+
+      /* ---- Step 12: events pane ------------------------------------------ */
+      const eventsBtn = document.getElementById('eventsBtn');
+      const eventsBackBtn = document.getElementById('eventsBackBtn');
+      if (eventsBtn) {
+        eventsBtn.addEventListener('click', e => {
+          e.preventDefault();
+          eventsBtn.blur();
+          Screens.showMenuView('events');
+        });
+      }
+      if (eventsBackBtn) {
+        eventsBackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          eventsBackBtn.blur();
+          Screens.showMenuView('main');
+        });
+      }
+      if (OR.Events) {
+        OR.Events.init(document.getElementById('eventList'));
+        OR.Events.initHud(document.getElementById('eventCard'));
       }
 
       /* ---- Step 11: car select pane -------------------------------------- */
@@ -8532,13 +9326,16 @@ OR.CONFIG = {
      */
     showMenuView(view) {
       Screens.view = view === 'tracks' ? 'tracks'
-        : (view === 'cars' ? 'cars' : (view === 'profile' ? 'profile' : 'main'));
+        : (view === 'cars' ? 'cars'
+          : (view === 'events' ? 'events' : (view === 'profile' ? 'profile' : 'main')));
       if (Screens.menuMain) Screens.menuMain.classList.toggle('hidden', Screens.view !== 'main');
       if (Screens.menuTracks) Screens.menuTracks.classList.toggle('hidden', Screens.view !== 'tracks');
       if (Screens.menuCars) Screens.menuCars.classList.toggle('hidden', Screens.view !== 'cars');
+      if (Screens.menuEvents) Screens.menuEvents.classList.toggle('hidden', Screens.view !== 'events');
       if (Screens.menuProfile) Screens.menuProfile.classList.toggle('hidden', Screens.view !== 'profile');
       if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
       if (Screens.view === 'cars') Screens.refreshCars();
+      if (Screens.view === 'events') Screens.refreshEvents();
       if (Screens.view === 'profile') Screens.refreshProfile();
       return Screens.view;
     },
@@ -8722,6 +9519,12 @@ OR.CONFIG = {
       }
       Screens.renderUnlockHint();
       return activeId;
+    },
+
+    /** Step 12: repaint the events screen (completed badges). */
+    refreshEvents() {
+      if (OR.Events) OR.Events.refresh();
+      return OR.Events ? OR.Events.list() : [];
     },
 
     /** "NEXT UNLOCK: VALIDATOR AT LEVEL 3" on the main menu. */
@@ -8914,6 +9717,28 @@ OR.CONFIG = {
           '× difficulty' + (xp && xp.leveledUp ? ' · LEVEL UP!' : '');
         note.classList.toggle('is-level-up', !!(xp && xp.leveledUp));
       }
+      /* ---- Step 12: EVENT COMPLETE / EVENT FAILED ------------------------ */
+      const eventBox = document.getElementById('finalEvent');
+      if (eventBox) {
+        const event = results.event;
+        eventBox.classList.toggle('hidden', !event);
+        eventBox.dataset.event = event ? event.id : '';
+        eventBox.dataset.met = event ? (event.met ? 'true' : 'false') : '';
+        if (event) {
+          const badge = document.getElementById('finalEventBadge');
+          const name = document.getElementById('finalEventName');
+          const sub = document.getElementById('finalEventSub');
+          if (badge) badge.textContent = event.met ? 'EVENT COMPLETE' : 'EVENT FAILED';
+          if (name) name.textContent = event.name;
+          if (sub) {
+            sub.textContent = event.met
+              ? (event.firstCompletion ? '+' + event.bonusXp + ' XP — first completion'
+                  : 'Already completed — XP banked the first time')
+              : 'Objective: ' + event.objective;
+          }
+        }
+      }
+
       if (xp && xp.leveledUp) Screens.showLevelToast(xp);
       else Screens.hideLevelToast();
       /* The menu and profile bars must show the new total the moment the
@@ -9013,6 +9838,8 @@ OR.CONFIG = {
     Screens.applyProfile();
     /* Step 11: the garage cards and the next-unlock hint. */
     Screens.refreshCars();
+    /* Step 12: the events screen starts with no event running. */
+    if (OR.Events) OR.Events.refresh();
   }
 
   if (document.readyState === 'loading') {

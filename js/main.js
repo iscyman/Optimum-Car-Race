@@ -16,6 +16,7 @@
     menuMain: null,
     menuTracks: null,
     menuCars: null,
+    menuEvents: null,
     menuProfile: null,
     view: 'main',
 
@@ -28,6 +29,7 @@
       Screens.menuMain = document.getElementById('menuMain');
       Screens.menuTracks = document.getElementById('menuTracks');
       Screens.menuCars = document.getElementById('menuCars');
+      Screens.menuEvents = document.getElementById('menuEvents');
       Screens.menuProfile = document.getElementById('menuProfile');
 
       // ---- pause menu (Step 4) -------------------------------------------
@@ -104,6 +106,8 @@
       const start = e => {
         if (e) e.preventDefault();
         if (startBtn) startBtn.blur();
+        /* Step 12: a normal race never inherits an event's modifier. */
+        if (OR.Events) OR.Events.stop();
         Game.startRace();
       };
       if (startBtn) startBtn.addEventListener('click', start);
@@ -111,7 +115,14 @@
         againBtn.addEventListener('click', e => {
           e.preventDefault();
           againBtn.blur();
-          Game.startRace();
+          /* Step 12: after an event race, RACE AGAIN restarts that event. */
+          const last = Game.results && Game.results.event;
+          if (OR.Events && last && OR.Events.get(last.id)) {
+            OR.Events.start(last.id);
+          } else {
+            if (OR.Events) OR.Events.stop();
+            Game.startRace();
+          }
         });
       }
       if (menuBtn) {
@@ -137,6 +148,7 @@
         trackStartBtn.addEventListener('click', e => {
           e.preventDefault();
           trackStartBtn.blur();
+          if (OR.Events) OR.Events.stop();
           Game.startRace();
         });
       }
@@ -146,6 +158,28 @@
           trackBackBtn.blur();
           Screens.showMenuView('main');
         });
+      }
+
+      /* ---- Step 12: events pane ------------------------------------------ */
+      const eventsBtn = document.getElementById('eventsBtn');
+      const eventsBackBtn = document.getElementById('eventsBackBtn');
+      if (eventsBtn) {
+        eventsBtn.addEventListener('click', e => {
+          e.preventDefault();
+          eventsBtn.blur();
+          Screens.showMenuView('events');
+        });
+      }
+      if (eventsBackBtn) {
+        eventsBackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          eventsBackBtn.blur();
+          Screens.showMenuView('main');
+        });
+      }
+      if (OR.Events) {
+        OR.Events.init(document.getElementById('eventList'));
+        OR.Events.initHud(document.getElementById('eventCard'));
       }
 
       /* ---- Step 11: car select pane -------------------------------------- */
@@ -366,13 +400,16 @@
      */
     showMenuView(view) {
       Screens.view = view === 'tracks' ? 'tracks'
-        : (view === 'cars' ? 'cars' : (view === 'profile' ? 'profile' : 'main'));
+        : (view === 'cars' ? 'cars'
+          : (view === 'events' ? 'events' : (view === 'profile' ? 'profile' : 'main')));
       if (Screens.menuMain) Screens.menuMain.classList.toggle('hidden', Screens.view !== 'main');
       if (Screens.menuTracks) Screens.menuTracks.classList.toggle('hidden', Screens.view !== 'tracks');
       if (Screens.menuCars) Screens.menuCars.classList.toggle('hidden', Screens.view !== 'cars');
+      if (Screens.menuEvents) Screens.menuEvents.classList.toggle('hidden', Screens.view !== 'events');
       if (Screens.menuProfile) Screens.menuProfile.classList.toggle('hidden', Screens.view !== 'profile');
       if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
       if (Screens.view === 'cars') Screens.refreshCars();
+      if (Screens.view === 'events') Screens.refreshEvents();
       if (Screens.view === 'profile') Screens.refreshProfile();
       return Screens.view;
     },
@@ -556,6 +593,12 @@
       }
       Screens.renderUnlockHint();
       return activeId;
+    },
+
+    /** Step 12: repaint the events screen (completed badges). */
+    refreshEvents() {
+      if (OR.Events) OR.Events.refresh();
+      return OR.Events ? OR.Events.list() : [];
     },
 
     /** "NEXT UNLOCK: VALIDATOR AT LEVEL 3" on the main menu. */
@@ -748,6 +791,28 @@
           '× difficulty' + (xp && xp.leveledUp ? ' · LEVEL UP!' : '');
         note.classList.toggle('is-level-up', !!(xp && xp.leveledUp));
       }
+      /* ---- Step 12: EVENT COMPLETE / EVENT FAILED ------------------------ */
+      const eventBox = document.getElementById('finalEvent');
+      if (eventBox) {
+        const event = results.event;
+        eventBox.classList.toggle('hidden', !event);
+        eventBox.dataset.event = event ? event.id : '';
+        eventBox.dataset.met = event ? (event.met ? 'true' : 'false') : '';
+        if (event) {
+          const badge = document.getElementById('finalEventBadge');
+          const name = document.getElementById('finalEventName');
+          const sub = document.getElementById('finalEventSub');
+          if (badge) badge.textContent = event.met ? 'EVENT COMPLETE' : 'EVENT FAILED';
+          if (name) name.textContent = event.name;
+          if (sub) {
+            sub.textContent = event.met
+              ? (event.firstCompletion ? '+' + event.bonusXp + ' XP — first completion'
+                  : 'Already completed — XP banked the first time')
+              : 'Objective: ' + event.objective;
+          }
+        }
+      }
+
       if (xp && xp.leveledUp) Screens.showLevelToast(xp);
       else Screens.hideLevelToast();
       /* The menu and profile bars must show the new total the moment the
@@ -847,6 +912,8 @@
     Screens.applyProfile();
     /* Step 11: the garage cards and the next-unlock hint. */
     Screens.refreshCars();
+    /* Step 12: the events screen starts with no event running. */
+    if (OR.Events) OR.Events.refresh();
   }
 
   if (document.readyState === 'loading') {

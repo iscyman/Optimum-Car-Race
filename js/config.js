@@ -384,6 +384,59 @@ OR.CONFIG = {
     tracks: { flexnode: 1, 'mesh-highway': 2, 'shard-speedway': 5 }
   },
 
+  /* ---- EVENTS (Step 12) -------------------------------------------------
+   * Four challenges, defined as pure data. Each entry carries:
+   *   objective   what must be true at the flag (time / clean / win / collect)
+   *   modifier    the patch applied for the event race only (laps, shards)
+   *   difficulty  optional forced difficulty (and the one a win is judged on)
+   *   xp          the one-off completion bonus, paid once ever
+   * js/events.js never names an event, so a fifth event is one entry here.
+   *
+   * BLOCK RUSH targets are about 1.3x the measured NORMAL rival lap on each
+   * circuit, so they are beatable but not free.
+   */
+  events: {
+    bannerMs: 3400,
+    list: [
+      {
+        id: 'block-rush',
+        name: 'BLOCK RUSH',
+        description: 'One lap. Beat the clock.',
+        objective: {
+          type: 'time',
+          targets: { flexnode: 18, 'mesh-highway': 28, 'shard-speedway': 18 }
+        },
+        modifier: { laps: 1 },
+        xp: 250
+      },
+      {
+        id: 'steady-stream',
+        name: 'STEADY STREAM',
+        description: 'Two clean laps — not one barrier touch.',
+        objective: { type: 'clean', laps: 2 },
+        modifier: { laps: 2 },
+        xp: 220
+      },
+      {
+        id: 'rival-gauntlet',
+        name: 'RIVAL GAUNTLET',
+        description: 'Two laps on HARD, and win them.',
+        objective: { type: 'win', laps: 2, difficulty: 'hard' },
+        modifier: { laps: 2 },
+        difficulty: 'hard',
+        xp: 400
+      },
+      {
+        id: 'shard-hunter',
+        name: 'SHARD HUNTER',
+        description: 'Collect five coded shards in one race.',
+        objective: { type: 'collect', count: 5 },
+        modifier: { shards: 16 },
+        xp: 180
+      }
+    ]
+  },
+
   theme: {
     cyan: '#22e1ff',
     violet: '#8b5cff',
