@@ -134,6 +134,9 @@
       Game.finalTimeMs = 0;
       Game.cleanLaps = 0;
       Game.lapWallBaseline = 0;
+      Game._wasBoosting = false;
+      Game._wasOnBarrier = false;
+      Game._wasTouchingCar = false;
       Game.results = null;
       Game.finishTimer = 0;
       Game.coasting = false;
@@ -248,6 +251,20 @@
       if (Game.results.event && Game.results.event.firstCompletion) {
         OR.Save.completeEvent(Game.results.event.id);
       }
+      /* Step 13: the daily rotation. If that was today's featured event,
+         log the day and move the streak; then pay today's bonus if it is
+         still on the table — once per day, ever. */
+      Game.results.daily = OR.Daily ? OR.Daily.completeRace(Game.results) : null;
+      const bonusLines = [];
+      if (Game.results.event && Game.results.event.firstCompletion) {
+        bonusLines.push({ id: 'event', label: 'EVENT COMPLETE — ' + Game.results.event.name,
+          xp: Game.results.event.xp });
+      }
+      if (Game.results.daily && Game.results.daily.bonusXp > 0) {
+        const featured = OR.Daily.featured();
+        bonusLines.push({ id: 'daily', label: 'DAILY BONUS — ' + (featured ? featured.name : 'TODAY'),
+          xp: Game.results.daily.bonusXp });
+      }
       Game.results.xp = OR.XP.award({
         difficultyId: Game.difficultyId,
         place: Game.results.place,
@@ -256,10 +273,7 @@
         boostsUsed: Game.results.boostsUsed,
         timeMs: Game.finalTimeMs,
         trackId: Track.id,
-        extras: Game.results.event && Game.results.event.firstCompletion
-          ? [{ id: 'event', label: 'EVENT COMPLETE — ' + Game.results.event.name,
-               xp: Game.results.event.xp }]
-          : []
+        extras: bonusLines
       });
       if (OR.Events) OR.Events.onFinish(Game.results.event);
       /* Step 8: records are per track AND per difficulty (time and lap). */
@@ -438,6 +452,25 @@
 
       // Pause freezes rival stall indicators, pickups and visual effects too.
       if (Game.state === STATES.PAUSED) { Audio.idle(); return; }
+
+      /* Step 13: optional haptics — the boost firing, and contact with a
+         barrier or a rival. Off by default and every call is guarded.
+         Contacts are edge-triggered: `hitWall`/`hitCar` are per-frame flags,
+         so buzzing on them directly would vibrate 120 times a second while
+         the car slides along a barrier. `touchingBarrier` is the episode
+         flag, and the car contact gets a matching edge of its own. */
+      if (OR.Haptics && Game.state === STATES.RACING) {
+        if (car.boost.active && !Game._wasBoosting) OR.Haptics.boost();
+        Game._wasBoosting = car.boost.active;
+
+        const onBarrier = car.touchingBarrier === true;
+        if (onBarrier && !Game._wasOnBarrier) OR.Haptics.wall();
+        Game._wasOnBarrier = onBarrier;
+
+        const touchingCar = car.hitCar === true;
+        if (touchingCar && !Game._wasTouchingCar) OR.Haptics.car();
+        Game._wasTouchingCar = touchingCar;
+      }
 
       /* Step 12: onUpdate — the events engine reads the live race state and
          repaints the objective line (position, time, shards, wall hits). */

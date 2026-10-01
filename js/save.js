@@ -11,6 +11,8 @@
  *     progress:  { xp: 0, level: 1 },        <- Step 10
  *     unlocks:   { cars: ['relay'], tracks: ['flexnode'] },   <- Step 11
  *     events:    { completed: { 'block-rush': true } },       <- Step 12
+ *     daily:     { lastBonus: '2026-10-01', streak: 3, history: [...] },  <- 13
+ *     settings:  { haptics: false },                          <- Step 13
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
  *     selection: { track: 'flexnode', difficulty: 'normal', car: 'relay' }
  *   }
@@ -33,7 +35,7 @@
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 4;
+  const VERSION = 5;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -143,6 +145,8 @@
       progress: { xp: 0, level: 1 },
       unlocks: starterUnlocks(),
       events: { completed: {} },
+      daily: { lastBonus: null, streak: 0, history: [] },
+      settings: { haptics: false },
       bests: {},
       selection: { track: null, difficulty: null, car: null }
     };
@@ -169,6 +173,28 @@
       if (UN.tracks[id] <= 1 && tracks.indexOf(id) === -1) tracks.push(id);
     });
     return { cars: cars, tracks: tracks };
+  }
+
+  const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+  /**
+   * The daily log: newest first, one entry per date, capped at the streak
+   * window. Junk rows are dropped rather than repaired.
+   */
+  function sanitiseHistory(raw, cap) {
+    if (!Array.isArray(raw)) return [];
+    const seen = {};
+    const rows = [];
+    raw.forEach(function (row) {
+      if (!row || typeof row !== 'object') return;
+      const date = typeof row.date === 'string' && DATE_KEY.test(row.date) ? row.date : null;
+      if (!date || seen[date]) return;
+      seen[date] = true;
+      rows.push({ date: date, completed: row.completed === true });
+    });
+    /* Newest first, so the window keeps the most recent days. */
+    rows.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+    return rows.slice(0, cap);
   }
 
   /**
@@ -255,6 +281,20 @@
       if (completed[event.id] === true) base.events.completed[event.id] = true;
     });
 
+    /* Step 13: the daily log. Dates are YYYY-MM-DD strings, only the last
+       `streakDays` entries are kept, and only booleans count as completed. */
+    const daily = raw.daily && typeof raw.daily === 'object' ? raw.daily : {};
+    const window = CONFIG.daily ? CONFIG.daily.streakDays : 7;
+    base.daily = {
+      lastBonus: typeof daily.lastBonus === 'string' && DATE_KEY.test(daily.lastBonus)
+        ? daily.lastBonus : null,
+      streak: tocount(daily.streak),
+      history: sanitiseHistory(daily.history, window)
+    };
+
+    const settings = raw.settings && typeof raw.settings === 'object' ? raw.settings : {};
+    base.settings = { haptics: settings.haptics === true };
+
     base.bests = sanitiseBests(raw.bests);
 
     /* Step 11: unlocks are a stored list, validated against the config table.
@@ -334,6 +374,16 @@
     3: function (data) {
       if (!data.events || typeof data.events !== 'object') {
         data.events = { completed: {} };
+      }
+      return data;
+    },
+    /* 4 -> 5 (Step 13): no daily history, and haptics start off. */
+    4: function (data) {
+      if (!data.daily || typeof data.daily !== 'object') {
+        data.daily = { lastBonus: null, streak: 0, history: [] };
+      }
+      if (!data.settings || typeof data.settings !== 'object') {
+        data.settings = { haptics: false };
       }
       return data;
     }
@@ -609,6 +659,54 @@
       return true;
     },
 
+    /* ---- Step 13: the daily log and preferences --------------------------- */
+
+    daily() { return Save.load().daily; },
+    dailyStreak() { return Save.load().daily.streak; },
+    dailyHistory() { return Save.load().daily.history.slice(); },
+
+    /** Has today's featured-event bonus already been paid? */
+    dailyBonusClaimed(dateKey) {
+      return Save.load().daily.lastBonus === dateKey;
+    },
+
+    /** Pay it. Returns false when it has already been claimed for that date. */
+    claimDailyBonus(dateKey) {
+      const daily = Save.load().daily;
+      if (typeof dateKey !== 'string' || !DATE_KEY.test(dateKey)) return false;
+      if (daily.lastBonus === dateKey) return false;
+      daily.lastBonus = dateKey;
+      Save.write();
+      return true;
+    },
+
+    /**
+     * Log a completed daily run: stamp today's row and set the streak. The
+     * history keeps only the newest `streakDays` days.
+     */
+    recordDaily(dateKey, streak) {
+      if (typeof dateKey !== 'string' || !DATE_KEY.test(dateKey)) return Save.load().daily;
+      const daily = Save.load().daily;
+      const cap = CONFIG.daily ? CONFIG.daily.streakDays : 7;
+      const rows = daily.history.filter(function (row) { return row.date !== dateKey; });
+      rows.unshift({ date: dateKey, completed: true });
+      rows.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+      daily.history = rows.slice(0, cap);
+      daily.streak = typeof streak === 'number' && isFinite(streak) && streak > 0
+        ? Math.floor(streak) : daily.streak;
+      Save.write();
+      return daily;
+    },
+
+    /** Preferences: haptics is opt-in and off by default. */
+    settings() { return Save.load().settings; },
+    haptics() { return Save.load().settings.haptics === true; },
+    setHaptics(on) {
+      Save.load().settings.haptics = on === true;
+      Save.write();
+      return Save.load().settings.haptics;
+    },
+
     /* ---- career stats ---------------------------------------------------- */
 
     /**
@@ -680,6 +778,8 @@
       fresh.profile = Save.load().profile;
       /* Step 12: event completions are progress too. */
       fresh.events = { completed: {} };
+      /* Step 13: the daily log is progress; settings are preferences and stay. */
+      fresh.settings = Save.load().settings;
       /* Step 11: unlocking is progress too, so it goes back to the starter
          car and track; the chosen track/difficulty/car are cleared. */
       fresh.selection.track = null;

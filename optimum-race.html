@@ -7,6 +7,13 @@
 <meta name="description" content="Optimum Race — a lightweight browser racing game. Single player, instant play, no install.">
 <title>Optimum Race</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2305060d'/%3E%3Cpath d='M5 23 L27 9' stroke='%2322e1ff' stroke-width='4' stroke-linecap='round'/%3E%3Cpath d='M5 15 L18 15' stroke='%238b5cff' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Optimum Race">
+<meta property="og:description" content="A lightweight single-player browser racing game. Three circuits, four cars, daily challenges. No install, no backend.">
+<meta property="og:site_name" content="Optimum Race">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Optimum Race">
+<meta name="twitter:description" content="A lightweight single-player browser racing game. Three circuits, four cars, daily challenges.">
 <style>
 /* =============================================================================
    OPTIMUM RACE
@@ -1575,6 +1582,137 @@ body.is-paused #hud { opacity: 0.35; }
   .event-fill { transition: none; }
 }
 
+/* ============================================================================
+   STEP 13 — today's event, the streak strip, facts, haptics and the footer
+   ========================================================================== */
+
+.today-card {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(38, 30, 16, 0.92), rgba(22, 18, 12, 0.94));
+  border: 1px solid rgba(255, 190, 110, 0.45);
+}
+.today-card.is-claimed { border-color: rgba(120, 220, 170, 0.45); }
+.today-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.today-countdown {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #8f95b8);
+}
+.today-name { font-size: 15px; letter-spacing: 0.08em; color: #ffd9a0; }
+.today-objective { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #ffd9a0; }
+.today-bonus { font-size: 10px; color: #9ff0c4; }
+
+/* ---- the streak strip ---------------------------------------------------- */
+
+.streak {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+.streak-dot {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  width: 34px;
+}
+.streak-day { font-size: 8px; letter-spacing: 0.08em; color: var(--muted, #8f95b8); }
+.streak-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.streak-dot.is-done .streak-mark {
+  background: linear-gradient(180deg, #7fd8a8, #4fc98d);
+  border-color: #7fd8a8;
+}
+.streak-dot.is-today .streak-mark { box-shadow: 0 0 0 2px rgba(255, 190, 110, 0.45); }
+.streak-dot.is-today .streak-day { color: #ffd9a0; }
+
+.event-card.is-today { border-color: rgba(255, 190, 110, 0.6); }
+.event-today {
+  display: none;
+  padding: 3px 8px;
+  margin-left: auto;
+  margin-right: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #1a1206;
+  background: #ffb45c;
+  border-radius: 999px;
+}
+.event-card.is-today .event-today { display: inline-block; }
+
+/* ---- did you know -------------------------------------------------------- */
+
+.fact {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #cfd4ff;
+  text-align: left;
+  background: rgba(143, 123, 255, 0.1);
+  border-left: 2px solid rgba(143, 123, 255, 0.6);
+  border-radius: 0 8px 8px 0;
+}
+
+/* ---- haptics toggle ------------------------------------------------------ */
+
+.menu-toggles { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
+.pause-haptics { margin-bottom: 6px; }
+.icon-btn[data-action="haptics"] .haptics-label { font-size: 10px; letter-spacing: 0.08em; }
+.icon-btn[data-action="haptics"].is-on { color: #7fd8a8; }
+
+/* ---- disclaimer and footer ----------------------------------------------- */
+
+.disclaimer {
+  margin: 12px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted, #8f95b8);
+  text-align: center;
+}
+.disclaimer a { color: #8fbaff; }
+
+.site-footer {
+  padding: 10px 12px 18px;
+  text-align: center;
+}
+.footer-disclaimer {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: rgba(143, 149, 184, 0.75);
+}
+
+@media (max-width: 720px) {
+  .today-card { margin: 8px 0 2px; }
+  .today-name { font-size: 13px; }
+  .streak-dot { width: 30px; }
+  .streak-mark { width: 16px; height: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streak-mark, .today-card { transition: none; }
+}
+
+/* the today card is a control: it opens the challenge screen */
+.today-card { cursor: pointer; }
+.today-card:hover, .today-card:focus-visible {
+  border-color: rgba(255, 190, 110, 0.85);
+  outline: none;
+}
+.today-cta { font-size: 9px; letter-spacing: 0.1em; color: #ffd9a0; }
+
 </style>
 </head>
 <body>
@@ -1697,6 +1835,15 @@ body.is-paused #hud { opacity: 0.35; }
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
       <button id="carsBtn" class="btn btn-ghost">CARS</button>
       <button id="eventsBtn" class="btn btn-ghost">EVENTS</button>
+      <div class="today-card" id="todayCard" role="button" tabindex="0" aria-label="Open today's event" data-event="" data-featured="">
+        <div class="today-head">
+          <span class="card-label">TODAY'S EVENT</span>
+          <span class="today-countdown" id="todayCountdown">0:00:00</span>
+        </div>
+        <strong class="today-name" id="todayName">BLOCK RUSH</strong>
+        <span class="today-objective" id="todayObjective"></span>
+        <span class="today-bonus" id="todayBonus"></span>
+      </div>
       <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
       <p class="racing-as" id="racingAs"></p>
       <p class="unlock-hint" id="unlockHint"></p>
@@ -1706,6 +1853,16 @@ body.is-paused #hud { opacity: 0.35; }
         <span class="level-xp" id="menuLevelXp">0 / 283 XP</span>
       </div>
       <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
+      <div class="menu-toggles">
+        <button class="icon-btn ghost" data-action="haptics" aria-pressed="false" title="Toggle vibration feedback">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"
+                  fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M10 7h4M10 17h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span class="haptics-label">HAPTICS OFF</span>
+        </button>
+      </div>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -1741,6 +1898,7 @@ body.is-paused #hud { opacity: 0.35; }
     <div class="panel panel-wide hidden" id="menuEvents">
       <div class="badge">EVENTS</div>
       <h2 class="title title-sm">CHALLENGES</h2>
+      <div class="streak" id="streakStrip" aria-label="Last seven days"></div>
       <div id="eventList" class="event-list"></div>
       <p class="event-hint">Each challenge runs on the circuit you have selected.
         Beat it once to collect the XP — beating it again is for pride.</p>
@@ -1800,6 +1958,12 @@ body.is-paused #hud { opacity: 0.35; }
     </div>
   </div>
 
+  <footer class="site-footer">
+    <p class="disclaimer">Unofficial fan project, not affiliated with Optimum.
+      <a href="https://getoptimum.xyz" target="_blank" rel="noopener noreferrer">getoptimum.xyz</a></p>
+    <p class="footer-disclaimer">Unofficial fan project, not affiliated with Optimum.</p>
+  </footer>
+
   <!-- ===================== LEVEL-UP TOAST (Step 10) ===================== -->
   <div id="unlockToast" class="level-toast unlock-toast hidden" role="status" aria-live="polite">
     <span class="toast-badge">UNLOCKED</span>
@@ -1828,6 +1992,9 @@ body.is-paused #hud { opacity: 0.35; }
           <span class="stat-value" id="pauseTime">00:00.000</span>
         </div>
       </div>
+      <button class="icon-btn ghost pause-haptics" data-action="haptics" aria-pressed="false" title="Toggle vibration feedback">
+        <span class="haptics-label">HAPTICS OFF</span>
+      </button>
       <button id="resumeBtn" class="btn btn-primary">RESUME</button>
       <button id="restartBtn" class="btn btn-ghost">RESTART</button>
       <button id="quitBtn" class="btn btn-ghost">QUIT TO MENU</button>
@@ -1892,6 +2059,7 @@ body.is-paused #hud { opacity: 0.35; }
           <span class="level-xp" id="finalLevelXp">0 / 283 XP</span>
         </div>
         <p class="xp-note" id="finalXpNote"></p>
+        <p class="fact" id="finalFact"></p>
         <div id="finalEvent" class="event-result hidden" data-event="" data-met="">
           <span class="event-result-badge" id="finalEventBadge">EVENT COMPLETE</span>
           <strong id="finalEventName">BLOCK RUSH</strong>
@@ -2350,8 +2518,67 @@ OR.CONFIG = {
         objective: { type: 'collect', count: 5 },
         modifier: { shards: 16 },
         xp: 180
+      },
+      {
+        id: 'narrow-margin',
+        name: 'NARROW MARGIN',
+        description: 'A thin road and little grip. One clean lap.',
+        objective: { type: 'clean', laps: 1 },
+        modifier: { narrowRoad: 0.72, lowGrip: 0.8, laps: 1 },
+        xp: 300
+      },
+      {
+        id: 'stall-storm',
+        name: 'STALL STORM',
+        description: 'Rivals stall constantly and the meter fills fast. Still win.',
+        objective: { type: 'win', laps: 2 },
+        modifier: { stallStorm: 1.8, boostRush: 1.6, laps: 2 },
+        xp: 350
       }
     ]
+  },
+
+  /* ---- DAILY ROTATION (Step 13) -----------------------------------------
+   * One featured event per local day, chosen deterministically from the date
+   * itself — same event for everyone, no backend, no stored state needed to
+   * work out what today is. `order` is the rotation; every event stays
+   * playable any time, but only the featured one pays the daily bonus.
+   */
+  daily: {
+    order: ['block-rush', 'steady-stream', 'rival-gauntlet', 'shard-hunter',
+            'narrow-margin', 'stall-storm'],
+    bonusXp: 120,        // one-time-per-day bonus for beating today's event
+    streakDays: 7,       // how many days the streak strip shows
+    tickMs: 1000         // countdown refresh
+  },
+
+  /* ---- HAPTICS (Step 13) — off by default, opt-in ------------------------ */
+  haptics: {
+    enabled: false,
+    boostMs: 25,
+    wallPattern: [18, 30, 18],
+    carMs: 35
+  },
+
+  /* ---- DID YOU KNOW (Step 13) -------------------------------------------
+   * ONLY these verified facts. Do not add, reword or reorder without a
+   * verified source — the finish screen rotates through exactly this list.
+   */
+  facts: {
+    list: [
+      'Optimum runs as a permissionless network of flexnodes that anyone can operate.',
+      'mump2p is RLNC-accelerated pub/sub that stays compatible with libp2p and gossipsub.',
+      'RLNC stands for Random Linear Network Coding. It mixes message fragments so lost pieces can be recovered.',
+      'With coded shards, a receiver only needs a fraction of them to rebuild the full message.',
+      'Optimum says mump2p delivers 6-20x faster block propagation for Ethereum validators.',
+      'Flexnodes encode, decode and forward coded gossip, and can serve DeRAM and DeROM requests.'
+    ]
+  },
+
+  /* ---- DISCLAIMER (Step 13) -------------------------------------------- */
+  legal: {
+    disclaimer: 'Unofficial fan project, not affiliated with Optimum.',
+    link: 'https://getoptimum.xyz'
   },
 
   theme: {
@@ -3840,6 +4067,8 @@ OR.CONFIG = {
  *     progress:  { xp: 0, level: 1 },        <- Step 10
  *     unlocks:   { cars: ['relay'], tracks: ['flexnode'] },   <- Step 11
  *     events:    { completed: { 'block-rush': true } },       <- Step 12
+ *     daily:     { lastBonus: '2026-10-01', streak: 3, history: [...] },  <- 13
+ *     settings:  { haptics: false },                          <- Step 13
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
  *     selection: { track: 'flexnode', difficulty: 'normal', car: 'relay' }
  *   }
@@ -3862,7 +4091,7 @@ OR.CONFIG = {
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 4;
+  const VERSION = 5;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -3972,6 +4201,8 @@ OR.CONFIG = {
       progress: { xp: 0, level: 1 },
       unlocks: starterUnlocks(),
       events: { completed: {} },
+      daily: { lastBonus: null, streak: 0, history: [] },
+      settings: { haptics: false },
       bests: {},
       selection: { track: null, difficulty: null, car: null }
     };
@@ -3998,6 +4229,28 @@ OR.CONFIG = {
       if (UN.tracks[id] <= 1 && tracks.indexOf(id) === -1) tracks.push(id);
     });
     return { cars: cars, tracks: tracks };
+  }
+
+  const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+  /**
+   * The daily log: newest first, one entry per date, capped at the streak
+   * window. Junk rows are dropped rather than repaired.
+   */
+  function sanitiseHistory(raw, cap) {
+    if (!Array.isArray(raw)) return [];
+    const seen = {};
+    const rows = [];
+    raw.forEach(function (row) {
+      if (!row || typeof row !== 'object') return;
+      const date = typeof row.date === 'string' && DATE_KEY.test(row.date) ? row.date : null;
+      if (!date || seen[date]) return;
+      seen[date] = true;
+      rows.push({ date: date, completed: row.completed === true });
+    });
+    /* Newest first, so the window keeps the most recent days. */
+    rows.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+    return rows.slice(0, cap);
   }
 
   /**
@@ -4084,6 +4337,20 @@ OR.CONFIG = {
       if (completed[event.id] === true) base.events.completed[event.id] = true;
     });
 
+    /* Step 13: the daily log. Dates are YYYY-MM-DD strings, only the last
+       `streakDays` entries are kept, and only booleans count as completed. */
+    const daily = raw.daily && typeof raw.daily === 'object' ? raw.daily : {};
+    const window = CONFIG.daily ? CONFIG.daily.streakDays : 7;
+    base.daily = {
+      lastBonus: typeof daily.lastBonus === 'string' && DATE_KEY.test(daily.lastBonus)
+        ? daily.lastBonus : null,
+      streak: tocount(daily.streak),
+      history: sanitiseHistory(daily.history, window)
+    };
+
+    const settings = raw.settings && typeof raw.settings === 'object' ? raw.settings : {};
+    base.settings = { haptics: settings.haptics === true };
+
     base.bests = sanitiseBests(raw.bests);
 
     /* Step 11: unlocks are a stored list, validated against the config table.
@@ -4163,6 +4430,16 @@ OR.CONFIG = {
     3: function (data) {
       if (!data.events || typeof data.events !== 'object') {
         data.events = { completed: {} };
+      }
+      return data;
+    },
+    /* 4 -> 5 (Step 13): no daily history, and haptics start off. */
+    4: function (data) {
+      if (!data.daily || typeof data.daily !== 'object') {
+        data.daily = { lastBonus: null, streak: 0, history: [] };
+      }
+      if (!data.settings || typeof data.settings !== 'object') {
+        data.settings = { haptics: false };
       }
       return data;
     }
@@ -4438,6 +4715,54 @@ OR.CONFIG = {
       return true;
     },
 
+    /* ---- Step 13: the daily log and preferences --------------------------- */
+
+    daily() { return Save.load().daily; },
+    dailyStreak() { return Save.load().daily.streak; },
+    dailyHistory() { return Save.load().daily.history.slice(); },
+
+    /** Has today's featured-event bonus already been paid? */
+    dailyBonusClaimed(dateKey) {
+      return Save.load().daily.lastBonus === dateKey;
+    },
+
+    /** Pay it. Returns false when it has already been claimed for that date. */
+    claimDailyBonus(dateKey) {
+      const daily = Save.load().daily;
+      if (typeof dateKey !== 'string' || !DATE_KEY.test(dateKey)) return false;
+      if (daily.lastBonus === dateKey) return false;
+      daily.lastBonus = dateKey;
+      Save.write();
+      return true;
+    },
+
+    /**
+     * Log a completed daily run: stamp today's row and set the streak. The
+     * history keeps only the newest `streakDays` days.
+     */
+    recordDaily(dateKey, streak) {
+      if (typeof dateKey !== 'string' || !DATE_KEY.test(dateKey)) return Save.load().daily;
+      const daily = Save.load().daily;
+      const cap = CONFIG.daily ? CONFIG.daily.streakDays : 7;
+      const rows = daily.history.filter(function (row) { return row.date !== dateKey; });
+      rows.unshift({ date: dateKey, completed: true });
+      rows.sort(function (a, b) { return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+      daily.history = rows.slice(0, cap);
+      daily.streak = typeof streak === 'number' && isFinite(streak) && streak > 0
+        ? Math.floor(streak) : daily.streak;
+      Save.write();
+      return daily;
+    },
+
+    /** Preferences: haptics is opt-in and off by default. */
+    settings() { return Save.load().settings; },
+    haptics() { return Save.load().settings.haptics === true; },
+    setHaptics(on) {
+      Save.load().settings.haptics = on === true;
+      Save.write();
+      return Save.load().settings.haptics;
+    },
+
     /* ---- career stats ---------------------------------------------------- */
 
     /**
@@ -4509,6 +4834,8 @@ OR.CONFIG = {
       fresh.profile = Save.load().profile;
       /* Step 12: event completions are progress too. */
       fresh.events = { completed: {} };
+      /* Step 13: the daily log is progress; settings are preferences and stay. */
+      fresh.settings = Save.load().settings;
       /* Step 11: unlocking is progress too, so it goes back to the starter
          car and track; the chosen track/difficulty/car are cleared. */
       fresh.selection.track = null;
@@ -5050,6 +5377,100 @@ OR.CONFIG = {
       label: 'shards',
       get() { return CONFIG.boost.shards.count; },
       set(value) { CONFIG.boost.shards.count = value; }
+    },
+
+    /* ---- Step 13 modifiers ------------------------------------------------
+     * Each one exposes a get() that snapshots every value it touches and a
+     * scale(factor) for the number form used in config, so the same patch and
+     * revert path serves them all and nothing can leak.
+     */
+
+    /* A thinner road: the physics limit and the drawn road shrink together,
+       so the barrier is where the tarmac ends. */
+    narrowRoad: {
+      label: 'narrow road',
+      get() {
+        const T = OR.Track;
+        return {
+          halfRoad: T.halfRoad, shoulder: T.shoulder, grassMargin: T.grassMargin,
+          kerbStart: T.kerbStart, grassStart: T.grassStart,
+          limit: T.limit, hardLimit: T.hardLimit
+        };
+      },
+      set(snapshot) { Object.assign(OR.Track, snapshot); },
+      scale(factor) {
+        const T = OR.Track;
+        const backstop = T.hardLimit - T.limit;   // the backstop keeps its margin
+        return {
+          halfRoad: T.halfRoad * factor,
+          shoulder: T.shoulder * factor,
+          grassMargin: T.grassMargin * factor,
+          kerbStart: T.kerbStart * factor,
+          grassStart: T.grassStart * factor,
+          limit: T.limit * factor,
+          hardLimit: T.limit * factor + backstop
+        };
+      }
+    },
+
+    /* Less grip: both ends of the grip curve come down together. */
+    lowGrip: {
+      label: 'low grip',
+      get() { return { gripLow: CONFIG.car.gripLow, gripHigh: CONFIG.car.gripHigh }; },
+      set(snapshot) {
+        CONFIG.car.gripLow = snapshot.gripLow;
+        CONFIG.car.gripHigh = snapshot.gripHigh;
+      },
+      scale(factor) {
+        return {
+          gripLow: CONFIG.car.gripLow * factor,
+          gripHigh: CONFIG.car.gripHigh * factor
+        };
+      }
+    },
+
+    /* Rivals stall far more often (factor > 1 = more stalling). */
+    stallStorm: {
+      label: 'stall storm',
+      get() {
+        const stall = CONFIG.rivals.stall;
+        return {
+          intervalMin: stall.intervalMin, intervalMax: stall.intervalMax,
+          durationMin: stall.durationMin, durationMax: stall.durationMax
+        };
+      },
+      set(snapshot) { Object.assign(CONFIG.rivals.stall, snapshot); },
+      scale(factor) {
+        const stall = CONFIG.rivals.stall;
+        const safe = Math.max(0.1, factor);
+        return {
+          intervalMin: stall.intervalMin / safe,
+          intervalMax: stall.intervalMax / safe,
+          durationMin: stall.durationMin * Math.min(safe, 2),
+          durationMax: stall.durationMax * Math.min(safe, 2)
+        };
+      }
+    },
+
+    /* Boost charges faster and hits a little harder. */
+    boostRush: {
+      label: 'boost rush',
+      get() {
+        return {
+          chargeRate: CONFIG.boost.charge.rate,
+          speedMultiplier: CONFIG.boost.speedMultiplier
+        };
+      },
+      set(snapshot) {
+        CONFIG.boost.charge.rate = snapshot.chargeRate;
+        CONFIG.boost.speedMultiplier = snapshot.speedMultiplier;
+      },
+      scale(factor) {
+        return {
+          chargeRate: CONFIG.boost.charge.rate * factor,
+          speedMultiplier: 1 + (CONFIG.boost.speedMultiplier - 1) * factor
+        };
+      }
     }
   };
 
@@ -5104,6 +5525,11 @@ OR.CONFIG = {
 
     /* ---- modifiers: patch, then always give it back ---------------------- */
 
+    /** The road geometry changed: drop the cached road layer so it redraws. */
+    _refreshTrack() {
+      if (OR.Renderer && OR.Renderer.invalidateTrack) OR.Renderer.invalidateTrack();
+    },
+
     /** Apply (or replace) a modifier patch, remembering what it overwrote. */
     _applyPatch(modifier) {
       Events._revertPatch();
@@ -5111,9 +5537,13 @@ OR.CONFIG = {
       Object.keys(modifier || {}).forEach(function (key) {
         const field = FIELDS[key];
         if (!field) return;
-        Events._patch[key] = { get: field.get, set: field.set, was: field.get() };
-        field.set(modifier[key]);
+        /* A number means "scale from where it is now"; an object is a value. */
+        const value = typeof modifier[key] === 'number' && field.scale
+          ? field.scale(modifier[key]) : modifier[key];
+        Events._patch[key] = { key: key, get: field.get, set: field.set, was: field.get() };
+        field.set(value);
       });
+      if (Events._patch.narrowRoad) Events._refreshTrack();
       return Events._patch;
     },
 
@@ -5123,6 +5553,7 @@ OR.CONFIG = {
       const patch = Events._patch;
       Object.keys(patch).forEach(function (key) { patch[key].set(patch[key].was); });
       Events._patch = null;
+      if (patch.narrowRoad) Events._refreshTrack();
       return patch;
     },
 
@@ -5360,7 +5791,10 @@ OR.CONFIG = {
         name.textContent = event.name;
         const badge = doc.createElement('span');
         badge.className = 'event-badge';
-        head.append(name, badge);
+        const today = doc.createElement('span');
+        today.className = 'event-today';
+        today.textContent = 'TODAY';
+        head.append(name, today, badge);
 
         const description = doc.createElement('p');
         description.className = 'event-description';
@@ -5400,8 +5834,11 @@ OR.CONFIG = {
       if (!Events.el) return null;
       Events.el.cards.forEach(function (card) {
         const done = OR.Save ? OR.Save.eventCompleted(card.event.id) : false;
+        const featured = OR.Daily ? OR.Daily.isFeatured(card.event.id) : false;
         card.node.classList.toggle('is-completed', done);
+        card.node.classList.toggle('is-today', featured);
         card.node.dataset.completed = done ? 'true' : 'false';
+        card.node.dataset.today = featured ? 'true' : 'false';
         card.badge.textContent = done ? 'COMPLETED' : 'AVAILABLE';
         card.badge.classList.toggle('is-done', done);
         card.race.textContent = done ? 'RACE AGAIN' : 'RACE EVENT';
@@ -5452,6 +5889,302 @@ OR.CONFIG = {
   };
 
   OR.Events = Events;
+})();
+
+/* ==== js/daily.js ==== */
+/* =============================================================================
+ * daily.js — Step 13: the daily rotation, the streak and the once-a-day bonus.
+ *
+ * The featured event is a PURE FUNCTION OF THE LOCAL DATE:
+ *
+ *   index = hash('YYYY-MM-DD') mod CONFIG.daily.order.length
+ *
+ * so every player sees the same challenge on the same day, it changes at
+ * local midnight, and nothing about it needs to be stored or fetched. That is
+ * also why a corrupt or blocked save cannot break it.
+ *
+ * What IS stored (save version 5) is the player side: which day the bonus was
+ * last claimed, the streak, and the last seven days of completions.
+ *
+ * The clock is injectable (`Daily.setClock`) so the tests can travel across
+ * days and midnight without waiting.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG } = OR;
+  const D = CONFIG.daily;
+
+  function pad(value) { return value < 10 ? '0' + value : String(value); }
+
+  const Daily = {
+    _clock: null,       // tests only: a function returning a timestamp
+
+    /** Wall-clock now, or the test clock when one is installed. */
+    now() { return Daily._clock ? Daily._clock() : Date.now(); },
+
+    /** Install a test clock (pass null to go back to the real one). */
+    setClock(fn) {
+      Daily._clock = typeof fn === 'function' ? fn : null;
+      return Daily;
+    },
+
+    /* ---- the date key ---------------------------------------------------- */
+
+    /** 'YYYY-MM-DD' in LOCAL time — the day the player is actually having. */
+    dateKey(date) {
+      const d = date instanceof Date ? date
+        : new Date(typeof date === 'number' ? date : (date === undefined ? Daily.now() : date));
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+    },
+
+    /** Midday of a date key, which is safely inside that local day. */
+    dateFromKey(key) {
+      if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+      const parts = key.split('-');
+      const date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]), 12, 0, 0, 0);
+      return isNaN(date.getTime()) ? null : date;
+    },
+
+    /** The key for the day before a given one (used by the streak). */
+    previousKey(key) {
+      const date = Daily.dateFromKey(key);
+      if (!date) return null;
+      date.setDate(date.getDate() - 1);
+      return Daily.dateKey(date);
+    },
+
+    /* ---- the rotation ---------------------------------------------------- */
+
+    /**
+     * FNV-1a over the date key, finished with an avalanche mix. The mix
+     * matters: the modulo uses the low bits, and raw FNV-1a leaves them
+     * clumpy, which would show a player the same challenge three days running
+     * while others never appeared.
+     */
+    hash(key) {
+      const text = String(key);
+      let h = 2166136261;
+      for (let i = 0; i < text.length; i++) {
+        h ^= text.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      h ^= h >>> 16;
+      h = Math.imul(h, 2246822507);
+      h ^= h >>> 13;
+      h = Math.imul(h, 3266489909);
+      h ^= h >>> 16;
+      return h >>> 0;
+    },
+
+    /** Which slot of the rotation today is. */
+    index(date) {
+      const order = D.order;
+      if (!order.length) return 0;
+      return Daily.hash(Daily.dateKey(date)) % order.length;
+    },
+
+    /** The featured event id for a day (defaults to today). '' if misconfigured. */
+    featuredId(date) {
+      if (!D.order.length) return '';
+      return D.order[Daily.index(date)];
+    },
+
+    /** The featured event object, or null when Events is not loaded. */
+    featured(date) {
+      const id = Daily.featuredId(date);
+      return OR.Events ? OR.Events.get(id) : null;
+    },
+
+    isFeatured(eventId, date) { return Daily.featuredId(date) === eventId; },
+
+    /* ---- the countdown to local midnight --------------------------------- */
+
+    /** Milliseconds until the next local midnight (the rotation). */
+    msUntilRotation(now) {
+      const t = typeof now === 'number' ? now : Daily.now();
+      const d = new Date(t);
+      const next = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0);
+      return Math.max(0, next.getTime() - t);
+    },
+
+    /** 'H:MM:SS' — the countdown the menu shows. */
+    countdown(now) {
+      const ms = Daily.msUntilRotation(now);
+      const total = Math.floor(ms / 1000);
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const seconds = total % 60;
+      return hours + ':' + pad(minutes) + ':' + pad(seconds);
+    },
+
+    /* ---- the streak and the last seven days ------------------------------ */
+
+    /**
+     * The player-side view of the last `streakDays` days, newest first:
+     * { date, completed, label ('MON'), isToday }.
+     */
+    historyWindow(now) {
+      const today = Daily.dateKey(now);
+      const done = {};
+      (OR.Save ? OR.Save.dailyHistory() : []).forEach(function (row) {
+        if (row && row.completed) done[row.date] = true;
+      });
+      const labels = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      const out = [];
+      const cursor = Daily.dateFromKey(today);
+      for (let i = 0; i < D.streakDays; i++) {
+        const date = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - i, 12);
+        const key = Daily.dateKey(date);
+        out.push({
+          date: key,
+          completed: done[key] === true,
+          label: labels[date.getDay()],
+          isToday: i === 0
+        });
+      }
+      return out;
+    },
+
+    /**
+     * What the streak becomes after completing today: yesterday continued it,
+     * a gap restarts it at one, and the same day twice never double-counts.
+     */
+    nextStreak(previous, dateKey) {
+      const before = Daily.previousKey(dateKey);
+      const history = OR.Save ? OR.Save.dailyHistory() : [];
+      const yesterday = history.some(function (row) {
+        return row.date === before && row.completed;
+      });
+      if (history.some(function (row) { return row.date === dateKey && row.completed; })) {
+        return previous;                       // already logged today
+      }
+      const prev = typeof previous === 'number' && isFinite(previous) && previous > 0
+        ? Math.floor(previous) : 0;
+      return yesterday ? prev + 1 : 1;
+    },
+
+    /* ---- completing a daily run ------------------------------------------ */
+
+    /**
+     * Called at the flag, once the race (and any event objective) has been
+     * judged. Handles two things:
+     *   - if the featured event was completed, log the day and move the streak;
+     *   - if today's bonus has not been paid yet and the featured event was
+     *     just completed, pay it (once per day, ever).
+     * Returns null when there is nothing daily about this race.
+     */
+    completeRace(results) {
+      if (!results || !results.event) return null;
+      const today = Daily.dateKey();
+      const featuredId = Daily.featuredId();
+      const isFeatured = results.event.id === featuredId;
+      if (!isFeatured) {
+        return { dateKey: today, featuredId: featuredId, isFeatured: false,
+          completed: false, bonusXp: 0, streak: OR.Save ? OR.Save.dailyStreak() : 0 };
+      }
+
+      const completed = results.event.met === true;
+      let streak = OR.Save ? OR.Save.dailyStreak() : 0;
+      if (completed) {
+        streak = Daily.nextStreak(streak, today);
+        if (OR.Save) OR.Save.recordDaily(today, streak);
+      }
+
+      let bonusXp = 0;
+      let claimed = OR.Save ? OR.Save.dailyBonusClaimed(today) : false;
+      if (completed && !claimed && OR.Save) {
+        claimed = OR.Save.claimDailyBonus(today) === true || claimed;
+        if (claimed) bonusXp = D.bonusXp;
+      }
+
+      return {
+        dateKey: today,
+        featuredId: featuredId,
+        isFeatured: true,
+        completed: completed,
+        bonusXp: bonusXp,
+        claimed: claimed,
+        streak: streak
+      };
+    },
+
+    /** Is today's bonus still on the table? (The menu says so.) */
+    bonusAvailable() {
+      if (!OR.Save) return false;
+      const today = Daily.dateKey();
+      if (OR.Save.dailyBonusClaimed(today)) return false;
+      const history = OR.Save.dailyHistory();
+      return !history.some(function (row) { return row.date === today && row.completed; });
+    },
+
+    /** "NEXT ROTATION IN 5:12:33" for the menu card. */
+    countdownText(now) { return Daily.countdown(now); }
+  };
+
+  OR.Daily = Daily;
+})();
+
+/* ==== js/haptics.js ==== */
+/* =============================================================================
+ * haptics.js — Step 13: optional vibration feedback, off by default.
+ *
+ * A player opts in from the menu or the pause screen, and the choice lives in
+ * the save (Step 13, save version 5). Every call is guarded twice: the
+ * preference and the browser API. A device without `navigator.vibrate`, or a
+ * blocked save, simply gets nothing — never an error.
+ *
+ * Only two things buzz: firing the boost, and a collision (barrier or rival).
+ * Nothing fires on a timer.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG } = OR;
+  const H = CONFIG.haptics;
+
+  const Haptics = {
+    /** The stored preference (default off). */
+    enabled() { return OR.Save ? OR.Save.haptics() === true : H.enabled === true; },
+
+    /** Does this browser have a vibration API at all? */
+    supported() {
+      return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+    },
+
+    /** Turn it on or off and remember it. Returns the new state. */
+    set(on) {
+      const next = on === true;
+      if (OR.Save) OR.Save.setHaptics(next);
+      if (!next) Haptics.stop();
+      else Haptics.pulse(H.boostMs);        // confirm the choice with a tick
+      return next;
+    },
+
+    toggle() { return Haptics.set(!Haptics.enabled()); },
+
+    stop() {
+      if (!Haptics.supported()) return false;
+      try { navigator.vibrate(0); return true; } catch (error) { return false; }
+    },
+
+    /** Fire one pattern. Returns true only when something really buzzed. */
+    pulse(pattern) {
+      if (!Haptics.enabled() || !Haptics.supported()) return false;
+      try {
+        navigator.vibrate(pattern);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    boost() { return Haptics.pulse(H.boostMs); },
+    wall() { return Haptics.pulse(H.wallPattern); },
+    car() { return Haptics.pulse(H.carMs); }
+  };
+
+  OR.Haptics = Haptics;
 })();
 
 /* ==== js/difficulty.js ==== */
@@ -7576,9 +8309,14 @@ OR.CONFIG = {
     /**
      * Step 8: drop every shape that was cached for the old track and rebuild
      * the ones that are cheap. Called after Track.use().
+     *
+     * Step 13: also called when an event modifier changes the road geometry
+     * (NARROW MARGIN). The tarmac itself is a cached canvas, so it has to go
+     * too or the car would drive on a road nobody drew.
      */
     invalidateTrack() {
       Renderer.paths = null;
+      Renderer.roadLayer = null;
       Renderer.sceneryLayer = null;
       if (Renderer.minimap) Renderer.buildMinimapPath();
       return Renderer;
@@ -8234,6 +8972,9 @@ OR.CONFIG = {
       Game.finalTimeMs = 0;
       Game.cleanLaps = 0;
       Game.lapWallBaseline = 0;
+      Game._wasBoosting = false;
+      Game._wasOnBarrier = false;
+      Game._wasTouchingCar = false;
       Game.results = null;
       Game.finishTimer = 0;
       Game.coasting = false;
@@ -8348,6 +9089,20 @@ OR.CONFIG = {
       if (Game.results.event && Game.results.event.firstCompletion) {
         OR.Save.completeEvent(Game.results.event.id);
       }
+      /* Step 13: the daily rotation. If that was today's featured event,
+         log the day and move the streak; then pay today's bonus if it is
+         still on the table — once per day, ever. */
+      Game.results.daily = OR.Daily ? OR.Daily.completeRace(Game.results) : null;
+      const bonusLines = [];
+      if (Game.results.event && Game.results.event.firstCompletion) {
+        bonusLines.push({ id: 'event', label: 'EVENT COMPLETE — ' + Game.results.event.name,
+          xp: Game.results.event.xp });
+      }
+      if (Game.results.daily && Game.results.daily.bonusXp > 0) {
+        const featured = OR.Daily.featured();
+        bonusLines.push({ id: 'daily', label: 'DAILY BONUS — ' + (featured ? featured.name : 'TODAY'),
+          xp: Game.results.daily.bonusXp });
+      }
       Game.results.xp = OR.XP.award({
         difficultyId: Game.difficultyId,
         place: Game.results.place,
@@ -8356,10 +9111,7 @@ OR.CONFIG = {
         boostsUsed: Game.results.boostsUsed,
         timeMs: Game.finalTimeMs,
         trackId: Track.id,
-        extras: Game.results.event && Game.results.event.firstCompletion
-          ? [{ id: 'event', label: 'EVENT COMPLETE — ' + Game.results.event.name,
-               xp: Game.results.event.xp }]
-          : []
+        extras: bonusLines
       });
       if (OR.Events) OR.Events.onFinish(Game.results.event);
       /* Step 8: records are per track AND per difficulty (time and lap). */
@@ -8538,6 +9290,25 @@ OR.CONFIG = {
 
       // Pause freezes rival stall indicators, pickups and visual effects too.
       if (Game.state === STATES.PAUSED) { Audio.idle(); return; }
+
+      /* Step 13: optional haptics — the boost firing, and contact with a
+         barrier or a rival. Off by default and every call is guarded.
+         Contacts are edge-triggered: `hitWall`/`hitCar` are per-frame flags,
+         so buzzing on them directly would vibrate 120 times a second while
+         the car slides along a barrier. `touchingBarrier` is the episode
+         flag, and the car contact gets a matching edge of its own. */
+      if (OR.Haptics && Game.state === STATES.RACING) {
+        if (car.boost.active && !Game._wasBoosting) OR.Haptics.boost();
+        Game._wasBoosting = car.boost.active;
+
+        const onBarrier = car.touchingBarrier === true;
+        if (onBarrier && !Game._wasOnBarrier) OR.Haptics.wall();
+        Game._wasOnBarrier = onBarrier;
+
+        const touchingCar = car.hitCar === true;
+        if (touchingCar && !Game._wasTouchingCar) OR.Haptics.car();
+        Game._wasTouchingCar = touchingCar;
+      }
 
       /* Step 12: onUpdate — the events engine reads the live race state and
          repaints the objective line (position, time, shards, wall hits). */
@@ -9103,6 +9874,18 @@ OR.CONFIG = {
           Screens.showMenuView('main');
         });
       }
+      /* Step 13: the menu card is the shortcut into the challenge screen. */
+      const todayCard = document.getElementById('todayCard');
+      if (todayCard) {
+        const openEvents = e => {
+          if (e) e.preventDefault();
+          Screens.showMenuView('events');
+        };
+        todayCard.addEventListener('click', openEvents);
+        todayCard.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') openEvents(e);
+        });
+      }
       if (OR.Events) {
         OR.Events.init(document.getElementById('eventList'));
         OR.Events.initHud(document.getElementById('eventCard'));
@@ -9264,6 +10047,41 @@ OR.CONFIG = {
             });
       }
 
+      /* ---- Step 13: haptics toggles (menu + pause) ----------------------- */
+      const hapticButtons = document.querySelectorAll('[data-action="haptics"]');
+      function syncHaptics() {
+        const on = OR.Haptics ? OR.Haptics.enabled() : false;
+        hapticButtons.forEach(btn => {
+          btn.classList.toggle('is-on', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          const label = btn.querySelector('.haptics-label');
+          if (label) label.textContent = on ? 'HAPTICS ON' : 'HAPTICS OFF';
+        });
+      }
+      hapticButtons.forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          btn.blur();
+          if (OR.Haptics) OR.Haptics.toggle();
+          syncHaptics();
+        });
+      });
+      Screens.syncHaptics = syncHaptics;
+      syncHaptics();
+
+      /* One ticker for the rotation countdown. It only touches the DOM while
+         the menu is on screen, and it is a plain timeout chain rather than an
+         interval so nothing can pile up. */
+      if (OR.Daily) {
+        const tickMs = Math.max(250, (CONFIG.daily && CONFIG.daily.tickMs) || 1000);
+        const tick = () => {
+          Screens._dailyTimer = null;
+          if (Screens.view === 'main' || Screens.view === 'events') Screens.refreshDaily();
+          Screens._dailyTimer = window.setTimeout(tick, tickMs);
+        };
+        Screens._dailyTimer = window.setTimeout(tick, tickMs);
+      }
+
       // Engine sound: off until the player turns it on.
       const soundButtons = document.querySelectorAll('[data-action="sound"]');
       function syncSound() {
@@ -9335,7 +10153,8 @@ OR.CONFIG = {
       if (Screens.menuProfile) Screens.menuProfile.classList.toggle('hidden', Screens.view !== 'profile');
       if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
       if (Screens.view === 'cars') Screens.refreshCars();
-      if (Screens.view === 'events') Screens.refreshEvents();
+      if (Screens.view === 'events') { Screens.refreshEvents(); Screens.refreshDaily(); }
+      if (Screens.view === 'main') Screens.refreshDaily();
       if (Screens.view === 'profile') Screens.refreshProfile();
       return Screens.view;
     },
@@ -9525,6 +10344,75 @@ OR.CONFIG = {
     refreshEvents() {
       if (OR.Events) OR.Events.refresh();
       return OR.Events ? OR.Events.list() : [];
+    },
+
+    /**
+     * Step 13: the menu's TODAY'S EVENT card, the countdown to the next
+     * rotation and the seven-day streak strip. Everything is derived from the
+     * date and the save, so this can run as often as it likes.
+     */
+    refreshDaily() {
+      if (!OR.Daily || !OR.Events) return null;
+      const featured = OR.Daily.featured();
+      const card = document.getElementById('todayCard');
+      const bonusXp = (CONFIG.daily && CONFIG.daily.bonusXp) || 0;
+      const available = OR.Daily.bonusAvailable();
+      const streak = Save.dailyStreak();
+
+      if (card) {
+        card.dataset.event = featured ? featured.id : '';
+        card.dataset.date = OR.Daily.dateKey();
+        card.dataset.featured = OR.Daily.featuredId();
+        card.dataset.bonus = String(available ? bonusXp : 0);
+        card.dataset.streak = String(streak);
+        card.classList.toggle('is-claimed', !available);
+      }
+      const name = document.getElementById('todayName');
+      if (name) name.textContent = featured ? featured.name : 'REST DAY';
+      const objective = document.getElementById('todayObjective');
+      if (objective) objective.textContent = featured ? OR.Events.objectiveText(featured) : '';
+      const bonus = document.getElementById('todayBonus');
+      if (bonus) {
+        bonus.textContent = !featured ? ''
+          : (available
+            ? 'BONUS +' + bonusXp + ' XP TODAY' + (streak ? ' · STREAK ' + streak : '')
+            : 'DAILY BONUS COLLECTED · STREAK ' + streak);
+      }
+      const countdown = document.getElementById('todayCountdown');
+      if (countdown) countdown.textContent = 'NEXT ROTATION IN ' + OR.Daily.countdown();
+
+      Screens.renderStreak();
+      return featured;
+    },
+
+    /** The last seven days as a row of dots (today first). */
+    renderStreak() {
+      const strip = document.getElementById('streakStrip');
+      if (!strip || !OR.Daily) return null;
+      const days = OR.Daily.historyWindow();
+      if (strip.childElementCount !== days.length) {
+        strip.replaceChildren();
+        days.forEach(function () {
+          const dot = document.createElement('span');
+          dot.className = 'streak-dot';
+          const label = document.createElement('span');
+          label.className = 'streak-day';
+          const mark = document.createElement('span');
+          mark.className = 'streak-mark';
+          dot.append(label, mark);
+          strip.appendChild(dot);
+        });
+      }
+      Array.from(strip.children).forEach(function (dot, i) {
+        const row = days[i];
+        dot.dataset.date = row.date;
+        dot.dataset.completed = row.completed ? 'true' : 'false';
+        dot.classList.toggle('is-done', row.completed);
+        dot.classList.toggle('is-today', row.isToday);
+        const label = dot.querySelector('.streak-day');
+        if (label) label.textContent = row.label;
+      });
+      return days;
     },
 
     /** "NEXT UNLOCK: VALIDATOR AT LEVEL 3" on the main menu. */
@@ -9717,6 +10605,18 @@ OR.CONFIG = {
           '× difficulty' + (xp && xp.leveledUp ? ' · LEVEL UP!' : '');
         note.classList.toggle('is-level-up', !!(xp && xp.leveledUp));
       }
+      /* ---- Step 13: a verified fact, rotating race by race ---------------- */
+      const factLine = document.getElementById('finalFact');
+      if (factLine) {
+        const facts = (CONFIG.facts && CONFIG.facts.list) || [];
+        if (facts.length) {
+          const index = Save.stats().races % facts.length;
+          factLine.textContent = 'DID YOU KNOW? ' + facts[index];
+          factLine.dataset.factIndex = String(index);
+          factLine.dataset.factCount = String(facts.length);
+        }
+      }
+
       /* ---- Step 12: EVENT COMPLETE / EVENT FAILED ------------------------ */
       const eventBox = document.getElementById('finalEvent');
       if (eventBox) {
@@ -9744,6 +10644,8 @@ OR.CONFIG = {
       /* The menu and profile bars must show the new total the moment the
          player walks back to them. */
       Screens.renderLevels(true);
+      /* Step 13: the streak and the bonus state changed with this race. */
+      Screens.refreshDaily();
 
       /* ---- Step 11: did that prize unlock anything? ---------------------- */
       if (OR.Cars) {
@@ -9840,6 +10742,8 @@ OR.CONFIG = {
     Screens.refreshCars();
     /* Step 12: the events screen starts with no event running. */
     if (OR.Events) OR.Events.refresh();
+    /* Step 13: today's event, the countdown and the streak strip. */
+    Screens.refreshDaily();
   }
 
   if (document.readyState === 'loading') {

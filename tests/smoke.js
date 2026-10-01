@@ -12,7 +12,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'events', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'cars', 'events', 'daily', 'haptics', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
   .map(f => path.join(ROOT, 'js', f + '.js'));
 
 let pass = 0;
@@ -2276,12 +2276,12 @@ section('22. Step 12 — the four events, complete and failed, XP paid once');
     return Game.results;
   }
 
-  check('the EVENTS button opens the challenge screen with four cards',
+  check('the EVENTS button opens the challenge screen with a card per event',
     (function () {
       doc.getElementById('eventsBtn').click();
       return Screen.view === 'events' &&
         !doc.getElementById('menuEvents').classList.contains('hidden') &&
-        doc.querySelectorAll('#eventList .event-card').length === 4;
+        doc.querySelectorAll('#eventList .event-card').length === 6;
     })(), doc.querySelectorAll('#eventList .event-card').length + ' events');
 
   check('each card shows the objective, the reward and AVAILABLE',
@@ -2419,14 +2419,18 @@ section('22. Step 12 — the four events, complete and failed, XP paid once');
     Save.eventCompleted('shard-hunter') === true &&
     hunterWin.event.results.shardsCollected === 5);
 
-  check('the challenge screen shows all four as COMPLETED',
+  check('the challenge screen shows the four Step 12 events as COMPLETED',
     (function () {
       Screen.refreshEvents();
       const cards = Array.from(doc.querySelectorAll('#eventList .event-card'));
-      return cards.length === 4 &&
-        cards.every(card => card.dataset.completed === 'true' &&
+      const fourIds = ['block-rush', 'steady-stream', 'rival-gauntlet', 'shard-hunter'];
+      const step12 = cards.filter(c => fourIds.indexOf(c.dataset.event) !== -1);
+      const step13 = cards.filter(c => fourIds.indexOf(c.dataset.event) === -1);
+      return cards.length === 6 && step12.length === 4 &&
+        step12.every(card => card.dataset.completed === 'true' &&
           card.querySelector('.event-badge').textContent === 'COMPLETED') &&
-        Save.completedEvents().join(',') === 'block-rush,steady-stream,rival-gauntlet,shard-hunter';
+        step13.every(card => card.dataset.completed === 'false') &&
+        Save.completedEvents().slice().sort().join(',') === fourIds.slice().sort().join(',');
     })(), Save.completedEvents().join(','));
 
   /* ---- RACE AGAIN restarts the event ---------------------------------- */
@@ -2468,14 +2472,398 @@ section('22. Step 12 — the four events, complete and failed, XP paid once');
     })(), '3 laps, 14 shards, no event');
 }
 
+/* ================= 23. Step 13 — the daily layer and the polish ========== */
+
+section('23. Step 13 — today\u2019s event, the streak, facts and haptics');
+{
+  const Daily = OR.Daily;
+  const Events = OR.Events;
+  const Save = OR.Save;
+  const Screen = OR.Screens;
+
+  /* A clean slate again: no completions, no event running, starter car. */
+  Save.reset();
+  OR.Cars.restore();
+  OR.Cars.apply(OR.Cars.activeId());
+  Events.stop();
+  OR.TrackSelect.select('flexnode');
+  Events.refresh();
+
+  const featured = Daily.featured();
+  const featuredBonus = CONFIG.daily.bonusXp;
+
+  /** One real event race, tweaked just before the flag (Step 12 helper style). */
+  function runDailyRace(id, tweak) {
+    Events.start(id || featured.id);
+    advance(CONFIG.race.countdownSeconds + 0.05);
+    if (tweak) tweak();
+    Race.lap = Race.laps;
+    Race.lapBase = 0;
+    Race.progress = 0.96;
+    Race.lastFraction = 0.96;
+    Race.nextCheckpoint = Track.checkpoints.length;
+    Race.lapTimes.length = 0;
+    for (let i = 0; i < Race.laps; i++) Race.lapTimes.push(14000);
+    Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+    if (!Game.raceTimeMs) Game.raceTimeMs = 20000;
+    Game._countLapCleanliness();
+    Game._finishRace();
+    Game._emit('finish', Game.results);
+    return Game.results;
+  }
+
+  function goToMainMenu() {
+    doc.getElementById('eventsBackBtn').click();
+    return Screen.view;
+  }
+
+  /** Whatever today's objective is, do it. */
+  function doTheObjective(tweak) {
+    if (featured.objective.type === 'collect') OR.Shards.collected = featured.objective.count;
+    if (featured.objective.type === 'time') Game.raceTimeMs = 1000;
+    if (featured.objective.type === 'clean') Game.car.wallHits = 0;
+    if (featured.objective.type === 'win') OR.Standings.playerPlace = 1;
+    if (tweak) tweak();
+  }
+
+  check('the menu card names today\u2019s event, its objective, bonus and countdown',
+    (function () {
+      Screen.refreshDaily();
+      const card = doc.getElementById('todayCard');
+      return card.dataset.event === featured.id && card.dataset.featured === Daily.featuredId() &&
+        card.dataset.date === Daily.dateKey() &&
+        doc.getElementById('todayName').textContent === featured.name &&
+        doc.getElementById('todayObjective').textContent.length > 0 &&
+        doc.getElementById('todayBonus').textContent.indexOf('BONUS +' + featuredBonus) !== -1 &&
+        /NEXT ROTATION IN \d+:\d\d:\d\d/.test(doc.getElementById('todayCountdown').textContent);
+    })(), featured.name + ' · ' + doc.getElementById('todayCountdown').textContent);
+
+  check('the events list wears exactly one TODAY badge, on the featured card',
+    doc.querySelectorAll('#eventList .event-card[data-today="true"]').length === 1 &&
+    doc.querySelector('#eventList .event-card[data-today="true"]').dataset.event === featured.id,
+    featured.id);
+
+  check('the streak strip has seven days and starts with today',
+    (function () {
+      Screen.refreshDaily();
+      const dots = doc.querySelectorAll('#streakStrip .streak-dot');
+      return dots.length === CONFIG.daily.streakDays &&
+        dots[0].dataset.date === Daily.dateKey() && dots[0].classList.contains('is-today') &&
+        dots[0].querySelector('.streak-day').textContent.length === 3;
+    })(), '7 days');
+
+  check('tapping the menu card opens the events screen',
+    (function () {
+      goToMainMenu();
+      doc.getElementById('todayCard').click();
+      return Screen.view === 'events' &&
+        !doc.getElementById('menuEvents').classList.contains('hidden');
+    })());
+
+  check('NARROW MARGIN throws the cached road away so it redraws thin',
+    (function () {
+      const sentinel = { canvas: null };
+      OR.Renderer.roadLayer = sentinel;
+      Events._applyPatch({ narrowRoad: 0.72 });
+      const clearedOnApply = OR.Renderer.roadLayer === null;
+      OR.Renderer.roadLayer = sentinel;
+      Events._revertPatch();
+      return typeof OR.Renderer.invalidateTrack === 'function' &&
+        clearedOnApply && OR.Renderer.roadLayer === null;
+    })());
+
+  check('a completed day fills its dot, and only that dot',
+    (function () {
+      Save.recordDaily(Daily.dateKey(), 1);
+      Screen.refreshDaily();
+      const dots = Array.from(doc.querySelectorAll('#streakStrip .streak-dot'));
+      const done = dots[0].dataset.completed === 'true' && dots[0].classList.contains('is-done') &&
+        dots.slice(1).every(d => d.dataset.completed === 'false');
+      Save.reset();
+      Screen.refreshDaily();
+      return done && doc.querySelector('#streakStrip .streak-dot').dataset.completed === 'false';
+    })());
+
+  check('the haptics toggles start off, in agreement on both screens',
+    doc.querySelectorAll('[data-action="haptics"]').length === 2 &&
+    Array.from(doc.querySelectorAll('[data-action="haptics"]'))
+      .every(btn => btn.getAttribute('aria-pressed') === 'false' &&
+        btn.querySelector('.haptics-label').textContent === 'HAPTICS OFF'));
+
+  check('clicking a haptics toggle turns it on in the save and on both buttons',
+    (function () {
+      doc.querySelector('.menu-toggles [data-action="haptics"]').click();
+      return OR.Haptics.enabled() === true && Save.haptics() === true &&
+        Array.from(doc.querySelectorAll('[data-action="haptics"]'))
+          .every(btn => btn.getAttribute('aria-pressed') === 'true' &&
+            btn.querySelector('.haptics-label').textContent === 'HAPTICS ON');
+    })(), 'on');
+
+  check('clicking it again turns it back off',
+    (function () {
+      doc.querySelector('#pauseScreen [data-action="haptics"]').click();
+      return OR.Haptics.enabled() === false && Save.haptics() === false &&
+        doc.querySelector('.menu-toggles [data-action="haptics"]')
+          .getAttribute('aria-pressed') === 'false';
+    })(), 'off');
+
+  check('the racing code buzzes on boost and on contact, and only when enabled',
+    (function () {
+      /* A real vibration API to watch: this counts buzzes, not attempts. */
+      const buzzes = [];
+      win.navigator.vibrate = function (pattern) {
+        if (pattern === 0) { buzzes.length = 0; return true; }   // stop = silence
+        buzzes.push(pattern);
+        return true;
+      };
+
+      /** Put the player car outside the barrier at 30% of the lap. */
+      function putOnTheBarrier() {
+        const p = Track.pointAt(Track.length * 0.3);
+        const out = Track.limit + 14;
+        Game.car.x = p.x + p.nx * out;
+        Game.car.y = p.y + p.ny * out;
+        Game.car.heading = Math.atan2(p.ty, p.tx);
+        Game.car.trackHint = p.index;
+        Game.car.speed = 480;
+      }
+      /** Put the player back on the open road, moving. */
+      function putOnTheRoad() {
+        const p = Track.pointAt(Track.length * 0.2);
+        Game.car.x = p.x; Game.car.y = p.y;
+        Game.car.heading = Math.atan2(p.ty, p.tx);
+        Game.car.trackHint = p.index; Game.car.speed = 240;
+      }
+
+      OR.Haptics.set(false);
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      buzzes.length = 0;
+      Game.car.boost.active = true;
+      Game.step(1 / 120);
+      putOnTheBarrier();
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      const silentWhenOff = buzzes.length === 0;
+
+      OR.Haptics.set(true);
+      buzzes.length = 0;
+      Game.car.boost.active = false;
+      putOnTheRoad();
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      const quietOnTheRoad = buzzes.length === 0;
+
+      Game.car.boost.active = true;
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      const boostOnce = buzzes.length === 1 && buzzes[0] === CONFIG.haptics.boostMs;
+
+      putOnTheBarrier();
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      const wallOnce = buzzes.length === 2 &&
+        JSON.stringify(buzzes[1]) === JSON.stringify(CONFIG.haptics.wallPattern);
+
+      putOnTheRoad();
+      Game.step(1 / 120);
+      const rival = OR.Rivals.items[0];
+      if (rival) {
+        rival.x = Game.car.x; rival.y = Game.car.y;
+        rival.vx = 0; rival.vy = 0;
+      }
+      Game.step(1 / 120);
+      Game.step(1 / 120);
+      const carOnce = !!rival && buzzes.length === 3 && buzzes[2] === CONFIG.haptics.carMs;
+
+      OR.Haptics.set(false);                 // clears the log through stop()
+      Game.car.boost.active = false;
+      Game.car.hitWall = false;
+      Game.car.hitCar = false;
+      Game._wasBoosting = false;
+      Game._wasOnBarrier = false;
+      Game._wasTouchingCar = false;
+      Game.results = null;
+      return silentWhenOff && quietOnTheRoad && boostOnce && wallOnce && carOnce;
+    })(), 'silent when off · 1 boost, 1 wall, 1 car when on');
+
+  check('the pause screen freezes the clock and resumes where it left off',
+    (function () {
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      const before = Game.raceTimeMs;
+      Game.togglePause();
+      const paused = Game.state === 'paused' && !doc.getElementById('pauseScreen').classList.contains('hidden');
+      advance(0.5);
+      const frozen = Game.raceTimeMs === before;
+      doc.getElementById('resumeBtn').click();
+      return paused && frozen && Game.state === 'racing' &&
+        doc.getElementById('pauseScreen').classList.contains('hidden');
+    })());
+
+  check('tapping the menu card opens the events screen',
+    (function () {
+      goToMainMenu();
+      doc.getElementById('todayCard').click();
+      return Screen.view === 'events' &&
+        !doc.getElementById('menuEvents').classList.contains('hidden');
+    })());
+  check('completing today\u2019s event pays today\u2019s bonus, once',
+    (function () {
+      const first = runDailyRace(null, () => doTheObjective());
+      const paid = first.daily && first.daily.isFeatured === true &&
+        first.daily.completed === true && first.daily.bonusXp === featuredBonus &&
+        first.xp.lines.some(l => l.id === 'daily' && l.xp === featuredBonus) &&
+        first.daily.streak === 1;
+      const claimed = doc.getElementById('todayCard').classList.contains('is-claimed') &&
+        doc.getElementById('todayCard').dataset.bonus === '0';
+      const again = runDailyRace(featured.id, () => doTheObjective());
+      return paid && claimed &&
+        again.daily.bonusXp === 0 && !again.xp.lines.some(l => l.id === 'daily') &&
+        Save.dailyStreak() === 1 && Save.dailyHistory().length === 1;
+    })(), '+' + featuredBonus + ' XP, then nothing');
+
+  check('a race that is not today\u2019s event earns no daily bonus',
+    (function () {
+      const other = Events.list().find(e => e.id !== featured.id);
+      const before = Save.dailyHistory().length;
+      const run = runDailyRace(other.id, function () {});
+      Events.stop();
+      return run.daily && run.daily.isFeatured === false && run.daily.bonusXp === 0 &&
+        Save.dailyHistory().length === before;
+    })());
+
+  check('the finish screen shows a verified fact, and rotates it',
+    (function () {
+      const line = doc.getElementById('finalFact');
+      const firstIndex = Number(line.dataset.factIndex);
+      const firstText = line.textContent;
+      const fromList = CONFIG.facts.list.some(f => firstText === 'DID YOU KNOW? ' + f);
+      runDailyRace(null, function () {});
+      const secondIndex = Number(line.dataset.factIndex);
+      return fromList && line.dataset.factCount === String(CONFIG.facts.list.length) &&
+        firstText.indexOf('DID YOU KNOW? ') === 0 &&
+        secondIndex === (firstIndex + 1) % CONFIG.facts.list.length &&
+        line.textContent !== firstText;
+    })(), doc.getElementById('finalFact').dataset.factIndex + ' then the next');
+
+  check('the disclaimer and the Optimum link sit in the footer',
+    (function () {
+      const footer = doc.querySelector('.site-footer');
+      return footer !== null &&
+        footer.textContent.indexOf(CONFIG.legal.disclaimer) !== -1 &&
+        !!footer.querySelector('a[href="https://getoptimum.xyz"]');
+    })());
+
+  check('today\u2019s event is always one the engine can run',
+    Events.get(Daily.featuredId()) !== null &&
+    ['time', 'clean', 'win', 'collect'].indexOf(Events.get(Daily.featuredId()).objective.type) !== -1,
+    Daily.featuredId() + ' · ' + Events.get(Daily.featuredId()).objective.type);
+}
+
+/* ========= 24. Full playthrough — every circuit on every difficulty ====== */
+
+section('24. Step 13 regression — a full playthrough of every combination');
+{
+  const Save = OR.Save;
+  const Events = OR.Events;
+  Save.reset();
+  Events.stop();
+  /* This section is about racing, not progression: unlock every circuit. */
+  Save.grantUnlocks({ cars: [], tracks: OR.TRACKS.map(t => t.id) });
+  OR.Cars.restore();
+  OR.Cars.apply(OR.Cars.activeId());
+  OR.Difficulty.load();
+
+  const runs = [];
+  OR.TRACKS.forEach(track => {
+    OR.Difficulty.levels.forEach(level => {
+      Events.stop();
+      OR.TrackSelect.select(track.id);
+      OR.Difficulty.select(level.id);
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      const countdownRan = Game.state === 'racing' && Race.laps === track.laps;
+      Race.lap = Race.laps;
+      Race.lapBase = 0;
+      Race.progress = 0.96;
+      Race.lastFraction = 0.96;
+      Race.nextCheckpoint = Track.checkpoints.length;
+      Race.lapTimes.length = 0;
+      for (let i = 0; i < Race.laps; i++) Race.lapTimes.push(12000 + i * 250);
+      Race.bestLapMs = 12000;
+      Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+      Game.raceTimeMs = 36000;
+      Game._countLapCleanliness();
+      Game._finishRace();
+      Game._emit('finish', Game.results);
+      const r = Game.results;
+      runs.push({
+        key: track.id + '/' + level.id,
+        ok: countdownRan && r.trackId === track.id && r.difficultyId === level.id &&
+          r.laps === track.laps && r.lapTimes.length === track.laps &&
+          r.bestLapMs > 0 && r.xp.earned > 0 &&
+          r.xp.multiplier === OR.XP.multiplier(level.id) &&
+          r.event === null && r.daily === null,
+        xp: r.xp.earned
+      });
+    });
+  });
+
+  check('all nine circuit × difficulty combinations race, finish and pay XP',
+    runs.length === 9 && runs.every(r => r.ok),
+    runs.filter(r => r.ok).length + '/9 · ' + runs.map(r => r.key).join(' · '));
+
+  check('every combination recorded its own best time',
+    Save.bests() && Object.keys(Save.bests()).length >= 3,
+    Object.keys(Save.bests()).length + ' circuits with records');
+
+  check('the harder the level, the more the same race pays',
+    (function () {
+      const byTrack = {};
+      OR.TRACKS.forEach(track => {
+        byTrack[track.id] = runs.filter(r => r.key.indexOf(track.id + '/') === 0).map(r => r.xp);
+      });
+      return Object.keys(byTrack).every(id =>
+        byTrack[id][0] < byTrack[id][1] && byTrack[id][1] < byTrack[id][2]);
+    })(), 'easy < normal < hard on every circuit');
+
+  check('a normal race after all that runs on the shipped config',
+    (function () {
+      Events.stop();
+      OR.Shards.reset();
+      OR.TrackSelect.select('flexnode');
+      OR.Difficulty.select('normal');
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      return Game.state === 'racing' && Race.lapsOverride === null &&
+        OR.CONFIG.boost.shards.count === 14 && OR.Track.halfRoad === 210 &&
+        OR.CONFIG.rivals.stall.intervalMax === 8.5 && OR.CONFIG.car.gripLow === 10 &&
+        doc.getElementById('eventCard').classList.contains('hidden');
+    })(), '3 laps, 14 shards, stock geometry');
+}
+
 /* =========================== summary ====================================== */
 console.log('\n' + '-'.repeat(56));
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail === 0 ? 0 : 1);
 }
 
+function runSafely() {
+  try {
+    runTests();
+  } catch (error) {
+    console.log('\n!! the suite threw before it finished:');
+    console.log(error && error.stack ? error.stack : error);
+    process.exit(1);
+  }
+}
+
 if (doc.readyState === 'complete') {
-  runTests();
+  runSafely();
 } else {
-  win.addEventListener('load', runTests);
+  win.addEventListener('load', runSafely);
 }

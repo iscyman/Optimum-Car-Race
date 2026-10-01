@@ -1,4 +1,4 @@
-# OPTIMUM RACE — Steps 1 to 12
+# OPTIMUM RACE — Steps 1 to 13
 
 **Race. React. Win.**
 
@@ -22,6 +22,23 @@ Single portable file (emailable, offline, one inline `<script>`):
 ```bash
 npm run build      # regenerates optimum-race.html from the sources
 ```
+
+### Deploy it (Netlify, drag and drop)
+
+The game is a static folder — there is no server, no build step and no
+environment to configure.
+
+1. Run `npm test` once (736 checks) if you want to be sure the copy is sound.
+2. Zip the folder that holds `index.html`, `css/` and `js/` — or use the
+   ready-made `optimum-race-step13-netlify.zip`.
+3. Open <https://app.netlify.com/drop> and drag the zip (or the folder) onto
+   the page. Netlify gives you a URL in a few seconds.
+4. That is the whole deploy. `optimum-race.html`, `tests/`, `tools/`,
+   `node_modules/` and the README are not needed by the site and are not in
+   the zip.
+
+Anything static works the same way (GitHub Pages, Cloudflare Pages, an S3
+bucket): upload `index.html`, `css/`, `js/` and you are done.
 
 ---
 
@@ -186,13 +203,31 @@ npm run build      # regenerates optimum-race.html from the sources
 | Save completion state | done (save `version: 4`, `events.completed`; a corrupt log is dropped and only `true` counts) |
 | Modifiers through a small hook system (onRaceStart / onUpdate / onFinish) | done (a patch-and-revert table plus three hooks the core calls; a test proves the config comes back byte-for-byte, so normal races are untouched) |
 
+### Step 13 — the daily layer and the final polish
+
+| Requirement | Status |
+| --- | --- |
+| One event per day chosen deterministically from the local date, no backend | done (`js/daily.js`: FNV-1a over the local `YYYY-MM-DD`, avalanched, mod the rotation — same event for everyone, no stored state needed to work it out) |
+| "Today's event" on the menu with a countdown to the next rotation | done (`#todayCard` names the challenge, its objective and the bonus, and counts down `NEXT ROTATION IN h:mm:ss` to local midnight; tapping it opens EVENTS with a TODAY badge) |
+| One-time daily bonus XP for the featured event | done (+120 XP on the XP breakdown as its own line, once per day ever; a replay pays nothing) |
+| Modifiers: stall storm, narrow road, low grip, boost rush | done (four more entries in the modifier table; a number means "scale from where it is now", an object is a literal, and every one reverts byte-for-byte) |
+| Two more events using them | done (NARROW MARGIN: thin road + low grip, one clean lap · STALL STORM: rivals stall constantly and the meter fills fast, win two laps) |
+| Save event history and a seven-day streak | done (save `version: 5`, `daily: { lastBonus, streak, history[] }` — newest first, unique days, capped at seven, sanitised on load) |
+| Pause menu, sound toggle, haptics toggle (off by default), reduced motion | done (the pause overlay freezes clock and car; sound toggles in the HUD and menu; haptics is opt-in on the menu and the pause screen and buzzes once per boost and once per contact episode, never on a timer; `prefers-reduced-motion` is honoured) |
+| "Did you know" fact on the finish screen, rotating through six verified facts | done (`CONFIG.facts.list`, indexed by races finished; the facts are the six from the brief and nothing else) |
+| Disclaimer on the menu and in the footer, linking to getoptimum.xyz | done (the exact sentence in both places, the link opened with `rel="noopener noreferrer"`) |
+| Meta description, Open Graph + Twitter tags, favicon | done (plus theme colour and an inline SVG favicon, so there is still no external asset) |
+| README covering local run and Netlify deploy | done (see Run it / Deploy it above) |
+| Full regression of Steps 1–12 with bug fixes, no new features | done (736 checks across nine suites, plus a real race on all nine circuit × difficulty combinations) |
+
 ## Not built yet (deliberately)
 
 Optimum network integration ·
 networking of any kind · simulated latency or fake network behaviour ·
 blockchain / wallets / tokens · leaderboards ·
-multiplayer · daily rotations · real-world rewards. Later steps add config
-sections and modules rather than rewriting what exists.
+multiplayer · in-game purchases or currency · real-world rewards.
+Every step added config sections and modules rather than rewriting what
+exists, and the game never contacts a server.
 
 ---
 
@@ -494,17 +529,25 @@ Everything above is a number in `js/config.js`.
 ```
 index.html                 screens (menu, HUD, touch pad, finish) + script tags
 css/style.css              theme tokens, HUD, panels, responsive rules
-js/config.js               every tunable number in the game
+js/config.js               every tunable number in the game (physics, boosts, difficulty, events, daily)
 js/utils.js                clamp / lerp / damp / seeded RNG / time formatting
+js/xp.js                   XP awards, the level curve, unlock levels
 js/trackdata.js            the track as DATA: OR.TRACKS (control points, width, checkpoints)
 js/track.js                geometry engine: spline, samples, surfaces, lookups, scenery
 js/car.js                  shared car physics, grip/drift, surfaces, boost meter
-js/shards.js               CODED BOOST shard pickups: layout, collection
 js/race.js                 independent lap/checkpoint trackers; player singleton retained
+js/save.js                 the one versioned save (v5): profile, stats, records, unlocks, events, daily
+js/cars.js                 the four cars, stat bars, unlocking and the physics each one writes
+js/events.js               challenge events as data: modifiers, objectives, hooks, the events screen
+js/daily.js                the daily rotation (date hash), the countdown, the streak, the bonus
+js/haptics.js              opt-in vibration, off by default, guarded
 js/difficulty.js           EASY/NORMAL/HARD levels, saved selection, best times
+js/bests.js                per-track, per-difficulty records
+js/trackselect.js          the circuit cards, previews and the lock badges
 js/rivals.js               three AI drivers, corner planning, grid, gameplay stalls
 js/collisions.js           bounded oriented-box contact and impact cooldowns
 js/standings.js            validated live order and frozen finish classification
+js/shards.js               CODED BOOST shard pickups: layout, collection
 js/input.js                keyboard + touch pad -> one flat control state
 js/audio.js                engine sound synthesised with Web Audio (no files)
 js/renderer.js             all canvas drawing, camera, marks, particles
@@ -512,9 +555,15 @@ js/hud.js                  DOM HUD updates (cached, no layout thrash)
 js/game.js                 state machine + fixed-timestep loop
 js/main.js                 bootstrap, wires DOM screens to the state machine
 
-tests/smoke.js             211 jsdom gameplay/UI regression checks
+tests/smoke.js             328 jsdom gameplay/UI regression checks (Steps 1-13)
 tests/rivals.js            49 deterministic AI/contact/race checks
-tests/difficulty.js        43 difficulty, persistence, rubber-band and balance checks
+tests/difficulty.js        47 difficulty, persistence, rubber-band and balance checks
+tests/tracks.js            33 track data, geometry, a full AI race per circuit
+tests/save.js              42 the versioned save, migrations, corrupt and blocked storage
+tests/xp.js                41 the XP maths and the level curve
+tests/cars.js              56 the four cars, the balance rule, unlocking, migrations
+tests/events.js            51 the events engine, objectives, modifiers, the one-off bonus
+tests/daily.js             89 the rotation, the countdown, the streak, the bonus, haptics, facts
 tools/_trackcheck.js       dev tool: prints track metrics and an ASCII map (design aid)
 tools/serve.js             zero-dependency dev server
 tools/build-standalone.js  bundles everything into optimum-race.html
@@ -910,3 +959,79 @@ Manual pass:
   (version-agnostic save assertions), `tests/difficulty.js`, `tests/tracks.js`,
   `tools/build-standalone.js`, `package.json`, `README.md`.
 - Regenerated deliverable: `optimum-race.html`.
+
+### Step 13 verification and manual checks
+
+`npm test` runs nine suites — 736 checks, 0 failures:
+
+| Suite | Checks | What it covers |
+| --- | --- | --- |
+| `tests/smoke.js` | 328 | Steps 1–13: every earlier section plus 23 (today's card, the countdown, the streak strip, the TODAY badge, haptics on both screens and in-race, the pause menu, the daily bonus once, the facts line, the footer) and 24 (a real race on all nine circuit × difficulty combinations, then a normal race on the shipped config) |
+| `tests/rivals.js` | 49 | AI racing, collisions, standings |
+| `tests/difficulty.js` | 47 | EASY / NORMAL / HARD, per-track records, corrupt and legacy selection data |
+| `tests/tracks.js` | 33 | Track data, geometry, a full AI race per circuit, previews, record book |
+| `tests/save.js` | 42 | The versioned save: defaults, profile/colour rules, stats, export→import round trips, reset, migrations, corrupt data, blocked storage |
+| `tests/xp.js` | 41 | The XP maths: every award source, difficulty multipliers, the level curve, the clean-lap rule, migrations |
+| `tests/cars.js` | 56 | The four cars, the balance rule, stat bars, the physics each car writes, locked selection, unlocking, migrations |
+| `tests/events.js` | 51 | The events as data, every objective met and missed, the objective text, the modifier patch/revert round trip, the hook registry, live progress, the flat one-off bonus, and the migrations |
+| `tests/daily.js` | 89 | The date key and the deterministic rotation (90 days of distribution), the countdown to local midnight, the streak and the seven-day window, the bonus once per day, haptics (default off, guarded, persisted), the four Step 13 modifiers applying and reverting byte-identically, the six facts, the disclaimer and social tags, and the version 4 → 5 migration including a corrupt daily block |
+
+Manual pass (the parts a headless suite cannot feel):
+
+1. `npm start` → the menu shows a **TODAY'S EVENT** card: the name, the
+   objective, `BONUS +120 XP` and `NEXT ROTATION IN h:mm:ss` counting down.
+   Tapping the card opens EVENTS with a TODAY badge on the featured challenge
+   (only one card wears it).
+2. Race today's event and beat it: the results show a `DAILY BONUS — <name>`
+   line worth +120 XP, and the menu card changes to `DAILY BONUS COLLECTED`
+   with the streak. Beat it again: no second bonus. Change the system date,
+   reload, and the featured event changes with the date (no server involved).
+3. The streak strip in EVENTS fills one dot per day completed, seven days wide,
+   today's dot ringed. Skip a day and the streak restarts at 1.
+4. Haptics: the toggle sits next to the sound button and on the pause screen,
+   says HAPTICS OFF by default, and both buttons always agree. Turn it on (on a
+   phone that supports it), fire a boost and brush a barrier: one short buzz per
+   event — not one per frame while sliding along the wall. Collisions with
+   rivals buzz the short pattern.
+5. Pause during a race: the clock and the car stop, RESUME continues where you
+   left off. The sound toggle still works during a race.
+6. Finish any race: a **DID YOU KNOW?** line appears with one of the six
+   verified Optimum facts, and the next race shows the next fact.
+7. Scroll to the footer: `Unofficial fan project, not affiliated with Optimum.`
+   with a link to getoptimum.xyz. The menu shows the same disclaimer.
+8. Phone check (yours to run, see below): portrait and landscape, touch
+   controls, the pause button, and the countdown ticking without layout jumps.
+
+### Files changed for Step 13
+
+- Added: `js/daily.js` (the date-key rotation, the countdown, the streak and the
+  once-a-day bonus), `js/haptics.js` (the guarded, opt-in vibration API),
+  `tests/daily.js`.
+- Updated: `js/config.js` (`daily`, `haptics`, `facts`, `legal`, and the two new
+  events NARROW MARGIN and STALL STORM), `js/events.js` (the four Step 13
+  modifiers with number ⇒ scale semantics, and the TODAY marker on the events
+  screen), `js/save.js` (**version 5**: `daily` + `settings.haptics`, the 4 → 5
+  migration, the daily/settings API, sanitised history, reset), `js/game.js`
+  (the daily completion + bonus at the flag, edge-triggered haptics on boost,
+  barrier visits and car contacts), `js/renderer.js` (`invalidateTrack()` now
+  drops the cached road too, so a narrower road is really drawn narrower),
+  `js/main.js` (the daily card + countdown ticker, the streak strip, the fact
+  line at the flag, the haptics toggles, the card opening EVENTS, refresh on
+  race end), `index.html` (today's card, streak strip, facts line, haptics
+  toggles, footer disclaimer, Open Graph + Twitter tags, the two new scripts),
+  `css/style.css` (the Step 13 blocks), `tests/smoke.js` (sections 23 and 24),
+  `tests/events.js` and `tests/*.js` (version-agnostic save assertions and the
+  two new events in the roster), `tools/build-standalone.js`, `package.json`
+  (0.13.0), `README.md`.
+- Regenerated deliverable: `optimum-race.html` (381.5 KB).
+
+### Still to come
+
+Nothing from the brief is outstanding: Steps 1–13 are all built. The daily
+rotation is the last system — there is no backend, no leaderboard, no
+multiplayer and no Optimum network integration anywhere in the game, by design.
+
+Real-device checks (iPhone Safari, Android Chrome, landscape and portrait) are
+the one thing a headless suite cannot do; the browser-facing paths are covered
+here by jsdom, and `navigator.vibrate` is optional and guarded so a device
+without it behaves exactly as before.

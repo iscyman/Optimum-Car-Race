@@ -433,8 +433,67 @@ OR.CONFIG = {
         objective: { type: 'collect', count: 5 },
         modifier: { shards: 16 },
         xp: 180
+      },
+      {
+        id: 'narrow-margin',
+        name: 'NARROW MARGIN',
+        description: 'A thin road and little grip. One clean lap.',
+        objective: { type: 'clean', laps: 1 },
+        modifier: { narrowRoad: 0.72, lowGrip: 0.8, laps: 1 },
+        xp: 300
+      },
+      {
+        id: 'stall-storm',
+        name: 'STALL STORM',
+        description: 'Rivals stall constantly and the meter fills fast. Still win.',
+        objective: { type: 'win', laps: 2 },
+        modifier: { stallStorm: 1.8, boostRush: 1.6, laps: 2 },
+        xp: 350
       }
     ]
+  },
+
+  /* ---- DAILY ROTATION (Step 13) -----------------------------------------
+   * One featured event per local day, chosen deterministically from the date
+   * itself — same event for everyone, no backend, no stored state needed to
+   * work out what today is. `order` is the rotation; every event stays
+   * playable any time, but only the featured one pays the daily bonus.
+   */
+  daily: {
+    order: ['block-rush', 'steady-stream', 'rival-gauntlet', 'shard-hunter',
+            'narrow-margin', 'stall-storm'],
+    bonusXp: 120,        // one-time-per-day bonus for beating today's event
+    streakDays: 7,       // how many days the streak strip shows
+    tickMs: 1000         // countdown refresh
+  },
+
+  /* ---- HAPTICS (Step 13) — off by default, opt-in ------------------------ */
+  haptics: {
+    enabled: false,
+    boostMs: 25,
+    wallPattern: [18, 30, 18],
+    carMs: 35
+  },
+
+  /* ---- DID YOU KNOW (Step 13) -------------------------------------------
+   * ONLY these verified facts. Do not add, reword or reorder without a
+   * verified source — the finish screen rotates through exactly this list.
+   */
+  facts: {
+    list: [
+      'Optimum runs as a permissionless network of flexnodes that anyone can operate.',
+      'mump2p is RLNC-accelerated pub/sub that stays compatible with libp2p and gossipsub.',
+      'RLNC stands for Random Linear Network Coding. It mixes message fragments so lost pieces can be recovered.',
+      'With coded shards, a receiver only needs a fraction of them to rebuild the full message.',
+      'Optimum says mump2p delivers 6-20x faster block propagation for Ethereum validators.',
+      'Flexnodes encode, decode and forward coded gossip, and can serve DeRAM and DeROM requests.'
+    ]
+  },
+
+  /* ---- DISCLAIMER (Step 13) -------------------------------------------- */
+  legal: {
+    disclaimer: 'Unofficial fan project, not affiliated with Optimum.',
+    link: 'https://getoptimum.xyz'
   },
 
   theme: {

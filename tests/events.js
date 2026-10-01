@@ -70,15 +70,17 @@ function results(overrides) {
 
 /* ========================== 1. the four events ============================ */
 
-section('the four events, defined as data');
+section('the events, defined as data (four from Step 12, two from Step 13)');
 {
   const OR = boot(fakeStorage());
   const list = OR.Events.list();
   const ids = list.map(e => e.id);
 
-  check('there are four events with the names from the spec',
-    list.length === 4 &&
-    list.map(e => e.name).join(',') === 'BLOCK RUSH,STEADY STREAM,RIVAL GAUNTLET,SHARD HUNTER',
+  check('the four Step 12 events keep their names, and Step 13 adds two more',
+    list.length === 6 &&
+    list.slice(0, 4).map(e => e.name).join(',') ===
+      'BLOCK RUSH,STEADY STREAM,RIVAL GAUNTLET,SHARD HUNTER' &&
+    ids.indexOf('narrow-margin') !== -1 && ids.indexOf('stall-storm') !== -1,
     ids.join(', '));
 
   check('an event is nothing but data',
@@ -113,7 +115,7 @@ section('the four events, defined as data');
     list.every(e => ['time', 'clean', 'win', 'collect'].indexOf(e.objective.type) !== -1));
 
   check('thinking about it: every id is unique and get() finds them all',
-    new Set(ids).size === 4 && ids.every(id => OR.Events.get(id) &&
+    new Set(ids).size === 6 && ids.every(id => OR.Events.get(id) &&
       OR.Events.get(id).id === id) && OR.Events.get('nope') === null);
 }
 

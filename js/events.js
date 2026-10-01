@@ -39,6 +39,100 @@
       label: 'shards',
       get() { return CONFIG.boost.shards.count; },
       set(value) { CONFIG.boost.shards.count = value; }
+    },
+
+    /* ---- Step 13 modifiers ------------------------------------------------
+     * Each one exposes a get() that snapshots every value it touches and a
+     * scale(factor) for the number form used in config, so the same patch and
+     * revert path serves them all and nothing can leak.
+     */
+
+    /* A thinner road: the physics limit and the drawn road shrink together,
+       so the barrier is where the tarmac ends. */
+    narrowRoad: {
+      label: 'narrow road',
+      get() {
+        const T = OR.Track;
+        return {
+          halfRoad: T.halfRoad, shoulder: T.shoulder, grassMargin: T.grassMargin,
+          kerbStart: T.kerbStart, grassStart: T.grassStart,
+          limit: T.limit, hardLimit: T.hardLimit
+        };
+      },
+      set(snapshot) { Object.assign(OR.Track, snapshot); },
+      scale(factor) {
+        const T = OR.Track;
+        const backstop = T.hardLimit - T.limit;   // the backstop keeps its margin
+        return {
+          halfRoad: T.halfRoad * factor,
+          shoulder: T.shoulder * factor,
+          grassMargin: T.grassMargin * factor,
+          kerbStart: T.kerbStart * factor,
+          grassStart: T.grassStart * factor,
+          limit: T.limit * factor,
+          hardLimit: T.limit * factor + backstop
+        };
+      }
+    },
+
+    /* Less grip: both ends of the grip curve come down together. */
+    lowGrip: {
+      label: 'low grip',
+      get() { return { gripLow: CONFIG.car.gripLow, gripHigh: CONFIG.car.gripHigh }; },
+      set(snapshot) {
+        CONFIG.car.gripLow = snapshot.gripLow;
+        CONFIG.car.gripHigh = snapshot.gripHigh;
+      },
+      scale(factor) {
+        return {
+          gripLow: CONFIG.car.gripLow * factor,
+          gripHigh: CONFIG.car.gripHigh * factor
+        };
+      }
+    },
+
+    /* Rivals stall far more often (factor > 1 = more stalling). */
+    stallStorm: {
+      label: 'stall storm',
+      get() {
+        const stall = CONFIG.rivals.stall;
+        return {
+          intervalMin: stall.intervalMin, intervalMax: stall.intervalMax,
+          durationMin: stall.durationMin, durationMax: stall.durationMax
+        };
+      },
+      set(snapshot) { Object.assign(CONFIG.rivals.stall, snapshot); },
+      scale(factor) {
+        const stall = CONFIG.rivals.stall;
+        const safe = Math.max(0.1, factor);
+        return {
+          intervalMin: stall.intervalMin / safe,
+          intervalMax: stall.intervalMax / safe,
+          durationMin: stall.durationMin * Math.min(safe, 2),
+          durationMax: stall.durationMax * Math.min(safe, 2)
+        };
+      }
+    },
+
+    /* Boost charges faster and hits a little harder. */
+    boostRush: {
+      label: 'boost rush',
+      get() {
+        return {
+          chargeRate: CONFIG.boost.charge.rate,
+          speedMultiplier: CONFIG.boost.speedMultiplier
+        };
+      },
+      set(snapshot) {
+        CONFIG.boost.charge.rate = snapshot.chargeRate;
+        CONFIG.boost.speedMultiplier = snapshot.speedMultiplier;
+      },
+      scale(factor) {
+        return {
+          chargeRate: CONFIG.boost.charge.rate * factor,
+          speedMultiplier: 1 + (CONFIG.boost.speedMultiplier - 1) * factor
+        };
+      }
     }
   };
 
@@ -93,6 +187,11 @@
 
     /* ---- modifiers: patch, then always give it back ---------------------- */
 
+    /** The road geometry changed: drop the cached road layer so it redraws. */
+    _refreshTrack() {
+      if (OR.Renderer && OR.Renderer.invalidateTrack) OR.Renderer.invalidateTrack();
+    },
+
     /** Apply (or replace) a modifier patch, remembering what it overwrote. */
     _applyPatch(modifier) {
       Events._revertPatch();
@@ -100,9 +199,13 @@
       Object.keys(modifier || {}).forEach(function (key) {
         const field = FIELDS[key];
         if (!field) return;
-        Events._patch[key] = { get: field.get, set: field.set, was: field.get() };
-        field.set(modifier[key]);
+        /* A number means "scale from where it is now"; an object is a value. */
+        const value = typeof modifier[key] === 'number' && field.scale
+          ? field.scale(modifier[key]) : modifier[key];
+        Events._patch[key] = { key: key, get: field.get, set: field.set, was: field.get() };
+        field.set(value);
       });
+      if (Events._patch.narrowRoad) Events._refreshTrack();
       return Events._patch;
     },
 
@@ -112,6 +215,7 @@
       const patch = Events._patch;
       Object.keys(patch).forEach(function (key) { patch[key].set(patch[key].was); });
       Events._patch = null;
+      if (patch.narrowRoad) Events._refreshTrack();
       return patch;
     },
 
@@ -349,7 +453,10 @@
         name.textContent = event.name;
         const badge = doc.createElement('span');
         badge.className = 'event-badge';
-        head.append(name, badge);
+        const today = doc.createElement('span');
+        today.className = 'event-today';
+        today.textContent = 'TODAY';
+        head.append(name, today, badge);
 
         const description = doc.createElement('p');
         description.className = 'event-description';
@@ -389,8 +496,11 @@
       if (!Events.el) return null;
       Events.el.cards.forEach(function (card) {
         const done = OR.Save ? OR.Save.eventCompleted(card.event.id) : false;
+        const featured = OR.Daily ? OR.Daily.isFeatured(card.event.id) : false;
         card.node.classList.toggle('is-completed', done);
+        card.node.classList.toggle('is-today', featured);
         card.node.dataset.completed = done ? 'true' : 'false';
+        card.node.dataset.today = featured ? 'true' : 'false';
         card.badge.textContent = done ? 'COMPLETED' : 'AVAILABLE';
         card.badge.classList.toggle('is-done', done);
         card.race.textContent = done ? 'RACE AGAIN' : 'RACE EVENT';

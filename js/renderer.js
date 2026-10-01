@@ -942,9 +942,14 @@
     /**
      * Step 8: drop every shape that was cached for the old track and rebuild
      * the ones that are cheap. Called after Track.use().
+     *
+     * Step 13: also called when an event modifier changes the road geometry
+     * (NARROW MARGIN). The tarmac itself is a cached canvas, so it has to go
+     * too or the car would drive on a road nobody drew.
      */
     invalidateTrack() {
       Renderer.paths = null;
+      Renderer.roadLayer = null;
       Renderer.sceneryLayer = null;
       if (Renderer.minimap) Renderer.buildMinimapPath();
       return Renderer;

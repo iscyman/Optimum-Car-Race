@@ -1564,3 +1564,134 @@ body.is-paused #hud { opacity: 0.35; }
 @media (prefers-reduced-motion: reduce) {
   .event-fill { transition: none; }
 }
+
+/* ============================================================================
+   STEP 13 — today's event, the streak strip, facts, haptics and the footer
+   ========================================================================== */
+
+.today-card {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  text-align: left;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(38, 30, 16, 0.92), rgba(22, 18, 12, 0.94));
+  border: 1px solid rgba(255, 190, 110, 0.45);
+}
+.today-card.is-claimed { border-color: rgba(120, 220, 170, 0.45); }
+.today-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.today-countdown {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted, #8f95b8);
+}
+.today-name { font-size: 15px; letter-spacing: 0.08em; color: #ffd9a0; }
+.today-objective { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: #ffd9a0; }
+.today-bonus { font-size: 10px; color: #9ff0c4; }
+
+/* ---- the streak strip ---------------------------------------------------- */
+
+.streak {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+.streak-dot {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  width: 34px;
+}
+.streak-day { font-size: 8px; letter-spacing: 0.08em; color: var(--muted, #8f95b8); }
+.streak-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.streak-dot.is-done .streak-mark {
+  background: linear-gradient(180deg, #7fd8a8, #4fc98d);
+  border-color: #7fd8a8;
+}
+.streak-dot.is-today .streak-mark { box-shadow: 0 0 0 2px rgba(255, 190, 110, 0.45); }
+.streak-dot.is-today .streak-day { color: #ffd9a0; }
+
+.event-card.is-today { border-color: rgba(255, 190, 110, 0.6); }
+.event-today {
+  display: none;
+  padding: 3px 8px;
+  margin-left: auto;
+  margin-right: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #1a1206;
+  background: #ffb45c;
+  border-radius: 999px;
+}
+.event-card.is-today .event-today { display: inline-block; }
+
+/* ---- did you know -------------------------------------------------------- */
+
+.fact {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #cfd4ff;
+  text-align: left;
+  background: rgba(143, 123, 255, 0.1);
+  border-left: 2px solid rgba(143, 123, 255, 0.6);
+  border-radius: 0 8px 8px 0;
+}
+
+/* ---- haptics toggle ------------------------------------------------------ */
+
+.menu-toggles { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
+.pause-haptics { margin-bottom: 6px; }
+.icon-btn[data-action="haptics"] .haptics-label { font-size: 10px; letter-spacing: 0.08em; }
+.icon-btn[data-action="haptics"].is-on { color: #7fd8a8; }
+
+/* ---- disclaimer and footer ----------------------------------------------- */
+
+.disclaimer {
+  margin: 12px 0 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--muted, #8f95b8);
+  text-align: center;
+}
+.disclaimer a { color: #8fbaff; }
+
+.site-footer {
+  padding: 10px 12px 18px;
+  text-align: center;
+}
+.footer-disclaimer {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: rgba(143, 149, 184, 0.75);
+}
+
+@media (max-width: 720px) {
+  .today-card { margin: 8px 0 2px; }
+  .today-name { font-size: 13px; }
+  .streak-dot { width: 30px; }
+  .streak-mark { width: 16px; height: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streak-mark, .today-card { transition: none; }
+}
+
+/* the today card is a control: it opens the challenge screen */
+.today-card { cursor: pointer; }
+.today-card:hover, .today-card:focus-visible {
+  border-color: rgba(255, 190, 110, 0.85);
+  outline: none;
+}
+.today-cta { font-size: 9px; letter-spacing: 0.1em; color: #ffd9a0; }

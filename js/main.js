@@ -177,6 +177,18 @@
           Screens.showMenuView('main');
         });
       }
+      /* Step 13: the menu card is the shortcut into the challenge screen. */
+      const todayCard = document.getElementById('todayCard');
+      if (todayCard) {
+        const openEvents = e => {
+          if (e) e.preventDefault();
+          Screens.showMenuView('events');
+        };
+        todayCard.addEventListener('click', openEvents);
+        todayCard.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') openEvents(e);
+        });
+      }
       if (OR.Events) {
         OR.Events.init(document.getElementById('eventList'));
         OR.Events.initHud(document.getElementById('eventCard'));
@@ -338,6 +350,41 @@
             });
       }
 
+      /* ---- Step 13: haptics toggles (menu + pause) ----------------------- */
+      const hapticButtons = document.querySelectorAll('[data-action="haptics"]');
+      function syncHaptics() {
+        const on = OR.Haptics ? OR.Haptics.enabled() : false;
+        hapticButtons.forEach(btn => {
+          btn.classList.toggle('is-on', on);
+          btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+          const label = btn.querySelector('.haptics-label');
+          if (label) label.textContent = on ? 'HAPTICS ON' : 'HAPTICS OFF';
+        });
+      }
+      hapticButtons.forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.preventDefault();
+          btn.blur();
+          if (OR.Haptics) OR.Haptics.toggle();
+          syncHaptics();
+        });
+      });
+      Screens.syncHaptics = syncHaptics;
+      syncHaptics();
+
+      /* One ticker for the rotation countdown. It only touches the DOM while
+         the menu is on screen, and it is a plain timeout chain rather than an
+         interval so nothing can pile up. */
+      if (OR.Daily) {
+        const tickMs = Math.max(250, (CONFIG.daily && CONFIG.daily.tickMs) || 1000);
+        const tick = () => {
+          Screens._dailyTimer = null;
+          if (Screens.view === 'main' || Screens.view === 'events') Screens.refreshDaily();
+          Screens._dailyTimer = window.setTimeout(tick, tickMs);
+        };
+        Screens._dailyTimer = window.setTimeout(tick, tickMs);
+      }
+
       // Engine sound: off until the player turns it on.
       const soundButtons = document.querySelectorAll('[data-action="sound"]');
       function syncSound() {
@@ -409,7 +456,8 @@
       if (Screens.menuProfile) Screens.menuProfile.classList.toggle('hidden', Screens.view !== 'profile');
       if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
       if (Screens.view === 'cars') Screens.refreshCars();
-      if (Screens.view === 'events') Screens.refreshEvents();
+      if (Screens.view === 'events') { Screens.refreshEvents(); Screens.refreshDaily(); }
+      if (Screens.view === 'main') Screens.refreshDaily();
       if (Screens.view === 'profile') Screens.refreshProfile();
       return Screens.view;
     },
@@ -599,6 +647,75 @@
     refreshEvents() {
       if (OR.Events) OR.Events.refresh();
       return OR.Events ? OR.Events.list() : [];
+    },
+
+    /**
+     * Step 13: the menu's TODAY'S EVENT card, the countdown to the next
+     * rotation and the seven-day streak strip. Everything is derived from the
+     * date and the save, so this can run as often as it likes.
+     */
+    refreshDaily() {
+      if (!OR.Daily || !OR.Events) return null;
+      const featured = OR.Daily.featured();
+      const card = document.getElementById('todayCard');
+      const bonusXp = (CONFIG.daily && CONFIG.daily.bonusXp) || 0;
+      const available = OR.Daily.bonusAvailable();
+      const streak = Save.dailyStreak();
+
+      if (card) {
+        card.dataset.event = featured ? featured.id : '';
+        card.dataset.date = OR.Daily.dateKey();
+        card.dataset.featured = OR.Daily.featuredId();
+        card.dataset.bonus = String(available ? bonusXp : 0);
+        card.dataset.streak = String(streak);
+        card.classList.toggle('is-claimed', !available);
+      }
+      const name = document.getElementById('todayName');
+      if (name) name.textContent = featured ? featured.name : 'REST DAY';
+      const objective = document.getElementById('todayObjective');
+      if (objective) objective.textContent = featured ? OR.Events.objectiveText(featured) : '';
+      const bonus = document.getElementById('todayBonus');
+      if (bonus) {
+        bonus.textContent = !featured ? ''
+          : (available
+            ? 'BONUS +' + bonusXp + ' XP TODAY' + (streak ? ' · STREAK ' + streak : '')
+            : 'DAILY BONUS COLLECTED · STREAK ' + streak);
+      }
+      const countdown = document.getElementById('todayCountdown');
+      if (countdown) countdown.textContent = 'NEXT ROTATION IN ' + OR.Daily.countdown();
+
+      Screens.renderStreak();
+      return featured;
+    },
+
+    /** The last seven days as a row of dots (today first). */
+    renderStreak() {
+      const strip = document.getElementById('streakStrip');
+      if (!strip || !OR.Daily) return null;
+      const days = OR.Daily.historyWindow();
+      if (strip.childElementCount !== days.length) {
+        strip.replaceChildren();
+        days.forEach(function () {
+          const dot = document.createElement('span');
+          dot.className = 'streak-dot';
+          const label = document.createElement('span');
+          label.className = 'streak-day';
+          const mark = document.createElement('span');
+          mark.className = 'streak-mark';
+          dot.append(label, mark);
+          strip.appendChild(dot);
+        });
+      }
+      Array.from(strip.children).forEach(function (dot, i) {
+        const row = days[i];
+        dot.dataset.date = row.date;
+        dot.dataset.completed = row.completed ? 'true' : 'false';
+        dot.classList.toggle('is-done', row.completed);
+        dot.classList.toggle('is-today', row.isToday);
+        const label = dot.querySelector('.streak-day');
+        if (label) label.textContent = row.label;
+      });
+      return days;
     },
 
     /** "NEXT UNLOCK: VALIDATOR AT LEVEL 3" on the main menu. */
@@ -791,6 +908,18 @@
           '× difficulty' + (xp && xp.leveledUp ? ' · LEVEL UP!' : '');
         note.classList.toggle('is-level-up', !!(xp && xp.leveledUp));
       }
+      /* ---- Step 13: a verified fact, rotating race by race ---------------- */
+      const factLine = document.getElementById('finalFact');
+      if (factLine) {
+        const facts = (CONFIG.facts && CONFIG.facts.list) || [];
+        if (facts.length) {
+          const index = Save.stats().races % facts.length;
+          factLine.textContent = 'DID YOU KNOW? ' + facts[index];
+          factLine.dataset.factIndex = String(index);
+          factLine.dataset.factCount = String(facts.length);
+        }
+      }
+
       /* ---- Step 12: EVENT COMPLETE / EVENT FAILED ------------------------ */
       const eventBox = document.getElementById('finalEvent');
       if (eventBox) {
@@ -818,6 +947,8 @@
       /* The menu and profile bars must show the new total the moment the
          player walks back to them. */
       Screens.renderLevels(true);
+      /* Step 13: the streak and the bonus state changed with this race. */
+      Screens.refreshDaily();
 
       /* ---- Step 11: did that prize unlock anything? ---------------------- */
       if (OR.Cars) {
@@ -914,6 +1045,8 @@
     Screens.refreshCars();
     /* Step 12: the events screen starts with no event running. */
     if (OR.Events) OR.Events.refresh();
+    /* Step 13: today's event, the countdown and the streak strip. */
+    Screens.refreshDaily();
   }
 
   if (document.readyState === 'loading') {
