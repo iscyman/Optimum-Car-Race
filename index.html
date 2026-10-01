@@ -120,6 +120,11 @@
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
       <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
       <p class="racing-as" id="racingAs"></p>
+      <div class="level-line" id="menuLevelLine">
+        <span class="level-badge" id="menuLevel">LEVEL 1</span>
+        <span class="level-bar"><span class="level-fill" id="menuLevelBar"></span></span>
+        <span class="level-xp" id="menuLevelXp">0 / 283 XP</span>
+      </div>
       <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
@@ -171,6 +176,11 @@
 
       <div class="profile-block">
         <div class="card-label">CAREER</div>
+        <div class="level-line level-line-wide">
+          <span class="level-badge level-badge-lg" id="profileLevel">LEVEL 1</span>
+          <span class="level-bar"><span class="level-fill" id="profileLevelBar"></span></span>
+          <span class="level-xp" id="profileLevelXp">0 / 283 XP</span>
+        </div>
         <div class="stats stats-compact" id="profileStats"></div>
         <div class="profile-records" id="profileRecords"></div>
       </div>
@@ -189,6 +199,13 @@
 
       <button id="profileBackBtn" class="btn btn-ghost">BACK</button>
     </div>
+  </div>
+
+  <!-- ===================== LEVEL-UP TOAST (Step 10) ===================== -->
+  <div id="levelToast" class="level-toast hidden" role="status" aria-live="polite">
+    <span class="toast-badge">LEVEL UP</span>
+    <strong id="levelToastValue">LEVEL 2</strong>
+    <span class="toast-sub" id="levelToastSub"></span>
   </div>
 
   <!-- ===================== PAUSE MENU (Step 4) ===================== -->
@@ -260,6 +277,17 @@
           <span class="stat-value" id="finalShards">0</span>
         </div>
       </div>
+      <section class="xp-panel" aria-label="Experience earned">
+        <h3>XP EARNED</h3>
+        <div id="finalXpLines" class="xp-lines"></div>
+        <p class="xp-total"><span>THIS RACE</span><strong id="finalXpTotal">+0 XP</strong></p>
+        <div class="level-line level-line-wide">
+          <span class="level-badge" id="finalLevel">LEVEL 1</span>
+          <span class="level-bar level-bar-lg"><span class="level-fill" id="finalLevelBar"></span></span>
+          <span class="level-xp" id="finalLevelXp">0 / 283 XP</span>
+        </div>
+        <p class="xp-note" id="finalXpNote"></p>
+      </section>
       <section class="finish-standings" aria-label="Final race standings">
         <h3>FINAL STANDINGS</h3>
         <ol id="finalStandings" class="standings-list"></ol>
@@ -276,6 +304,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/xp.js"></script>
 <script src="js/trackdata.js"></script>
 <script src="js/track.js"></script>
 <script src="js/car.js"></script>

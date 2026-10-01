@@ -49,6 +49,8 @@
     clock: 0,          // seconds since page load, drives cosmetic animation
     raceTimeMs: 0,     // live race timer (ms)
     finalTimeMs: 0,    // time shown on the finish screen
+    cleanLaps: 0,        // Step 10: laps with no barrier contact
+    lapWallBaseline: 0,  // car.wallHits at the start of the current lap
     countdown: 0,
     finishTimer: 0,
     coasting: false,   // true during the short roll-out after the flag
@@ -116,6 +118,8 @@
       Renderer.marks.length = 0;
       Game.raceTimeMs = 0;
       Game.finalTimeMs = 0;
+      Game.cleanLaps = 0;
+      Game.lapWallBaseline = 0;
       Game.results = null;
       Game.finishTimer = 0;
       Game.coasting = false;
@@ -214,8 +218,20 @@
         /* Step 8: which circuit the race was run on. */
         trackId: Track.id,
         trackName: Track.name,
-        trackRating: Track.rating
+        trackRating: Track.rating,
+        /* Step 10: XP is awarded here, at the flag — and only here, so a race
+           the player quit early can never pay out. */
+        cleanLaps: Game.cleanLaps
       };
+      Game.results.xp = OR.XP.award({
+        difficultyId: Game.difficultyId,
+        place: Game.results.place,
+        laps: Game.results.laps,
+        cleanLaps: Game.cleanLaps,
+        boostsUsed: Game.results.boostsUsed,
+        timeMs: Game.finalTimeMs,
+        trackId: Track.id
+      });
       /* Step 8: records are per track AND per difficulty (time and lap). */
       const trackBest = OR.Bests.record(Track.id, Game.difficultyId, {
         timeMs: Game.finalTimeMs,
@@ -268,11 +284,30 @@
       if (!outcome) return;
 
       if (outcome === 'finish') {
+        Game._countLapCleanliness();
         Race.finished = true;
         Game._finishRace();
         return;
       }
-      if (outcome === 'lap') Game._onLap();
+      if (outcome === 'lap') {
+        Game._countLapCleanliness();
+        Game._onLap();
+      }
+    },
+
+    /**
+     * Step 10: was the lap just completed a clean one? A clean lap is one with
+     * no barrier contact at all — `car.wallHits` counts contact EPISODES, so a
+     * long scrape is still one hit and a tap is not cheaper than a crash.
+     */
+    _countLapCleanliness() {
+      const car = Game.car;
+      const hits = Math.max(0, car.wallHits - Game.lapWallBaseline);
+      Game.lapWallBaseline = car.wallHits;
+      const clean = hits === 0;
+      if (clean) Game.cleanLaps += 1;
+      Game._emit('lap-cleanliness', { lap: Race.lap, clean: clean, hits: hits });
+      return clean;
     },
 
     /** A lap was completed: fresh pickups for the new lap, and a lap event. */

@@ -1106,6 +1106,148 @@ body.is-paused #hud { opacity: 0.35; }
   .profile-save-text { font-size: 9px; }
 }
 
+/* ============================ XP AND LEVELS (Step 10) ===================== */
+
+.level-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  justify-content: center;
+}
+.level-line-wide { width: 100%; }
+
+.level-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #05121a;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cyan), #7fe6ff);
+  white-space: nowrap;
+}
+.level-badge-lg { font-size: 11px; padding: 5px 12px; }
+
+.level-bar {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+  max-width: 190px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(9, 12, 22, 0.9);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.level-bar-lg { height: 10px; max-width: 260px; }
+.level-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  box-shadow: 0 0 12px rgba(34, 225, 255, 0.5);
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.level-xp {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.xp-panel {
+  margin: 18px 0 22px;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(9, 12, 22, 0.6);
+  text-align: left;
+}
+.xp-panel h3 { margin: 0 0 10px; color: var(--muted); font-size: 10px; letter-spacing: 0.18em; }
+.xp-lines { display: grid; gap: 4px; }
+.xp-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text);
+}
+.xp-label { color: var(--muted); }
+.xp-value { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.xp-line.is-zero .xp-value { color: var(--muted); }
+.xp-line.is-multiplier {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+.xp-line.is-multiplier .xp-label { color: var(--cyan); }
+.xp-line.is-multiplier .xp-value { color: var(--cyan); }
+
+.xp-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 10px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.xp-total strong { font-family: var(--mono); font-size: 18px; color: var(--cyan); }
+.xp-note { margin: 10px 0 0; font-size: 10px; line-height: 1.6; color: var(--muted); }
+.xp-note.is-level-up { color: var(--cyan); font-weight: 800; }
+
+.level-toast {
+  position: absolute;
+  top: calc(64px + var(--safe-t));
+  left: 50%;
+  transform: translate(-50%, -14px);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(34, 225, 255, 0.55);
+  background: rgba(9, 12, 22, 0.94);
+  box-shadow: 0 18px 40px -18px rgba(34, 225, 255, 0.75);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.level-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+.toast-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  color: var(--cyan);
+}
+.level-toast strong {
+  font-family: var(--mono);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.toast-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+@media (max-width: 720px) {
+  .level-badge { font-size: 9px; padding: 3px 7px; }
+  .level-bar { max-width: 120px; }
+  .level-bar-lg { max-width: 150px; }
+  .level-xp { font-size: 9px; }
+  .xp-panel { padding: 11px 11px 10px; }
+  .xp-line { font-size: 10px; }
+  .xp-total strong { font-size: 16px; }
+  .level-toast { padding: 10px 16px; }
+  .level-toast strong { font-size: 17px; }
+}
+
 </style>
 </head>
 <body>
@@ -1219,6 +1361,11 @@ body.is-paused #hud { opacity: 0.35; }
       <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
       <button id="profileBtn" class="btn btn-ghost">PROFILE</button>
       <p class="racing-as" id="racingAs"></p>
+      <div class="level-line" id="menuLevelLine">
+        <span class="level-badge" id="menuLevel">LEVEL 1</span>
+        <span class="level-bar"><span class="level-fill" id="menuLevelBar"></span></span>
+        <span class="level-xp" id="menuLevelXp">0 / 283 XP</span>
+      </div>
       <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
@@ -1270,6 +1417,11 @@ body.is-paused #hud { opacity: 0.35; }
 
       <div class="profile-block">
         <div class="card-label">CAREER</div>
+        <div class="level-line level-line-wide">
+          <span class="level-badge level-badge-lg" id="profileLevel">LEVEL 1</span>
+          <span class="level-bar"><span class="level-fill" id="profileLevelBar"></span></span>
+          <span class="level-xp" id="profileLevelXp">0 / 283 XP</span>
+        </div>
         <div class="stats stats-compact" id="profileStats"></div>
         <div class="profile-records" id="profileRecords"></div>
       </div>
@@ -1288,6 +1440,13 @@ body.is-paused #hud { opacity: 0.35; }
 
       <button id="profileBackBtn" class="btn btn-ghost">BACK</button>
     </div>
+  </div>
+
+  <!-- ===================== LEVEL-UP TOAST (Step 10) ===================== -->
+  <div id="levelToast" class="level-toast hidden" role="status" aria-live="polite">
+    <span class="toast-badge">LEVEL UP</span>
+    <strong id="levelToastValue">LEVEL 2</strong>
+    <span class="toast-sub" id="levelToastSub"></span>
   </div>
 
   <!-- ===================== PAUSE MENU (Step 4) ===================== -->
@@ -1359,6 +1518,17 @@ body.is-paused #hud { opacity: 0.35; }
           <span class="stat-value" id="finalShards">0</span>
         </div>
       </div>
+      <section class="xp-panel" aria-label="Experience earned">
+        <h3>XP EARNED</h3>
+        <div id="finalXpLines" class="xp-lines"></div>
+        <p class="xp-total"><span>THIS RACE</span><strong id="finalXpTotal">+0 XP</strong></p>
+        <div class="level-line level-line-wide">
+          <span class="level-badge" id="finalLevel">LEVEL 1</span>
+          <span class="level-bar level-bar-lg"><span class="level-fill" id="finalLevelBar"></span></span>
+          <span class="level-xp" id="finalLevelXp">0 / 283 XP</span>
+        </div>
+        <p class="xp-note" id="finalXpNote"></p>
+      </section>
       <section class="finish-standings" aria-label="Final race standings">
         <h3>FINAL STANDINGS</h3>
         <ol id="finalStandings" class="standings-list"></ol>
@@ -1674,6 +1844,27 @@ OR.CONFIG = {
     }
   },
 
+  /* ---- XP and levels (Step 10) ---------------------------------------------
+   * Racing earns XP; XP decides the level. `xpForLevel()` in js/xp.js reads
+   * this block, so the curve and every award live in one place.
+   *
+   * Level curve: the total XP required to BE at level N is
+   *   levelBase * N ^ levelExponent      (level 1 is always 0 XP)
+   * With the defaults that is
+   *   1: 0     2: 283   3: 520   4: 800   5: 1118
+   *   6: 1476  7: 1872  8: 2300  9: 2760  10: 3162
+   */
+  xp: {
+    finish: 50,                        // crossing the line at all
+    placement: { 1: 100, 2: 60, 3: 30 }, // place bonus; 4th and beyond: nothing
+    cleanLap: 20,                      // per lap with no barrier contact
+    boost: { per: 5, max: 20 },        // small bonus for boost use, capped
+    levelBase: 100,
+    levelExponent: 1.5,
+    multipliers: { easy: 0.8, normal: 1, hard: 1.3 },
+    toastMs: 2600                      // how long the level-up toast stays up
+  },
+
   /* ---- Theme ------------------------------------------------------------- */
   theme: {
     cyan: '#22e1ff',
@@ -1788,6 +1979,203 @@ OR.CONFIG = {
   };
 
   OR.Utils = Utils;
+})();
+
+/* ==== js/xp.js ==== */
+/* =============================================================================
+ * xp.js — Step 10: XP earned by racing, and the level it buys.
+ *
+ * Pure arithmetic plus one save write, so everything here is testable without
+ * a DOM: the award values and the curve live in CONFIG.xp, the save owns the
+ * running total, and this module decides what a given race was worth.
+ *
+ * What a finished race is worth (before the difficulty multiplier):
+ *   finishing the race        +50
+ *   1st / 2nd / 3rd           +100 / +60 / +30
+ *   every clean lap           +20   (a lap with no barrier contact)
+ *   boost use                 +5 per boost, capped at +20
+ * then the whole total is scaled by the difficulty: EASY ×0.8, NORMAL ×1,
+ * HARD ×1.3.
+ *
+ * Levels: the total XP to BE at level N is `levelBase * N ^ levelExponent`
+ * (level 1 is 0). XP is the single source of truth — the level stored in the
+ * save is a cache that is recomputed from the total on every load, so a
+ * hand-edited or half-written save can never strand a player on a wrong level.
+ *
+ * Only a FINISHED race is ever awarded: quitting early never reaches
+ * Game._finishRace(), where the award happens.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Utils } = OR;
+  const X = CONFIG.xp;
+
+  /** Whole numbers, and numeric strings (levels can arrive from a URL or JSON). */
+  function toInt(value) {
+    const n = typeof value === 'number' ? value : Number(value);
+    return isFinite(n) ? Math.floor(n) : 0;
+  }
+
+  function ordinal(n) {
+    if (n === 1) return '1st';
+    if (n === 2) return '2nd';
+    if (n === 3) return '3rd';
+    return n + 'th';
+  }
+
+  const XP = {
+    config: X,
+
+    /* ---- the curve --------------------------------------------------------- */
+
+    /** Total XP required to be at `level`. Level 1 is 0; monotonic after that. */
+    xpForLevel(level) {
+      const n = Math.max(1, toInt(level) || 1);
+      if (n <= 1) return 0;
+      return Math.round(X.levelBase * Math.pow(n, X.levelExponent));
+    },
+
+    /** The level a running XP total corresponds to (1-based). */
+    levelFor(totalXp) {
+      const xp = Math.max(0, toInt(totalXp));
+      let level = 1;
+      while (level < 9999 && xp >= XP.xpForLevel(level + 1)) level += 1;
+      return level;
+    },
+
+    /** XP needed to get from `level` to `level + 1`. */
+    xpToNext(level) {
+      const n = Math.max(1, toInt(level) || 1);
+      return XP.xpForLevel(n + 1) - XP.xpForLevel(n);
+    },
+
+    /** Everything the UI needs to draw one level bar. */
+    progress(totalXp) {
+      const xp = Math.max(0, toInt(totalXp));
+      const level = XP.levelFor(xp);
+      const floorXp = XP.xpForLevel(level);
+      const needed = XP.xpToNext(level);
+      const into = xp - floorXp;
+      return {
+        xp: xp,
+        level: level,
+        floorXp: floorXp,
+        into: into,
+        needed: needed,
+        remaining: Math.max(0, needed - into),
+        ratio: needed > 0 ? Utils.clamp(into / needed, 0, 1) : 0
+      };
+    },
+
+    /** The race difficulty's multiplier (unknown ids are treated as ×1). */
+    multiplier(difficultyId) {
+      const value = X.multipliers[difficultyId];
+      return typeof value === 'number' && isFinite(value) && value >= 0 ? value : 1;
+    },
+
+    /** Human label for a difficulty id, for the breakdown line. */
+    difficultyLabel(difficultyId) {
+      if (OR.Difficulty) return OR.Difficulty.get(difficultyId).label;
+      return String(difficultyId || 'normal').toUpperCase();
+    },
+
+    /* ---- what one race was worth ------------------------------------------- */
+
+    /**
+     * The line-by-line breakdown. `lines` always sums exactly to `total`:
+     * the difficulty adjustment is shown as its own line so the player can add
+     * them up and land on the same number the save was given.
+     */
+    breakdown(result) {
+      const r = result || {};
+      const difficultyId = r.difficultyId || 'normal';
+      const multiplier = XP.multiplier(difficultyId);
+
+      const place = toInt(r.place);
+      const laps = Math.max(0, toInt(r.laps));
+      const cleanLaps = Utils.clamp(toInt(r.cleanLaps), 0, Math.max(0, laps));
+      const boostsUsed = Math.max(0, toInt(r.boostsUsed));
+      const boostXp = Math.min(X.boost.max, boostsUsed * X.boost.per);
+      const placeBonus = X.placement[place] || 0;
+
+      const lines = [
+        { id: 'finish', label: 'Finishing the race', xp: X.finish },
+        {
+          id: 'placement',
+          label: place > 0 ? 'Finished ' + ordinal(place) : 'No place recorded',
+          xp: placeBonus
+        },
+        {
+          id: 'cleanLaps',
+          label: cleanLaps + (cleanLaps === 1 ? ' clean lap' : ' clean laps') +
+            ' × ' + X.cleanLap,
+          xp: cleanLaps * X.cleanLap
+        },
+        {
+          id: 'boost',
+          label: 'Boost use (' + boostsUsed + ' × ' + X.boost.per +
+            ', max ' + X.boost.max + ')',
+          xp: boostXp
+        }
+      ];
+
+      const base = lines.reduce(function (sum, line) { return sum + line.xp; }, 0);
+      const total = Math.round(base * multiplier);
+      lines.push({
+        id: 'difficulty',
+        label: XP.difficultyLabel(difficultyId) + ' × ' + multiplier.toFixed(2),
+        xp: total - base
+      });
+
+      return {
+        lines: lines,
+        base: base,
+        multiplier: multiplier,
+        difficultyId: difficultyId,
+        total: total,
+        place: place,
+        laps: laps,
+        cleanLaps: cleanLaps,
+        boostsUsed: boostsUsed,
+        cleanLapXp: cleanLaps * X.cleanLap,
+        boostXp: boostXp,
+        placementXp: placeBonus
+      };
+    },
+
+    /**
+     * Award a finished race. Writes through the save and reports exactly what
+     * happened, including whether this race pushed the driver up a level.
+     */
+    award(result) {
+      const breakdown = XP.breakdown(result);
+      const before = OR.Save.progress();
+      const after = OR.Save.addXp(breakdown.total);
+
+      return {
+        earned: breakdown.total,
+        total: breakdown.total,
+        base: breakdown.base,
+        multiplier: breakdown.multiplier,
+        lines: breakdown.lines,
+        breakdown: breakdown,
+        before: { xp: before.xp, level: before.level },
+        after: { xp: after.xp, level: after.level },
+        levelsGained: after.level - before.level,
+        leveledUp: after.level > before.level,
+        level: after.level
+      };
+    },
+
+    /** A one-line summary for logs and the toast: "LEVEL 4 · 1872 XP". */
+    summary(totalXp) {
+      const p = XP.progress(totalXp);
+      return 'LEVEL ' + p.level + ' · ' + p.xp + ' XP';
+    }
+  };
+
+  OR.XP = XP;
 })();
 
 /* ==== js/trackdata.js ==== */
@@ -2511,6 +2899,10 @@ OR.CONFIG = {
     this.surface = 'road';
     this.offRoad = false;
     this.hitWall = false;
+    /* Step 10: barrier contact as an EPISODE, not a per-step flag — scraping
+       the wall for two seconds is one hit, so "clean lap" means something. */
+    this.wallHits = 0;          // contacts since reset (the whole race)
+    this.touchingBarrier = false;
     this.braking = false;
     this.maxSpeed = 0;     // km/h, for the finish screen
     this.topSpeedMultiplier = 1; // rivals set their fixed profile after reset
@@ -2688,6 +3080,13 @@ OR.CONFIG = {
 
       this.hitWall = true;
     }
+
+    /* Step 10: one contact episode per visit to the barrier, not per physics
+       step. The flag is raised while the car is out there and cleared the
+       moment it is back inside the run-off. */
+    const outside = excess > 0 || Math.abs(hit.offset) > Track.hardLimit;
+    if (outside && !this.touchingBarrier) this.wallHits += 1;
+    this.touchingBarrier = outside;
 
     // absolute backstop: the car can never leave the playable area
     if (Math.abs(hit.offset) > Track.hardLimit) {
@@ -2929,9 +3328,10 @@ OR.CONFIG = {
  * object under one key (CONFIG.profile.keys.save):
  *
  *   {
- *     version: 1,
+ *     version: 2,
  *     profile:   { name: 'Racer', color: 'violet' },
  *     stats:     { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
+ *     progress:  { xp: 0, level: 1 },        <- Step 10
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
  *     selection: { track: 'flexnode', difficulty: 'normal' }
  *   }
@@ -2954,7 +3354,7 @@ OR.CONFIG = {
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 1;
+  const VERSION = 2;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -3061,9 +3461,15 @@ OR.CONFIG = {
       version: VERSION,
       profile: { name: P.defaultName, color: P.defaultColor },
       stats: { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
+      progress: { xp: 0, level: 1 },
       bests: {},
       selection: { track: null, difficulty: null }
     };
+  }
+
+  /** The level a total is worth, from the XP module when it is loaded. */
+  function levelForXp(xp) {
+    return OR.XP ? OR.XP.levelFor(xp) : 1;
   }
 
   function topos(value) {
@@ -3115,6 +3521,12 @@ OR.CONFIG = {
     base.stats.podiums = Math.min(base.stats.races, Math.max(base.stats.wins, tocount(stats.podiums)));
     base.stats.totalTimeMs = topos(stats.totalTimeMs);
 
+    /* Step 10: XP is the source of truth; the stored level is a cache that is
+       recomputed here, so a tampered or half-written save self-heals. */
+    const progress = raw.progress && typeof raw.progress === 'object' ? raw.progress : {};
+    base.progress.xp = Math.max(0, topos(progress.xp));
+    base.progress.level = Math.max(1, levelForXp(base.progress.xp));
+
     base.bests = sanitiseBests(raw.bests);
 
     const selection = raw.selection && typeof raw.selection === 'object' ? raw.selection : {};
@@ -3133,7 +3545,15 @@ OR.CONFIG = {
    * `2: function (data) { ... }` here.
    */
   const MIGRATIONS = {
-    0: function (data) { return data; }
+    0: function (data) { return data; },
+    /* 1 -> 2 (Step 10): saves written before XP existed start at level 1 with
+       nothing earned. Profile, stats, records and selections are untouched. */
+    1: function (data) {
+      if (!data.progress || typeof data.progress !== 'object') {
+        data.progress = { xp: 0, level: 1 };
+      }
+      return data;
+    }
   };
 
   function migrate(raw) {
@@ -3219,11 +3639,21 @@ OR.CONFIG = {
         return Save._data;
       }
 
+      let storedVersion = 0;
       try {
-        Save._data = migrate(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        /* Read the version BEFORE migrating: migrate() rewrites data.version
+           in place, so afterwards it always looks current. */
+        storedVersion = typeof parsed.version === 'number' ? parsed.version : 0;
+        Save._data = migrate(parsed);
       } catch (error) {
         Save._lastError = String(error && error.message || error);
         Save._data = defaults();
+      }
+      /* An older save is upgraded on disk as soon as it is read, so the
+         migration runs once rather than on every page load. */
+      if (storedVersion !== VERSION) {
+        writeRaw(K.save, JSON.stringify(Save._data));
       }
       return Save._data;
     },
@@ -3253,6 +3683,38 @@ OR.CONFIG = {
 
     profile() { return Save.load().profile; },
     stats() { return Save.load().stats; },
+    /**
+     * A snapshot of { xp, level }. It is deliberately a copy: an award takes a
+     * "before" reading and then mutates the save, and a live reference would
+     * show every caller the same, already-updated numbers.
+     */
+    progress() {
+      const progress = Save.load().progress;
+      return { xp: progress.xp, level: progress.level };
+    },
+    xp() { return Save.load().progress.xp; },
+    level() { return Save.load().progress.level; },
+
+    /**
+     * Add XP (Step 10) and recompute the level. Returns the new totals plus
+     * what changed, so the caller can show a toast without re-reading.
+     */
+    addXp(amount) {
+      const progress = Save.load().progress;   // the live object: mutated here
+      const gained = typeof amount === 'number' && isFinite(amount) && amount > 0
+        ? Math.round(amount) : 0;
+      const beforeLevel = progress.level;
+      progress.xp += gained;
+      progress.level = Math.max(1, levelForXp(progress.xp));
+      if (gained > 0) Save.write();
+      return {
+        xp: progress.xp,
+        level: progress.level,
+        gained: gained,
+        levelsGained: progress.level - beforeLevel,
+        leveledUp: progress.level > beforeLevel
+      };
+    },
     bests() { return Save.load().bests; },
     selection() { return Save.load().selection; },
 
@@ -3361,6 +3823,7 @@ OR.CONFIG = {
       const fresh = defaults();
       fresh.profile = Save.load().profile;
       fresh.selection = Save.load().selection;
+      /* Progress (XP and level) is part of "progress", so it goes back to 1. */
       Save._data = fresh;
       /* Make sure the older keys cannot resurrect deleted records. */
       writeRaw(CONFIG.track.keys.best, '{}');
@@ -6068,6 +6531,8 @@ OR.CONFIG = {
     clock: 0,          // seconds since page load, drives cosmetic animation
     raceTimeMs: 0,     // live race timer (ms)
     finalTimeMs: 0,    // time shown on the finish screen
+    cleanLaps: 0,        // Step 10: laps with no barrier contact
+    lapWallBaseline: 0,  // car.wallHits at the start of the current lap
     countdown: 0,
     finishTimer: 0,
     coasting: false,   // true during the short roll-out after the flag
@@ -6135,6 +6600,8 @@ OR.CONFIG = {
       Renderer.marks.length = 0;
       Game.raceTimeMs = 0;
       Game.finalTimeMs = 0;
+      Game.cleanLaps = 0;
+      Game.lapWallBaseline = 0;
       Game.results = null;
       Game.finishTimer = 0;
       Game.coasting = false;
@@ -6233,8 +6700,20 @@ OR.CONFIG = {
         /* Step 8: which circuit the race was run on. */
         trackId: Track.id,
         trackName: Track.name,
-        trackRating: Track.rating
+        trackRating: Track.rating,
+        /* Step 10: XP is awarded here, at the flag — and only here, so a race
+           the player quit early can never pay out. */
+        cleanLaps: Game.cleanLaps
       };
+      Game.results.xp = OR.XP.award({
+        difficultyId: Game.difficultyId,
+        place: Game.results.place,
+        laps: Game.results.laps,
+        cleanLaps: Game.cleanLaps,
+        boostsUsed: Game.results.boostsUsed,
+        timeMs: Game.finalTimeMs,
+        trackId: Track.id
+      });
       /* Step 8: records are per track AND per difficulty (time and lap). */
       const trackBest = OR.Bests.record(Track.id, Game.difficultyId, {
         timeMs: Game.finalTimeMs,
@@ -6287,11 +6766,30 @@ OR.CONFIG = {
       if (!outcome) return;
 
       if (outcome === 'finish') {
+        Game._countLapCleanliness();
         Race.finished = true;
         Game._finishRace();
         return;
       }
-      if (outcome === 'lap') Game._onLap();
+      if (outcome === 'lap') {
+        Game._countLapCleanliness();
+        Game._onLap();
+      }
+    },
+
+    /**
+     * Step 10: was the lap just completed a clean one? A clean lap is one with
+     * no barrier contact at all — `car.wallHits` counts contact EPISODES, so a
+     * long scrape is still one hit and a tap is not cheaper than a crash.
+     */
+    _countLapCleanliness() {
+      const car = Game.car;
+      const hits = Math.max(0, car.wallHits - Game.lapWallBaseline);
+      Game.lapWallBaseline = car.wallHits;
+      const clean = hits === 0;
+      if (clean) Game.cleanLaps += 1;
+      Game._emit('lap-cleanliness', { lap: Race.lap, clean: clean, hits: hits });
+      return clean;
     },
 
     /** A lap was completed: fresh pickups for the new lap, and a lap event. */
@@ -6726,7 +7224,7 @@ OR.CONFIG = {
 (function () {
   'use strict';
 
-  const { CONFIG, Game, Input, Utils, Renderer, Audio, Difficulty, Save, Bests, TrackSelect } = OR;
+  const { CONFIG, Game, Input, Utils, Renderer, Audio, Difficulty, Save, Bests, TrackSelect, XP } = OR;
 
   const Screens = {
     menu: null,
@@ -6986,8 +7484,7 @@ OR.CONFIG = {
           Screens.setSaveHint('Progress reset. Stats and records are empty again.');
           Screens.applyProfile();
           Screens.selectDifficulty(Difficulty.currentId());
-          if (OR.TrackSelect) OR.TrackSelect.refresh();
-        });
+            });
       }
 
       // Engine sound: off until the player turns it on.
@@ -7079,7 +7576,6 @@ OR.CONFIG = {
       }
       if (Screens.pickerHint) Screens.pickerHint.textContent = level.blurb;
       /* Track cards show the records for the selected difficulty. */
-      if (OR.TrackSelect) OR.TrackSelect.refresh();
       return level;
     },
 
@@ -7161,7 +7657,99 @@ OR.CONFIG = {
         racingAs.style.setProperty('--driver-color', color.hex);
       }
       Screens.refreshProfile();
+      Screens.renderLevels(false);
       return Screens;
+    },
+
+    /**
+     * Step 10: draw one level bar. The width is set through a CSS transition so
+     * it animates, and the target is also written to `data-target` — that is
+     * what the tests assert, since jsdom does not run transitions.
+     */
+    setLevelBar(bar, progress, animate) {
+      if (!bar) return progress;
+      const percent = Math.round(progress.ratio * 100);
+      bar.dataset.target = String(percent);
+      bar.dataset.level = String(progress.level);
+      const width = percent + '%';
+      if (animate === false) {
+        bar.style.transition = 'none';
+        bar.style.width = width;
+      } else {
+        bar.style.transition = '';
+        /* Start from the previous width so the browser has something to
+           animate from; the next frame sets the real target. */
+        bar.style.width = (bar._lastPercent || 0) + '%';
+        const raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 0); };
+        raf(() => { bar.style.width = width; });
+      }
+      bar._lastPercent = percent;
+      return progress;
+    },
+
+    /** Fill a "LEVEL n" badge, its bar and the "into / needed XP" text. */
+    renderLevel(badge, bar, xpText, totalXp, animate) {
+      const progress = XP.progress(totalXp);
+      if (badge) {
+        badge.textContent = 'LEVEL ' + progress.level;
+        badge.dataset.level = String(progress.level);
+      }
+      if (xpText) {
+        xpText.textContent = progress.into + ' / ' + progress.needed + ' XP';
+        xpText.title = progress.xp + ' XP total · ' + progress.remaining + ' to level ' +
+          (progress.level + 1);
+      }
+      Screens.setLevelBar(bar, progress, animate);
+      return progress;
+    },
+
+    /** Every level display in the menu and profile, refreshed from the save. */
+    renderLevels(animate) {
+      const xp = Save.xp();
+      Screens.renderLevel(document.getElementById('menuLevel'),
+        document.getElementById('menuLevelBar'),
+        document.getElementById('menuLevelXp'), xp, animate);
+      Screens.renderLevel(document.getElementById('profileLevel'),
+        document.getElementById('profileLevelBar'),
+        document.getElementById('profileLevelXp'), xp, animate);
+      return xp;
+    },
+
+    /**
+     * The level-up toast. It is shown by the finish handler only when the
+     * award reports a level-up, so it fires exactly once per level gained.
+     */
+    showLevelToast(result) {
+      const toast = document.getElementById('levelToast');
+      if (!toast) return null;
+      const value = document.getElementById('levelToastValue');
+      const sub = document.getElementById('levelToastSub');
+      if (value) value.textContent = 'LEVEL ' + result.after.level;
+      if (sub) {
+        const progress = XP.progress(result.after.xp);
+        sub.textContent = result.levelsGained > 1
+          ? '+' + result.levelsGained + ' levels · ' + progress.remaining +
+            ' XP to level ' + (progress.level + 1)
+          : progress.remaining + ' XP to level ' + (progress.level + 1);
+      }
+      toast.classList.remove('hidden');
+      toast.classList.add('is-visible');
+      if (Screens._toastTimer) window.clearTimeout(Screens._toastTimer);
+      Screens._toastTimer = window.setTimeout(() => {
+        toast.classList.remove('is-visible');
+        toast.classList.add('hidden');
+        Screens._toastTimer = null;
+      }, CONFIG.xp.toastMs);
+      return toast;
+    },
+
+    hideLevelToast() {
+      const toast = document.getElementById('levelToast');
+      if (!toast) return;
+      if (Screens._toastTimer) window.clearTimeout(Screens._toastTimer);
+      Screens._toastTimer = null;
+      toast.classList.remove('is-visible');
+      toast.classList.add('hidden');
     },
 
     showFinish(results) {
@@ -7182,7 +7770,6 @@ OR.CONFIG = {
         trackBest.textContent = 'Track best ' + time + ' · best lap ' + lap;
         trackBest.classList.toggle('is-new', !!results.isNewTrackBest || !!results.isNewBestLap);
       }
-      if (OR.TrackSelect) OR.TrackSelect.refresh();
       const bestTime = document.getElementById('finalBestTime');
       if (bestTime) {
         bestTime.textContent = results.isNewBest
@@ -7226,6 +7813,53 @@ OR.CONFIG = {
       document.getElementById('finalBestLap').textContent =
         results.bestLapMs ? Utils.formatTime(results.bestLapMs) : '--:--.---';
 
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
+
+      /* ---- Step 10: the XP breakdown and the level bar ------------------- */
+      const xp = results.xp;
+      const xpLines = document.getElementById('finalXpLines');
+      if (xpLines) {
+        xpLines.replaceChildren();
+        (xp ? xp.lines : []).forEach(line => {
+          const row = document.createElement('div');
+          row.className = 'xp-line' + (line.xp === 0 ? ' is-zero' : '') +
+            (line.id === 'difficulty' ? ' is-multiplier' : '');
+          row.dataset.xpLine = line.id;
+          const label = document.createElement('span');
+          label.className = 'xp-label';
+          label.textContent = line.label;
+          const value = document.createElement('span');
+          value.className = 'xp-value';
+          value.textContent = (line.xp > 0 ? '+' : '') + line.xp + ' XP';
+          row.append(label, value);
+          xpLines.appendChild(row);
+        });
+      }
+      const xpTotal = document.getElementById('finalXpTotal');
+      if (xpTotal) {
+        xpTotal.textContent = '+' + (xp ? xp.earned : 0) + ' XP';
+        xpTotal.dataset.earned = String(xp ? xp.earned : 0);
+      }
+      const levelProgress = Screens.renderLevel(
+        document.getElementById('finalLevel'),
+        document.getElementById('finalLevelBar'),
+        document.getElementById('finalLevelXp'),
+        Save.xp(), true);
+      const note = document.getElementById('finalXpNote');
+      if (note) {
+        const clean = results.cleanLaps || 0;
+        note.textContent = clean + ' clean ' + (clean === 1 ? 'lap' : 'laps') +
+          ' of ' + (results.laps || 0) + ' · ' + (xp ? xp.multiplier.toFixed(2) : '1.00') +
+          '× difficulty' + (xp && xp.leveledUp ? ' · LEVEL UP!' : '');
+        note.classList.toggle('is-level-up', !!(xp && xp.leveledUp));
+      }
+      if (xp && xp.leveledUp) Screens.showLevelToast(xp);
+      else Screens.hideLevelToast();
+      /* The menu and profile bars must show the new total the moment the
+         player walks back to them. */
+      Screens.renderLevels(true);
+
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
       const splits = document.getElementById('lapSplits');
       if (splits) {
         splits.innerHTML = '';

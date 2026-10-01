@@ -43,6 +43,10 @@
     this.surface = 'road';
     this.offRoad = false;
     this.hitWall = false;
+    /* Step 10: barrier contact as an EPISODE, not a per-step flag — scraping
+       the wall for two seconds is one hit, so "clean lap" means something. */
+    this.wallHits = 0;          // contacts since reset (the whole race)
+    this.touchingBarrier = false;
     this.braking = false;
     this.maxSpeed = 0;     // km/h, for the finish screen
     this.topSpeedMultiplier = 1; // rivals set their fixed profile after reset
@@ -220,6 +224,13 @@
 
       this.hitWall = true;
     }
+
+    /* Step 10: one contact episode per visit to the barrier, not per physics
+       step. The flag is raised while the car is out there and cleared the
+       moment it is back inside the run-off. */
+    const outside = excess > 0 || Math.abs(hit.offset) > Track.hardLimit;
+    if (outside && !this.touchingBarrier) this.wallHits += 1;
+    this.touchingBarrier = outside;
 
     // absolute backstop: the car can never leave the playable area
     if (Math.abs(hit.offset) > Track.hardLimit) {

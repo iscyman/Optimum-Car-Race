@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'save',
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save',
   'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards'];
 
 let passed = 0, failed = 0;
@@ -68,10 +68,16 @@ section('one versioned save object');
   const OR = boot(storage);
   const key = OR.CONFIG.profile.keys.save;
 
-  check('the save starts at version 1 and lives under one key',
-    OR.Save.VERSION === 1 && OR.Save.load().version === 1 &&
+  check('the save is versioned and lives under one key',
+    OR.Save.VERSION === 2 && OR.Save.load().version === 2 &&
     typeof storage.data[key] === 'string',
-    key);
+    key + ' (version ' + OR.Save.VERSION + ')');
+
+  check('the save carries XP and a level (Step 10)',
+    OR.Save.load().progress && typeof OR.Save.load().progress.xp === 'number' &&
+    typeof OR.Save.load().progress.level === 'number' &&
+    OR.Save.xp() === 0 && OR.Save.level() === 1,
+    OR.Save.level() + ' · ' + OR.Save.xp() + ' XP');
 
   const saved = JSON.parse(storage.data[key]);
   check('the save carries profile, stats, bests and selection',
@@ -333,12 +339,13 @@ section('reset progress');
   OR.Bests.record('flexnode', 'normal', { timeMs: 39000, lapMs: 12500 });
 
   OR.Save.reset();
-  check('reset clears stats and every record',
+  check('reset clears stats, records and XP',
     OR.Save.stats().races === 0 && OR.Save.stats().wins === 0 &&
     OR.Save.stats().podiums === 0 && OR.Save.stats().totalTimeMs === 0 &&
     OR.Bests.bestTime('flexnode', 'normal') === 0 &&
-    Object.keys(OR.Save.bests()).length === 0,
-    OR.Save.stats().races + ' races');
+    Object.keys(OR.Save.bests()).length === 0 &&
+    OR.Save.xp() === 0 && OR.Save.level() === 1,
+    OR.Save.stats().races + ' races, ' + OR.Save.xp() + ' XP');
 
   check('reset keeps the profile name and colour',
     OR.Save.profile().name === 'Keeper' &&
@@ -455,6 +462,26 @@ section('migrations and corrupt data');
   future.data[OR.CONFIG.profile.keys.save] = JSON.stringify({ version: 99, profile: { name: 'Future' } });
   check('a save from a future version is ignored, not misinterpreted',
     boot(future).Save.profile().name === 'Racer');
+
+  check('a version 1 save upgrades to version 2 without losing anything',
+    (function () {
+      const v1 = fakeStorage();
+      v1.data[OR.CONFIG.profile.keys.save] = JSON.stringify({
+        version: 1,
+        profile: { name: 'Nine', color: 'mint' },
+        stats: { races: 7, wins: 3, podiums: 5, totalTimeMs: 300000 },
+        bests: { flexnode: { normal: { timeMs: 41000, lapMs: 13000 } } },
+        selection: { track: 'flexnode', difficulty: 'normal' }
+      });
+      const game = boot(v1);
+      const upgraded = JSON.parse(v1.data[OR.CONFIG.profile.keys.save]);
+      return game.Save.load().version === 2 && upgraded.version === 2 &&
+        game.Save.profile().name === 'Nine' &&
+        game.Save.stats().races === 7 && game.Save.stats().wins === 3 &&
+        game.Bests.bestTime('flexnode', 'normal') === 41000 &&
+        game.Save.selection().difficulty === 'normal' &&
+        game.Save.xp() === 0 && game.Save.level() === 1;
+    })());
 
   check('the game still runs end to end with storage blocked',
     (function () {

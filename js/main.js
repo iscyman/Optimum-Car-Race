@@ -4,7 +4,7 @@
 (function () {
   'use strict';
 
-  const { CONFIG, Game, Input, Utils, Renderer, Audio, Difficulty, Save, Bests, TrackSelect } = OR;
+  const { CONFIG, Game, Input, Utils, Renderer, Audio, Difficulty, Save, Bests, TrackSelect, XP } = OR;
 
   const Screens = {
     menu: null,
@@ -264,8 +264,7 @@
           Screens.setSaveHint('Progress reset. Stats and records are empty again.');
           Screens.applyProfile();
           Screens.selectDifficulty(Difficulty.currentId());
-          if (OR.TrackSelect) OR.TrackSelect.refresh();
-        });
+            });
       }
 
       // Engine sound: off until the player turns it on.
@@ -357,7 +356,6 @@
       }
       if (Screens.pickerHint) Screens.pickerHint.textContent = level.blurb;
       /* Track cards show the records for the selected difficulty. */
-      if (OR.TrackSelect) OR.TrackSelect.refresh();
       return level;
     },
 
@@ -439,7 +437,99 @@
         racingAs.style.setProperty('--driver-color', color.hex);
       }
       Screens.refreshProfile();
+      Screens.renderLevels(false);
       return Screens;
+    },
+
+    /**
+     * Step 10: draw one level bar. The width is set through a CSS transition so
+     * it animates, and the target is also written to `data-target` — that is
+     * what the tests assert, since jsdom does not run transitions.
+     */
+    setLevelBar(bar, progress, animate) {
+      if (!bar) return progress;
+      const percent = Math.round(progress.ratio * 100);
+      bar.dataset.target = String(percent);
+      bar.dataset.level = String(progress.level);
+      const width = percent + '%';
+      if (animate === false) {
+        bar.style.transition = 'none';
+        bar.style.width = width;
+      } else {
+        bar.style.transition = '';
+        /* Start from the previous width so the browser has something to
+           animate from; the next frame sets the real target. */
+        bar.style.width = (bar._lastPercent || 0) + '%';
+        const raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 0); };
+        raf(() => { bar.style.width = width; });
+      }
+      bar._lastPercent = percent;
+      return progress;
+    },
+
+    /** Fill a "LEVEL n" badge, its bar and the "into / needed XP" text. */
+    renderLevel(badge, bar, xpText, totalXp, animate) {
+      const progress = XP.progress(totalXp);
+      if (badge) {
+        badge.textContent = 'LEVEL ' + progress.level;
+        badge.dataset.level = String(progress.level);
+      }
+      if (xpText) {
+        xpText.textContent = progress.into + ' / ' + progress.needed + ' XP';
+        xpText.title = progress.xp + ' XP total · ' + progress.remaining + ' to level ' +
+          (progress.level + 1);
+      }
+      Screens.setLevelBar(bar, progress, animate);
+      return progress;
+    },
+
+    /** Every level display in the menu and profile, refreshed from the save. */
+    renderLevels(animate) {
+      const xp = Save.xp();
+      Screens.renderLevel(document.getElementById('menuLevel'),
+        document.getElementById('menuLevelBar'),
+        document.getElementById('menuLevelXp'), xp, animate);
+      Screens.renderLevel(document.getElementById('profileLevel'),
+        document.getElementById('profileLevelBar'),
+        document.getElementById('profileLevelXp'), xp, animate);
+      return xp;
+    },
+
+    /**
+     * The level-up toast. It is shown by the finish handler only when the
+     * award reports a level-up, so it fires exactly once per level gained.
+     */
+    showLevelToast(result) {
+      const toast = document.getElementById('levelToast');
+      if (!toast) return null;
+      const value = document.getElementById('levelToastValue');
+      const sub = document.getElementById('levelToastSub');
+      if (value) value.textContent = 'LEVEL ' + result.after.level;
+      if (sub) {
+        const progress = XP.progress(result.after.xp);
+        sub.textContent = result.levelsGained > 1
+          ? '+' + result.levelsGained + ' levels · ' + progress.remaining +
+            ' XP to level ' + (progress.level + 1)
+          : progress.remaining + ' XP to level ' + (progress.level + 1);
+      }
+      toast.classList.remove('hidden');
+      toast.classList.add('is-visible');
+      if (Screens._toastTimer) window.clearTimeout(Screens._toastTimer);
+      Screens._toastTimer = window.setTimeout(() => {
+        toast.classList.remove('is-visible');
+        toast.classList.add('hidden');
+        Screens._toastTimer = null;
+      }, CONFIG.xp.toastMs);
+      return toast;
+    },
+
+    hideLevelToast() {
+      const toast = document.getElementById('levelToast');
+      if (!toast) return;
+      if (Screens._toastTimer) window.clearTimeout(Screens._toastTimer);
+      Screens._toastTimer = null;
+      toast.classList.remove('is-visible');
+      toast.classList.add('hidden');
     },
 
     showFinish(results) {
@@ -460,7 +550,6 @@
         trackBest.textContent = 'Track best ' + time + ' · best lap ' + lap;
         trackBest.classList.toggle('is-new', !!results.isNewTrackBest || !!results.isNewBestLap);
       }
-      if (OR.TrackSelect) OR.TrackSelect.refresh();
       const bestTime = document.getElementById('finalBestTime');
       if (bestTime) {
         bestTime.textContent = results.isNewBest
@@ -504,6 +593,53 @@
       document.getElementById('finalBestLap').textContent =
         results.bestLapMs ? Utils.formatTime(results.bestLapMs) : '--:--.---';
 
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
+
+      /* ---- Step 10: the XP breakdown and the level bar ------------------- */
+      const xp = results.xp;
+      const xpLines = document.getElementById('finalXpLines');
+      if (xpLines) {
+        xpLines.replaceChildren();
+        (xp ? xp.lines : []).forEach(line => {
+          const row = document.createElement('div');
+          row.className = 'xp-line' + (line.xp === 0 ? ' is-zero' : '') +
+            (line.id === 'difficulty' ? ' is-multiplier' : '');
+          row.dataset.xpLine = line.id;
+          const label = document.createElement('span');
+          label.className = 'xp-label';
+          label.textContent = line.label;
+          const value = document.createElement('span');
+          value.className = 'xp-value';
+          value.textContent = (line.xp > 0 ? '+' : '') + line.xp + ' XP';
+          row.append(label, value);
+          xpLines.appendChild(row);
+        });
+      }
+      const xpTotal = document.getElementById('finalXpTotal');
+      if (xpTotal) {
+        xpTotal.textContent = '+' + (xp ? xp.earned : 0) + ' XP';
+        xpTotal.dataset.earned = String(xp ? xp.earned : 0);
+      }
+      const levelProgress = Screens.renderLevel(
+        document.getElementById('finalLevel'),
+        document.getElementById('finalLevelBar'),
+        document.getElementById('finalLevelXp'),
+        Save.xp(), true);
+      const note = document.getElementById('finalXpNote');
+      if (note) {
+        const clean = results.cleanLaps || 0;
+        note.textContent = clean + ' clean ' + (clean === 1 ? 'lap' : 'laps') +
+          ' of ' + (results.laps || 0) + ' · ' + (xp ? xp.multiplier.toFixed(2) : '1.00') +
+          '× difficulty' + (xp && xp.leveledUp ? ' · LEVEL UP!' : '');
+        note.classList.toggle('is-level-up', !!(xp && xp.leveledUp));
+      }
+      if (xp && xp.leveledUp) Screens.showLevelToast(xp);
+      else Screens.hideLevelToast();
+      /* The menu and profile bars must show the new total the moment the
+         player walks back to them. */
+      Screens.renderLevels(true);
+
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
       const splits = document.getElementById('lapSplits');
       if (splits) {
         splits.innerHTML = '';

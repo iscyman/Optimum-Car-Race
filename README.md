@@ -1,4 +1,4 @@
-# OPTIMUM RACE — Steps 1 to 9
+# OPTIMUM RACE — Steps 1 to 10
 
 **Race. React. Win.**
 
@@ -148,13 +148,27 @@ npm run build      # regenerates optimum-race.html from the sources
 | Player name and car colour in the HUD and finish screen | done (HUD standings, finish DRIVER tile, car paint, menu "racing as" line) |
 | Preserve best times from earlier steps | done (Step 7 flat and Step 8 per-track records migrate on first load) |
 
+
+### Step 10 — XP and levels
+
+| Requirement | Status |
+| --- | --- |
+| Award XP: finish +50; 1st/2nd/3rd +100/+60/+30; +20 per clean lap; small capped boost bonus | done (`js/xp.js`, all numbers in `CONFIG.xp`; clean lap = a lap with no barrier contact, rival bumps do not count; boost bonus +5 each, capped at +20) |
+| Difficulty multipliers ×0.8 / ×1 / ×1.3 | done (`CONFIG.xp.multipliers`, applied to everything except the clean-lap bonus, which already pays for skill) |
+| Level curve ≈ 100·N^1.5 in config | done (`CONFIG.xp.levelBase`/`levelExponent`; L2 at 283, L3 at 520, L4 at 800, L5 at 1118 XP) |
+| Results screen: XP breakdown line by line + animated bar | done (one row per source with its own XP, then the difficulty line as the difference so the rows always add up to the total; the bar animates to `data-target`) |
+| Level + progress bar on the main menu and the profile | done (both bars refresh at the flag, on load and after a profile change) |
+| Level-up toast | done (`#levelToast`, slides in once per level-up and hides again on the next race) |
+| XP and level saved through the storage module, with a migration | done (save `version: 2`, migration 1→2, XP is the source of truth and the level is recomputed on load so the save self-heals) |
+| Quitting early gives no XP | done (the award happens at the flag only, same as the Step 9 career stats) |
+
 ## Not built yet (deliberately)
 
 Optimum network integration ·
 networking of any kind · simulated latency or fake network behaviour ·
-blockchain / wallets / tokens · XP · levels · unlocks · leaderboards ·
-multiplayer · events. Later steps add config sections and modules rather than
-rewriting what exists.
+blockchain / wallets / tokens · unlocks · leaderboards ·
+multiplayer · events · real-world rewards. Later steps add config sections and
+modules rather than rewriting what exists.
 
 ---
 
@@ -733,3 +747,44 @@ Manual pass:
   `tests/smoke.js` (section 19), `tests/difficulty.js` (save-backed keys),
   `tools/build-standalone.js`, `package.json`, `README.md`.
 - Regenerated deliverable: `optimum-race.html` (254.8 KB).
+
+### Step 10 verification and manual checks
+
+`npm test` runs six suites — 488 checks, 0 failures:
+
+| Suite | Checks | What it covers |
+| --- | --- | --- |
+| `tests/smoke.js` | 276 | Steps 1–9 plus section 20: the menu and profile level bars, a race paying out exactly the breakdown shown, the results bar and clean-lap note, the level-up toast firing once, quitting early earning nothing, and a barrier hit spoiling a lap |
+| `tests/rivals.js` | 49 | AI racing, collisions, standings |
+| `tests/difficulty.js` | 47 | EASY / NORMAL / HARD, per-track records, corrupt and legacy selection data |
+| `tests/tracks.js` | 33 | Track data, geometry, a full AI race per circuit, previews, record book |
+| `tests/save.js` | 42 | The versioned save: defaults, profile/colour rules, stats, export→import round trips, reset, migrations from Steps 7–9, corrupt data, blocked storage |
+| `tests/xp.js` | 41 | The XP maths: every award source, difficulty multipliers, the level curve and its inverse, clamping, the clean-lap rule, and the version 1 → 2 migration |
+
+Manual pass:
+
+1. `npm start`. The menu shows `LEVEL 1` and an empty bar; the profile shows the
+   same bar with `0 / 283 XP`.
+2. Win a clean race on NORMAL: the finish screen lists finish +50, 1st +100,
+   clean laps +20 each and the boost bonus, then the difficulty line; the rows
+   add up to the total, and the bar animates.
+3. Cross a level: the toast slides in once, and the menu and profile bars are
+   already updated when you get back to them.
+4. Hit a wall on a lap, then finish: that lap pays no clean-lap XP.
+5. Start a race and quit before the flag: XP is unchanged.
+6. Race on EASY and on HARD: the same race pays less / more, and the difficulty
+   line on the results screen shows the multiplier.
+7. Reload mid-career: XP, level and the bars come back from the save.
+
+### Files changed for Step 10
+
+- Added: `js/xp.js` (awards, level curve, breakdown lines), `tests/xp.js`.
+- Updated: `js/config.js` (the `xp` section), `js/car.js` (barrier-contact
+  episodes per lap), `js/save.js` (**version 2**, `progress`, `addXp()`,
+  the 1 → 2 migration, upgraded saves written back immediately),
+  `js/game.js` (clean-lap counting, the award at the flag),
+  `js/main.js` (level bars, the results XP panel, the toast),
+  `index.html`, `css/style.css`, `tests/smoke.js` (section 20),
+  `tests/save.js` (v2 + a v1 upgrade regression), `tests/difficulty.js`,
+  `tests/tracks.js`, `tools/build-standalone.js`, `package.json`, `README.md`.
+- Regenerated deliverable: `optimum-race.html`.

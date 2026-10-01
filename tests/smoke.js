@@ -12,7 +12,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'save', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
+const FILES = ['config', 'utils', 'xp', 'trackdata', 'track', 'car', 'race', 'save', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
   .map(f => path.join(ROOT, 'js', f + '.js'));
 
 let pass = 0;
@@ -1907,6 +1907,161 @@ section('19. Step 9 — profile screen, stats and the save file');
     Game.results.driver === Save.profile().name &&
     Save.stats().races === 1,
     JSON.stringify(Save.stats()));
+}
+
+/* ====================== 20. Step 10 — XP and levels ====================== */
+section('20. Step 10 — XP, levels, the breakdown and the toast');
+{
+  const XP = OR.XP;
+  const Save = OR.Save;
+  const levelBar = doc.getElementById('menuLevelBar');
+  const levelBadge = doc.getElementById('menuLevel');
+
+  check('the menu shows the level and a progress bar',
+    /LEVEL \d+/.test(levelBadge.textContent) &&
+    levelBar.dataset.target === String(Math.round(XP.progress(Save.xp()).ratio * 100)) &&
+    levelBar.dataset.level === String(XP.progress(Save.xp()).level),
+    levelBadge.textContent + ' · bar ' + levelBar.dataset.target + '%');
+
+  const profileLevel = doc.getElementById('profileLevel');
+  const profileBar = doc.getElementById('profileLevelBar');
+  check('the profile shows the same level and bar',
+    profileLevel.dataset.level === levelBadge.dataset.level &&
+    profileBar.dataset.target === levelBar.dataset.target &&
+    /XP/.test(doc.getElementById('profileLevelXp').textContent),
+    profileLevel.textContent + ' — ' + doc.getElementById('profileLevelXp').textContent);
+
+  /* ---- a finished race pays out, line by line ------------------------- */
+  const xpBefore = Save.xp();
+  Game.startRace();
+  advance(CONFIG.race.countdownSeconds + 0.05);
+
+  /* Drive a clean lap: no barrier contact at all. */
+  Game.car.wallHits = 0;
+  Race.lap = Race.laps;
+  Race.lapBase = 0;
+  Race.progress = 0.96;
+  Race.lastFraction = 0.96;
+  Race.nextCheckpoint = Track.checkpoints.length;
+  Race.lapTimes.push(15000);
+  Race.bestLapMs = 15000;
+  Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+  Game.raceTimeMs = 45000;
+  Game._countLapCleanliness();   // what _scoreLap does when the line is crossed
+  Game._finishRace();
+  const results = Game.results;
+
+  check('the race records which laps were clean',
+    results.cleanLaps === 1 && results.laps >= 1 &&
+    results.xp.breakdown.cleanLaps === 1,
+    results.cleanLaps + ' clean of ' + results.laps);
+
+  check('the XP award matches the breakdown shown on screen',
+    results.xp.earned === results.xp.lines.reduce((sum, line) => sum + line.xp, 0) &&
+    Save.xp() === xpBefore + results.xp.earned,
+    '+' + results.xp.earned + ' XP (' + results.xp.lines.map(l => l.id + ' ' + l.xp).join(', ') + ')');
+
+  Game._emit('finish', results);
+  const rows = Array.from(doc.querySelectorAll('#finalXpLines .xp-line'));
+  check('the results screen lists the breakdown line by line',
+    rows.length === results.xp.lines.length &&
+    rows.map(r => r.dataset.xpLine).join(',') ===
+      results.xp.lines.map(l => l.id).join(',') &&
+    rows.every((row, i) => row.querySelector('.xp-label').textContent === results.xp.lines[i].label),
+    rows.map(r => r.dataset.xpLine).join(' → '));
+
+  check('the screen total is the XP that was banked',
+    doc.getElementById('finalXpTotal').dataset.earned === String(results.xp.earned) &&
+    doc.getElementById('finalXpTotal').textContent === '+' + results.xp.earned + ' XP',
+    doc.getElementById('finalXpTotal').textContent);
+
+  check('the results bar shows the level and the progress towards the next one',
+    doc.getElementById('finalLevel').dataset.level === String(Save.progress().level) &&
+    doc.getElementById('finalLevelBar').dataset.target ===
+      String(Math.round(XP.progress(Save.xp()).ratio * 100)) &&
+    doc.getElementById('finalLevelXp').textContent ===
+      XP.progress(Save.xp()).into + ' / ' + XP.progress(Save.xp()).needed + ' XP',
+    doc.getElementById('finalLevel').textContent + ' — ' + doc.getElementById('finalLevelXp').textContent);
+
+  check('the note explains the clean laps and the multiplier',
+    /clean lap/.test(doc.getElementById('finalXpNote').textContent) &&
+    doc.getElementById('finalXpNote').textContent.indexOf(
+      results.xp.multiplier.toFixed(2) + '×') !== -1,
+    doc.getElementById('finalXpNote').textContent);
+
+  /* ---- the toast fires on a level-up, and only then ------------------- */
+  check('a level-up shows the toast exactly once',
+    (function () {
+      const toast = doc.getElementById('levelToast');
+      /* Bank XP right up to the threshold so the next small award levels up. */
+      const progress = XP.progress(Save.xp());
+      Save.addXp(Math.max(0, progress.remaining - 1));
+      const levelBefore = Save.progress().level;
+
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      Race.lap = Race.laps;
+      Race.lapBase = 0;
+      Race.progress = 0.96;
+      Race.lastFraction = 0.96;
+      Race.nextCheckpoint = Track.checkpoints.length;
+      Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+      Game.raceTimeMs = 30000;
+      Game._finishRace();
+      Game._emit('finish', Game.results);
+
+      const shown = !toast.classList.contains('hidden') &&
+        toast.classList.contains('is-visible');
+      const leveled = Game.results.xp.leveledUp === true &&
+        Save.progress().level === levelBefore + Game.results.xp.levelsGained;
+      const labelled = doc.getElementById('levelToastValue').textContent ===
+        'LEVEL ' + Save.progress().level;
+      const oneNode = doc.querySelectorAll('#levelToast').length === 1;
+
+      /* A second race that does not level up must hide it again. */
+      Game.results.xp = { leveledUp: false, lines: [], earned: 0, multiplier: 1 };
+      Game._emit('finish', Game.results);
+      const hidden = toast.classList.contains('hidden');
+      return shown && leveled && labelled && oneNode && hidden;
+    })(),
+    'toast shown at level ' + Save.progress().level + ', hidden on a normal race');
+
+  /* ---- quitting early pays nothing ------------------------------------ */
+  check('quitting a race early earns no XP',
+    (function () {
+      const before = Save.xp();
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.5);
+      Game.returnToMenu();
+      return Save.xp() === before && Game.state === 'menu';
+    })(), Save.xp() + ' XP unchanged');
+
+  /* ---- a dirty lap is not clean --------------------------------------- */
+  check('a lap with a barrier hit is not counted as clean',
+    (function () {
+      Game.startRace();
+      advance(CONFIG.race.countdownSeconds + 0.05);
+      Game.cleanLaps = 0;
+      Game.lapWallBaseline = 0;
+      Game.car.wallHits = 2;            // two contacts earlier in the lap
+      const clean = Game._countLapCleanliness();
+      Game.car.wallHits = 0;
+      const cleanAfter = Game._countLapCleanliness();
+      return clean === false && Game.cleanLaps === 1 && cleanAfter === true;
+    })(), 'dirty lap ignored, clean lap counted');
+
+  /* ---- the level display follows the saved XP ------------------------- */
+  check('the menu and profile level bars follow the saved XP',
+    (function () {
+      Save.addXp(400);
+      OR.Screens.renderLevels(false);
+      const progress = XP.progress(Save.xp());
+      return doc.getElementById('menuLevelBar').dataset.target ===
+          String(Math.round(progress.ratio * 100)) &&
+        doc.getElementById('menuLevel').dataset.level === String(progress.level) &&
+        doc.getElementById('profileLevelBar').dataset.target ===
+          String(Math.round(progress.ratio * 100));
+    })(), 'level ' + Save.progress().level + ' · ' + Save.xp() + ' XP');
 }
 
 /* =========================== summary ====================================== */

@@ -5,9 +5,10 @@
  * object under one key (CONFIG.profile.keys.save):
  *
  *   {
- *     version: 1,
+ *     version: 2,
  *     profile:   { name: 'Racer', color: 'violet' },
  *     stats:     { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
+ *     progress:  { xp: 0, level: 1 },        <- Step 10
  *     bests:     { <trackId>: { <difficultyId>: { timeMs, lapMs } } },
  *     selection: { track: 'flexnode', difficulty: 'normal' }
  *   }
@@ -30,7 +31,7 @@
   const P = CONFIG.profile;
   const K = P.keys;
 
-  const VERSION = 1;
+  const VERSION = 2;
 
   /* ---- storage that never throws ------------------------------------------ */
 
@@ -137,9 +138,15 @@
       version: VERSION,
       profile: { name: P.defaultName, color: P.defaultColor },
       stats: { races: 0, wins: 0, podiums: 0, totalTimeMs: 0 },
+      progress: { xp: 0, level: 1 },
       bests: {},
       selection: { track: null, difficulty: null }
     };
+  }
+
+  /** The level a total is worth, from the XP module when it is loaded. */
+  function levelForXp(xp) {
+    return OR.XP ? OR.XP.levelFor(xp) : 1;
   }
 
   function topos(value) {
@@ -191,6 +198,12 @@
     base.stats.podiums = Math.min(base.stats.races, Math.max(base.stats.wins, tocount(stats.podiums)));
     base.stats.totalTimeMs = topos(stats.totalTimeMs);
 
+    /* Step 10: XP is the source of truth; the stored level is a cache that is
+       recomputed here, so a tampered or half-written save self-heals. */
+    const progress = raw.progress && typeof raw.progress === 'object' ? raw.progress : {};
+    base.progress.xp = Math.max(0, topos(progress.xp));
+    base.progress.level = Math.max(1, levelForXp(base.progress.xp));
+
     base.bests = sanitiseBests(raw.bests);
 
     const selection = raw.selection && typeof raw.selection === 'object' ? raw.selection : {};
@@ -209,7 +222,15 @@
    * `2: function (data) { ... }` here.
    */
   const MIGRATIONS = {
-    0: function (data) { return data; }
+    0: function (data) { return data; },
+    /* 1 -> 2 (Step 10): saves written before XP existed start at level 1 with
+       nothing earned. Profile, stats, records and selections are untouched. */
+    1: function (data) {
+      if (!data.progress || typeof data.progress !== 'object') {
+        data.progress = { xp: 0, level: 1 };
+      }
+      return data;
+    }
   };
 
   function migrate(raw) {
@@ -295,11 +316,21 @@
         return Save._data;
       }
 
+      let storedVersion = 0;
       try {
-        Save._data = migrate(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        /* Read the version BEFORE migrating: migrate() rewrites data.version
+           in place, so afterwards it always looks current. */
+        storedVersion = typeof parsed.version === 'number' ? parsed.version : 0;
+        Save._data = migrate(parsed);
       } catch (error) {
         Save._lastError = String(error && error.message || error);
         Save._data = defaults();
+      }
+      /* An older save is upgraded on disk as soon as it is read, so the
+         migration runs once rather than on every page load. */
+      if (storedVersion !== VERSION) {
+        writeRaw(K.save, JSON.stringify(Save._data));
       }
       return Save._data;
     },
@@ -329,6 +360,38 @@
 
     profile() { return Save.load().profile; },
     stats() { return Save.load().stats; },
+    /**
+     * A snapshot of { xp, level }. It is deliberately a copy: an award takes a
+     * "before" reading and then mutates the save, and a live reference would
+     * show every caller the same, already-updated numbers.
+     */
+    progress() {
+      const progress = Save.load().progress;
+      return { xp: progress.xp, level: progress.level };
+    },
+    xp() { return Save.load().progress.xp; },
+    level() { return Save.load().progress.level; },
+
+    /**
+     * Add XP (Step 10) and recompute the level. Returns the new totals plus
+     * what changed, so the caller can show a toast without re-reading.
+     */
+    addXp(amount) {
+      const progress = Save.load().progress;   // the live object: mutated here
+      const gained = typeof amount === 'number' && isFinite(amount) && amount > 0
+        ? Math.round(amount) : 0;
+      const beforeLevel = progress.level;
+      progress.xp += gained;
+      progress.level = Math.max(1, levelForXp(progress.xp));
+      if (gained > 0) Save.write();
+      return {
+        xp: progress.xp,
+        level: progress.level,
+        gained: gained,
+        levelsGained: progress.level - beforeLevel,
+        leveledUp: progress.level > beforeLevel
+      };
+    },
     bests() { return Save.load().bests; },
     selection() { return Save.load().selection; },
 
@@ -437,6 +500,7 @@
       const fresh = defaults();
       fresh.profile = Save.load().profile;
       fresh.selection = Save.load().selection;
+      /* Progress (XP and level) is part of "progress", so it goes back to 1. */
       Save._data = fresh;
       /* Make sure the older keys cannot resurrect deleted records. */
       writeRaw(CONFIG.track.keys.best, '{}');

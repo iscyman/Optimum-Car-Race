@@ -296,6 +296,27 @@ OR.CONFIG = {
     }
   },
 
+  /* ---- XP and levels (Step 10) ---------------------------------------------
+   * Racing earns XP; XP decides the level. `xpForLevel()` in js/xp.js reads
+   * this block, so the curve and every award live in one place.
+   *
+   * Level curve: the total XP required to BE at level N is
+   *   levelBase * N ^ levelExponent      (level 1 is always 0 XP)
+   * With the defaults that is
+   *   1: 0     2: 283   3: 520   4: 800   5: 1118
+   *   6: 1476  7: 1872  8: 2300  9: 2760  10: 3162
+   */
+  xp: {
+    finish: 50,                        // crossing the line at all
+    placement: { 1: 100, 2: 60, 3: 30 }, // place bonus; 4th and beyond: nothing
+    cleanLap: 20,                      // per lap with no barrier contact
+    boost: { per: 5, max: 20 },        // small bonus for boost use, capped
+    levelBase: 100,
+    levelExponent: 1.5,
+    multipliers: { easy: 0.8, normal: 1, hard: 1.3 },
+    toastMs: 2600                      // how long the level-up toast stays up
+  },
+
   /* ---- Theme ------------------------------------------------------------- */
   theme: {
     cyan: '#22e1ff',

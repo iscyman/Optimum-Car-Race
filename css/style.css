@@ -1095,3 +1095,145 @@ body.is-paused #hud { opacity: 0.35; }
   .color-swatch { width: 30px; height: 30px; }
   .profile-save-text { font-size: 9px; }
 }
+
+/* ============================ XP AND LEVELS (Step 10) ===================== */
+
+.level-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  justify-content: center;
+}
+.level-line-wide { width: 100%; }
+
+.level-badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #05121a;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cyan), #7fe6ff);
+  white-space: nowrap;
+}
+.level-badge-lg { font-size: 11px; padding: 5px 12px; }
+
+.level-bar {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+  max-width: 190px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(9, 12, 22, 0.9);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.level-bar-lg { height: 10px; max-width: 260px; }
+.level-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--violet), var(--cyan));
+  box-shadow: 0 0 12px rgba(34, 225, 255, 0.5);
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.level-xp {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.xp-panel {
+  margin: 18px 0 22px;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(9, 12, 22, 0.6);
+  text-align: left;
+}
+.xp-panel h3 { margin: 0 0 10px; color: var(--muted); font-size: 10px; letter-spacing: 0.18em; }
+.xp-lines { display: grid; gap: 4px; }
+.xp-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text);
+}
+.xp-label { color: var(--muted); }
+.xp-value { font-family: var(--mono); font-weight: 700; font-variant-numeric: tabular-nums; }
+.xp-line.is-zero .xp-value { color: var(--muted); }
+.xp-line.is-multiplier {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-weight: 700;
+}
+.xp-line.is-multiplier .xp-label { color: var(--cyan); }
+.xp-line.is-multiplier .xp-value { color: var(--cyan); }
+
+.xp-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 10px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+.xp-total strong { font-family: var(--mono); font-size: 18px; color: var(--cyan); }
+.xp-note { margin: 10px 0 0; font-size: 10px; line-height: 1.6; color: var(--muted); }
+.xp-note.is-level-up { color: var(--cyan); font-weight: 800; }
+
+.level-toast {
+  position: absolute;
+  top: calc(64px + var(--safe-t));
+  left: 50%;
+  transform: translate(-50%, -14px);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 12px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(34, 225, 255, 0.55);
+  background: rgba(9, 12, 22, 0.94);
+  box-shadow: 0 18px 40px -18px rgba(34, 225, 255, 0.75);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 240ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.level-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
+.toast-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  color: var(--cyan);
+}
+.level-toast strong {
+  font-family: var(--mono);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: var(--text);
+}
+.toast-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+@media (max-width: 720px) {
+  .level-badge { font-size: 9px; padding: 3px 7px; }
+  .level-bar { max-width: 120px; }
+  .level-bar-lg { max-width: 150px; }
+  .level-xp { font-size: 9px; }
+  .xp-panel { padding: 11px 11px 10px; }
+  .xp-line { font-size: 10px; }
+  .xp-total strong { font-size: 16px; }
+  .level-toast { padding: 10px 16px; }
+  .level-toast strong { font-size: 17px; }
+}
