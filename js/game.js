@@ -210,13 +210,31 @@
         fieldSize: Game.entities.length,
         /* Step 7: difficulty + the best time for that difficulty. */
         difficultyId: Game.difficultyId,
-        difficulty: Game.difficulty.label
+        difficulty: Game.difficulty.label,
+        /* Step 8: which circuit the race was run on. */
+        trackId: Track.id,
+        trackName: Track.name,
+        trackRating: Track.rating
       };
+      /* Step 8: records are per track AND per difficulty (time and lap). */
+      const trackBest = OR.Bests.record(Track.id, Game.difficultyId, {
+        timeMs: Game.finalTimeMs,
+        lapMs: laps.bestLapMs
+      });
+      Game.results.trackBestMs = trackBest.timeMs;
+      Game.results.trackBestLapMs = trackBest.lapMs;
+      Game.results.isNewTrackBest = trackBest.isNewTime;
+      Game.results.isNewBestLap = trackBest.isNewLap;
+
+      /* Step 7's per-difficulty record is kept as well, so its storage key and
+         wording keep working exactly as before. */
       const best = OR.Difficulty.recordBest(Game.difficultyId, Game.finalTimeMs);
       Game.results.bestMs = best.bestMs;
       Game.results.previousBestMs = best.previousMs;
-      Game.results.isNewBest = best.isNewBest;
-      Game.results.bestText = OR.Difficulty.bestText(Game.difficultyId);
+      Game.results.isNewBest = trackBest.isNewTime || best.isNewBest;
+      Game.results.bestText = best.isNewBest
+        ? OR.Difficulty.bestText(Game.difficultyId)
+        : OR.Bests.timeText(Track.id, Game.difficultyId);
       Game._emit('finish', Game.results);
     },
 

@@ -12,6 +12,10 @@
     finish: null,
     hud: null,
     touch: null,
+    /* Step 8: the menu has two panes — title ('main') and track select. */
+    menuMain: null,
+    menuTracks: null,
+    view: 'main',
 
     init() {
       Screens.menu = document.getElementById('menuScreen');
@@ -19,6 +23,8 @@
       Screens.finish = document.getElementById('finishScreen');
       Screens.hud = document.getElementById('hud');
       Screens.touch = document.getElementById('touchControls');
+      Screens.menuMain = document.getElementById('menuMain');
+      Screens.menuTracks = document.getElementById('menuTracks');
 
       // ---- pause menu (Step 4) -------------------------------------------
       const pauseBtn = document.getElementById('pauseBtn');
@@ -50,7 +56,7 @@
         quitBtn.addEventListener('click', e => {
           e.preventDefault();
           quitBtn.blur();
-          Game.returnToMenu();
+          Screens.quitToMenu();
         });
       }
 
@@ -108,7 +114,33 @@
         menuBtn.addEventListener('click', e => {
           e.preventDefault();
           menuBtn.blur();
-          Game.returnToMenu();
+          Screens.quitToMenu();
+        });
+      }
+
+      /* ---- Step 8: track select pane ------------------------------------- */
+      const trackBtn = document.getElementById('trackBtn');
+      const trackStartBtn = document.getElementById('trackStartBtn');
+      const trackBackBtn = document.getElementById('trackBackBtn');
+      if (trackBtn) {
+        trackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          trackBtn.blur();
+          Screens.showMenuView('tracks');
+        });
+      }
+      if (trackStartBtn) {
+        trackStartBtn.addEventListener('click', e => {
+          e.preventDefault();
+          trackStartBtn.blur();
+          Game.startRace();
+        });
+      }
+      if (trackBackBtn) {
+        trackBackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          trackBackBtn.blur();
+          Screens.showMenuView('main');
         });
       }
 
@@ -169,6 +201,21 @@
       document.body.classList.toggle('is-paused', state === 'paused');
     },
 
+    /** Step 8: switch between the title pane and the track select pane. */
+    showMenuView(view) {
+      Screens.view = view === 'tracks' ? 'tracks' : 'main';
+      if (Screens.menuMain) Screens.menuMain.classList.toggle('hidden', Screens.view !== 'main');
+      if (Screens.menuTracks) Screens.menuTracks.classList.toggle('hidden', Screens.view !== 'tracks');
+      if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
+      return Screens.view;
+    },
+
+    /** Quit to the menu — Step 8 lands on the track select screen. */
+    quitToMenu() {
+      Game.returnToMenu();
+      Screens.showMenuView('tracks');
+    },
+
     /** Highlight one difficulty button and explain what it does. */
     selectDifficulty(id) {
       const level = Difficulty.select(id);
@@ -181,11 +228,24 @@
         });
       }
       if (Screens.pickerHint) Screens.pickerHint.textContent = level.blurb;
+      /* Track cards show the records for the selected difficulty. */
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
       return level;
     },
 
     showFinish(results) {
       document.getElementById('finalDifficulty').textContent = results.difficulty || 'NORMAL';
+      /* Step 8: which circuit, and its records for this difficulty. */
+      const trackName = document.getElementById('finalTrack');
+      if (trackName) trackName.textContent = results.trackName || OR.Track.name;
+      const trackBest = document.getElementById('finalTrackBest');
+      if (trackBest) {
+        const time = results.trackBestMs ? Utils.formatTime(results.trackBestMs) : '--:--.---';
+        const lap = results.trackBestLapMs ? Utils.formatTime(results.trackBestLapMs) : '--:--.---';
+        trackBest.textContent = 'Track best ' + time + ' · best lap ' + lap;
+        trackBest.classList.toggle('is-new', !!results.isNewTrackBest || !!results.isNewBestLap);
+      }
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
       const bestTime = document.getElementById('finalBestTime');
       if (bestTime) {
         bestTime.textContent = results.isNewBest
@@ -296,6 +356,8 @@
       Renderer.resize();
       Renderer.buildMinimapPath();
     }, 200);
+    /* Step 8: build the track cards and restore the saved circuit. */
+    if (OR.TrackSelect) OR.TrackSelect.init();
   }
 
   if (document.readyState === 'loading') {

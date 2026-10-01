@@ -21,7 +21,7 @@
   const { CONFIG, Track } = OR;
 
   const Race = {
-    laps: CONFIG.race.laps,
+    laps: 0,                // set from the track in reset() (Step 8)
     lap: 1,                 // 1-based, for the HUD
     nextCheckpoint: 0,      // index of the gate we are waiting for
     checkpointsPassed: 0,
@@ -36,7 +36,7 @@
     lastFraction: 0,        // raw 0..1 fraction, before unwrapping
 
     reset(car) {
-      this.laps = CONFIG.race.laps;
+      this.laps = Track.laps || CONFIG.race.laps;
       this.lap = 1;
       this.nextCheckpoint = 0;
       this.checkpointsPassed = 0;

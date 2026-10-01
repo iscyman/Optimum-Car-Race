@@ -12,7 +12,7 @@ const path = require('path');
 const { JSDOM } = require('jsdom');
 
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'main']
+const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty', 'bests', 'rivals', 'collisions', 'standings', 'shards', 'input', 'audio', 'renderer', 'hud', 'game', 'trackselect', 'main']
   .map(f => path.join(ROOT, 'js', f + '.js'));
 
 let pass = 0;
@@ -1616,6 +1616,153 @@ section('17. Step 7 — EASY / NORMAL / HARD selection, HUD and results');
     doc.getElementById('finalDifficulty').textContent === 'NORMAL' &&
     !doc.getElementById('finalBestTime').classList.contains('is-new'),
     doc.getElementById('finalBestTime').textContent);
+}
+
+/* ====================== 18. Step 8 — tracks and records =================== */
+section('18. Step 8 — multiple tracks, track select and records');
+{
+  const TrackSelect = OR.TrackSelect;
+  const Bests = OR.Bests;
+  const Diff = OR.Difficulty;
+  const cards = () => Array.from(doc.querySelectorAll('#trackList .track-card'));
+  const pane = doc.getElementById('menuTracks');
+  const mainPane = doc.getElementById('menuMain');
+
+  check('the menu lists a card for every track',
+    cards().length === OR.TRACKS.length &&
+    cards().map(c => c.dataset.track).join(',') === OR.TRACKS.map(t => t.id).join(','),
+    cards().map(c => c.dataset.track).join(', '));
+  check('every card draws its circuit and shows the name and subtitle',
+    cards().every(card => {
+      const track = OR.trackById(card.dataset.track);
+      const canvas = card.querySelector('canvas.track-preview');
+      return canvas && canvas.width > 0 && canvas.height > 0 &&
+        canvas.getAttribute('data-track-length') ===
+          String(Math.round(Track.measure(track).total)) &&
+        card.querySelector('.track-name').textContent === track.name &&
+        card.querySelector('.track-subtitle').textContent === track.subtitle;
+    }));
+  check('every card shows the measured lap length in metres',
+    cards().every(card => {
+      const track = OR.trackById(card.dataset.track);
+      return card.querySelector('.track-meta').textContent.indexOf(
+        TrackSelect.lengthMeters(track) + ' m') !== -1;
+    }),
+    OR.TRACKS.map(t => TrackSelect.lengthMeters(t) + ' m').join(', '));
+  check('every card shows laps, checkpoints and shards from its data',
+    cards().every(card => {
+      const track = OR.trackById(card.dataset.track);
+      const meta = card.querySelector('.track-meta').textContent;
+      return meta.indexOf(track.laps + ' laps') !== -1 &&
+        meta.indexOf(track.checkpointFractions.length + ' checkpoints') !== -1 &&
+        meta.indexOf(track.shards.count + ' shards') !== -1;
+    }));
+  check('every card carries a difficulty rating',
+    cards().every(card => {
+      const track = OR.trackById(card.dataset.track);
+      const badge = card.querySelector('.rating-badge');
+      return badge.textContent === TrackSelect.ratingStars(track) &&
+        badge.title.indexOf(TrackSelect.ratingLabel(track)) === 0;
+    }),
+    OR.TRACKS.map(t => t.id + ' ' + TrackSelect.ratingLabel(t)).join(', '));
+
+  check('the original circuit is selected by default',
+    Track.id === 'flexnode' && TrackSelect.current().id === 'flexnode' &&
+    cards()[0].classList.contains('is-selected') &&
+    cards()[0].getAttribute('aria-checked') === 'true');
+
+  check('clicking a card selects that circuit',
+    (function () {
+      cards()[1].click();
+      return Track.id === 'mesh-highway' &&
+        cards()[1].classList.contains('is-selected') &&
+        !cards()[0].classList.contains('is-selected');
+    })(), Track.id);
+  check('selecting a circuit rebuilds the live geometry',
+    Math.abs(Track.length - Track.measure(OR.trackById('mesh-highway')).total) < 1e-9 &&
+    Track.length > 15000,
+    Math.round(Track.length / 10) + ' m');
+  check('the pickups follow the selected circuit',
+    OR.Shards.items.length === OR.trackById('mesh-highway').shards.count &&
+    OR.Shards.items.length === 18,
+    OR.Shards.items.length + ' shards');
+
+  doc.getElementById('trackStartBtn').click();
+  check('RACE THIS TRACK starts a race on the selected circuit',
+    Game.state === 'countdown' && Track.id === 'mesh-highway');
+  check('the lap count for the race comes from the track',
+    Race.laps === 2 && Race.laps === Track.laps, Race.laps + ' laps');
+  check('the checkpoints for the race come from the track',
+    Track.checkpoints.length === 4 &&
+    Track.checkpoints.every(cp => Math.abs(Track.nearest(cp.x, cp.y, null).offset) < 1),
+    Track.checkpoints.map(cp => Math.round(cp.fraction * 100) + '%').join(' -> '));
+  check('the grid lines up on the selected circuit',
+    Track.isOnRoad(Game.car.x, Game.car.y) && Race.progress < 0,
+    'x=' + Game.car.x.toFixed(0) + ' y=' + Game.car.y.toFixed(0));
+
+  advance(CONFIG.race.countdownSeconds + 0.05);
+  doc.getElementById('pauseBtn').click();
+  doc.getElementById('quitBtn').click();
+  check('QUIT TO MENU returns to the track select pane',
+    Game.state === 'menu' && !pane.classList.contains('hidden') &&
+    mainPane.classList.contains('hidden') &&
+    !doc.getElementById('menuScreen').classList.contains('hidden'));
+  doc.getElementById('trackBackBtn').click();
+  const backToTitle = mainPane.classList.contains('hidden') === false &&
+    pane.classList.contains('hidden') === true;
+  doc.getElementById('trackBtn').click();
+  check('BACK and CHANGE TRACK move between the menu panes',
+    backToTitle && !pane.classList.contains('hidden') && mainPane.classList.contains('hidden'));
+
+  /* RACE AGAIN must keep the circuit that was just raced. */
+  doc.getElementById('trackStartBtn').click();
+  advance(CONFIG.race.countdownSeconds + 0.05);
+  doc.getElementById('againBtn').click();
+  check('RACE AGAIN keeps the same circuit',
+    Track.id === 'mesh-highway' && Game.state === 'countdown');
+
+  /* Force the flag so the results and the record book can be checked. */
+  advance(CONFIG.race.countdownSeconds + 0.05);
+  Race.lap = Race.laps;
+  Race.lapBase = 0;
+  Race.progress = 0.96;
+  Race.lastFraction = 0.96;
+  Race.nextCheckpoint = Track.checkpoints.length;
+  Race.lapTimes.push(22500);
+  Race.bestLapMs = 22500;
+  Game.car.trackHint = Track.pointAt(Track.length * 0.99).index;
+  Game.raceTimeMs = 47000;
+  Game._finishRace();
+  const trackResults = Game.results;
+
+  Game._emit('finish', trackResults);
+  check('the finish screen names the circuit',
+    doc.getElementById('finalTrack').textContent === 'MESH HIGHWAY');
+  check('the finish screen shows the track-best time and lap',
+    /Track best/.test(doc.getElementById('finalTrackBest').textContent) &&
+    doc.getElementById('finalTrackBest').textContent.indexOf(
+      OR.Utils.formatTime(47000)) !== -1 &&
+    doc.getElementById('finalTrackBest').textContent.indexOf(
+      OR.Utils.formatTime(22500)) !== -1,
+    doc.getElementById('finalTrackBest').textContent);
+  check('the finish records the best time and lap for that track and difficulty',
+    trackResults.trackId === 'mesh-highway' &&
+    trackResults.trackBestMs === 47000 &&
+    trackResults.trackBestLapMs === 22500 &&
+    Bests.bestTime('mesh-highway', Diff.currentId()) === 47000 &&
+    Bests.bestLap('mesh-highway', Diff.currentId()) === 22500,
+    Bests.timeText('mesh-highway', Diff.currentId()));
+  check('a slower finish does not replace the record',
+    !Bests.record('mesh-highway', Diff.currentId(), { timeMs: 48000, lapMs: 23000 }).isNewTime &&
+    Bests.bestTime('mesh-highway', Diff.currentId()) === 47000);
+  check('the choice is remembered under the documented key',
+    (function () {
+      try {
+        return win.localStorage.getItem(CONFIG.track.keys.selection) === 'mesh-highway';
+      } catch (error) {
+        return false;
+      }
+    })());
 }
 
 /* =========================== summary ====================================== */

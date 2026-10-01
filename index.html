@@ -107,7 +107,7 @@
 
   <!-- ===================== MAIN MENU ===================== -->
   <div id="menuScreen" class="screen">
-    <div class="panel">
+    <div class="panel" id="menuMain">
       <div class="badge">SINGLE PLAYER</div>
       <h1 class="title">OPTIMUM RACE</h1>
       <p class="subtitle">Race. React. Win.</p>
@@ -117,6 +117,7 @@
         <p id="difficultyHint" class="difficulty-hint"></p>
       </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
+      <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
       <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
@@ -137,6 +138,16 @@
         <div class="hint-row"><kbd>SPACE</kbd><span>coded boost (25%+)</span></div>
         <div class="hint-row"><kbd>&#9670;</kbd><span>collect shards to charge</span></div>
       </div>
+    </div>
+
+    <!-- Step 8: track select (second pane of the menu) -->
+    <div class="panel panel-wide hidden" id="menuTracks">
+      <div class="badge">SELECT TRACK</div>
+      <h2 class="title title-sm">CIRCUITS</h2>
+      <div id="trackList" class="track-list" role="radiogroup" aria-label="Select track"></div>
+      <p id="trackSummary" class="track-summary"></p>
+      <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
+      <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
     </div>
   </div>
 
@@ -177,6 +188,10 @@
           <span class="stat-value" id="finalDifficulty">NORMAL</span>
         </div>
         <div class="stat">
+          <span class="stat-label">TRACK</span>
+          <span class="stat-value" id="finalTrack">FLEXNODE CIRCUIT</span>
+        </div>
+        <div class="stat">
           <span class="stat-label">FINAL TIME</span>
           <span class="stat-value" id="finalTime">00:00.000</span>
         </div>
@@ -207,6 +222,7 @@
         <p class="classification-note">Order at your finish. Unfinished rivals are ranked by checkpoint-valid progress.</p>
       </section>
       <p class="best-time" id="finalBestTime">Best on Normal --:--.---</p>
+      <p class="best-time track-best-line" id="finalTrackBest"></p>
       <div class="splits" id="lapSplits"></div>
       <button id="againBtn" class="btn btn-primary">RACE AGAIN</button>
       <button id="menuBtn" class="btn btn-ghost">MAIN MENU</button>
@@ -221,6 +237,7 @@
 <script src="js/car.js"></script>
 <script src="js/race.js"></script>
 <script src="js/difficulty.js"></script>
+<script src="js/bests.js"></script>
 <script src="js/rivals.js"></script>
 <script src="js/collisions.js"></script>
 <script src="js/standings.js"></script>
@@ -230,6 +247,7 @@
 <script src="js/renderer.js"></script>
 <script src="js/hud.js"></script>
 <script src="js/game.js"></script>
+<script src="js/trackselect.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

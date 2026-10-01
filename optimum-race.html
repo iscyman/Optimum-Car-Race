@@ -913,6 +913,103 @@ body.is-paused #hud { opacity: 0.35; }
   .difficulty-hint { font-size: 10px; }
 }
 
+/* ============================ TRACK SELECT (Step 8) ======================= */
+
+.panel-wide { width: min(760px, 100%); }
+
+.track-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin: 4px 0 6px;
+  text-align: left;
+}
+
+.track-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 10px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(9, 12, 22, 0.72);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+.track-card:hover { border-color: rgba(34, 225, 255, 0.45); transform: translateY(-2px); }
+.track-card:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.track-card.is-selected {
+  border-color: rgba(34, 225, 255, 0.85);
+  box-shadow: 0 0 0 1px rgba(34, 225, 255, 0.35), 0 14px 34px -22px rgba(34, 225, 255, 0.9);
+  background: rgba(13, 20, 36, 0.9);
+}
+
+.track-preview {
+  display: block;
+  width: 100%;
+  height: 104px;
+  border-radius: 11px;
+  border: 1px solid rgba(139, 92, 255, 0.22);
+  background: rgba(5, 7, 14, 0.72);
+}
+
+.track-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.track-name { margin: 0; font-size: 13px; letter-spacing: 0.1em; font-weight: 800; }
+.rating-badge { font-size: 11px; letter-spacing: 0.08em; color: var(--cyan); white-space: nowrap; }
+.track-subtitle { margin: 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
+
+.track-meta { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.track-fact {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(139, 92, 255, 0.22);
+  background: rgba(139, 92, 255, 0.07);
+}
+
+.track-best { margin: 2px 0 0; font-size: 10.5px; letter-spacing: 0.04em; color: var(--muted); }
+.track-best.has-time { color: var(--cyan); font-weight: 700; }
+.track-best-lap { margin: 0; font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.track-best-lap:empty { display: none; }
+
+.track-summary {
+  margin: 6px 0 18px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.track-best-line.is-new { color: var(--cyan); font-weight: 700; }
+
+@media (max-width: 720px) {
+  .track-list { grid-template-columns: 1fr; }
+  .track-preview { height: 92px; }
+  .panel-wide { width: min(520px, 100%); }
+  .track-card { padding: 9px 9px 11px; }
+  .track-name { font-size: 12px; }
+}
+
+@media (max-width: 460px) {
+  .track-preview { height: 84px; }
+  .track-summary { font-size: 10px; }
+}
+
 </style>
 </head>
 <body>
@@ -1013,7 +1110,7 @@ body.is-paused #hud { opacity: 0.35; }
 
   <!-- ===================== MAIN MENU ===================== -->
   <div id="menuScreen" class="screen">
-    <div class="panel">
+    <div class="panel" id="menuMain">
       <div class="badge">SINGLE PLAYER</div>
       <h1 class="title">OPTIMUM RACE</h1>
       <p class="subtitle">Race. React. Win.</p>
@@ -1023,6 +1120,7 @@ body.is-paused #hud { opacity: 0.35; }
         <p id="difficultyHint" class="difficulty-hint"></p>
       </div>
       <button id="startBtn" class="btn btn-primary">START RACE</button>
+      <button id="trackBtn" class="btn btn-ghost">CHANGE TRACK</button>
       <p class="rival-hint">Race three STANDARD GOSSIP rivals.<br>⚡ Brief rival stalls are a gameplay mechanic.</p>
       <div class="menu-sound">
         <button class="icon-btn ghost" data-action="sound" aria-pressed="false" title="Toggle engine sound">
@@ -1043,6 +1141,16 @@ body.is-paused #hud { opacity: 0.35; }
         <div class="hint-row"><kbd>SPACE</kbd><span>coded boost (25%+)</span></div>
         <div class="hint-row"><kbd>&#9670;</kbd><span>collect shards to charge</span></div>
       </div>
+    </div>
+
+    <!-- Step 8: track select (second pane of the menu) -->
+    <div class="panel panel-wide hidden" id="menuTracks">
+      <div class="badge">SELECT TRACK</div>
+      <h2 class="title title-sm">CIRCUITS</h2>
+      <div id="trackList" class="track-list" role="radiogroup" aria-label="Select track"></div>
+      <p id="trackSummary" class="track-summary"></p>
+      <button id="trackStartBtn" class="btn btn-primary">RACE THIS TRACK</button>
+      <button id="trackBackBtn" class="btn btn-ghost">BACK</button>
     </div>
   </div>
 
@@ -1083,6 +1191,10 @@ body.is-paused #hud { opacity: 0.35; }
           <span class="stat-value" id="finalDifficulty">NORMAL</span>
         </div>
         <div class="stat">
+          <span class="stat-label">TRACK</span>
+          <span class="stat-value" id="finalTrack">FLEXNODE CIRCUIT</span>
+        </div>
+        <div class="stat">
           <span class="stat-label">FINAL TIME</span>
           <span class="stat-value" id="finalTime">00:00.000</span>
         </div>
@@ -1113,6 +1225,7 @@ body.is-paused #hud { opacity: 0.35; }
         <p class="classification-note">Order at your finish. Unfinished rivals are ranked by checkpoint-valid progress.</p>
       </section>
       <p class="best-time" id="finalBestTime">Best on Normal --:--.---</p>
+      <p class="best-time track-best-line" id="finalTrackBest"></p>
       <div class="splits" id="lapSplits"></div>
       <button id="againBtn" class="btn btn-primary">RACE AGAIN</button>
       <button id="menuBtn" class="btn btn-ghost">MAIN MENU</button>
@@ -1142,7 +1255,14 @@ OR.CONFIG = {
     roadWidth: 420,     // drivable asphalt width (also in track data)
     shoulder: 34,       // kerb / rumble strip width on each side
     grassMargin: 62,    // run-off area between the kerb and the barrier
-    rowStep: 18         // fallback sample spacing if the track data omits one
+    rowStep: 18,        // fallback sample spacing if the track data omits one
+
+    /* Step 8: which track is selected, and the best time / best lap per
+       track AND per difficulty. */
+    keys: {
+      selection: 'optimumRace.track.v1',
+      best: 'optimumRace.trackBests.v1'
+    }
   },
 
   /* ---- Car physics (Steps 1 + 2) ----------------------------------------
@@ -1492,7 +1612,17 @@ OR.CONFIG = {
  * (track.js) turns them into a smooth, evenly spaced centerline at load time —
  * nothing here knows about the car, the renderer or the race rules.
  *
- * Adding a track = adding an entry to OR.TRACKS. Step 8 does exactly that.
+ * Adding a track = adding an entry to OR.TRACKS. Step 8 does exactly that:
+ *   FLEXNODE CIRCUIT   fast, flowing, one big hairpin        (rating 2)
+ *   MESH HIGHWAY       fast, wide, long straights            (rating 1)
+ *   SHARD SPEEDWAY     tight and technical                   (rating 3)
+ *
+ * Every track carries the same keys, and the game reads nothing else:
+ *   geometry   points, roadWidth, kerbWidth, grassMargin, rowStep
+ *   race line  startIndex, checkpointFractions, laps
+ *   pickups    shards { count, laneSpread, startClear, endClear }
+ *   dressing   scenery { seed, spacing, types, nodeChance }
+ *   display    subtitle, corners, rating, blurb
  *
  * Coordinate space: x = right, y = down, 1 unit = 0.1 m.
  *   roadHalf / kerbWidth / grassMargin are measured from the centerline.
@@ -1507,6 +1637,7 @@ OR.CONFIG = {
       id: 'flexnode',
       name: 'FLEXNODE CIRCUIT',
       subtitle: 'Fast, flowing, one big hairpin',
+      blurb: 'The original loop. Long sweepers, one proper hairpin, plenty of room.',
 
       /* Closed centerline. The game smooths these with centripetal
          Catmull-Rom, so corners are drawn by clustering points. */
@@ -1531,6 +1662,9 @@ OR.CONFIG = {
       startIndex: 0,        // control point the start/finish line sits on
       checkpointFractions: [0.25, 0.5, 0.75],
       laps: 3,
+
+      /* Shard pickups, laid along the centerline (Step 8: per track) */
+      shards: { count: 14, laneSpread: 0.62, startClear: 900, endClear: 900, seed: 90210 },
 
       /* Scenery, generated deterministically outside the barriers */
       scenery: {
@@ -1557,10 +1691,133 @@ OR.CONFIG = {
 
       /* Difficulty rating, used by the track select screen in Step 8 */
       rating: 2
+    },
+
+    {
+      id: 'mesh-highway',
+      name: 'MESH HIGHWAY',
+      subtitle: 'Fast, wide, long straights',
+      blurb: 'Two enormous straights, a gentle kink and a wide road. Top speed country.',
+
+      /* A big, fast stadium: two ~4000-unit straights joined by wide bends,
+         with a shallow S on the top straight that can be taken flat out. */
+      points: [
+        [-3400, -1200], [-2400, -1250], [-1400, -1230], [-400, -1120],
+        [600, -1180], [1600, -1260], [2600, -1250], [3400, -1000],
+        [3850, -560], [3950, -40], [3760, 480], [3350, 880],
+        [2750, 1160], [2000, 1330], [1150, 1410], [250, 1420],
+        [-650, 1400], [-1550, 1330], [-2400, 1180], [-3150, 950],
+        [-3750, 620], [-4100, 180], [-4150, -320], [-3950, -800]
+      ],
+
+      /* Geometry: wide road, wide kerbs, generous run-off */
+      roadWidth: 560,
+      kerbWidth: 36,
+      grassMargin: 70,
+      rowStep: 16,
+
+      /* Race line: the line sits on the top straight, with a full straight
+         behind it so the four-car grid lines up cleanly. */
+      startIndex: 2,
+      checkpointFractions: [0.2, 0.4, 0.6, 0.8],
+      laps: 2,
+
+      shards: { count: 18, laneSpread: 0.58, startClear: 1100, endClear: 1100, seed: 77120 },
+
+      scenery: {
+        seed: 20260101,
+        spacing: 260,
+        types: ['billboard', 'pylon', 'crystal', 'node', 'tree'],
+        nodeChance: 0.42
+      },
+
+      /* The tightest real corners, measured on the built centerline. */
+      corners: [
+        { name: 'T1 HIGHWAY BEND', at: 0.03, radius: 401 },
+        { name: 'T2', at: 0.16, radius: 1101 },
+        { name: 'MESH KINK', at: 0.32, radius: 1053 },
+        { name: 'T4', at: 0.35, radius: 985 },
+        { name: 'T5 RIGHT SWEEP', at: 0.43, radius: 670 },
+        { name: 'T6', at: 0.49, radius: 944 },
+        { name: 'T7', at: 0.87, radius: 856 },
+        { name: 'T8', at: 0.91, radius: 513 },
+        { name: 'T9', at: 0.99, radius: 687 }
+      ],
+
+      rating: 1
+    },
+
+    {
+      id: 'shard-speedway',
+      name: 'SHARD SPEEDWAY',
+      subtitle: 'Tight and technical',
+      blurb: 'Short straights, a narrow road and a proper hairpin. Brake late, exit clean.',
+
+      /* A compact, wiggly loop: 63 control points keep the corners coming,
+         with almost nothing that counts as a straight. */
+      points: [
+        [1329, 0], [1233, 122], [1163, 231], [1128, 343], [1120, 464],
+        [1124, 601], [1118, 747], [1088, 893], [1028, 1028], [938, 1143],
+        [828, 1239], [702, 1313], [567, 1368], [425, 1400], [280, 1407],
+        [137, 1387], [0, 1342], [-126, 1279], [-241, 1208], [-345, 1138],
+        [-444, 1072], [-538, 1007], [-626, 938], [-704, 857], [-764, 764],
+        [-809, 664], [-847, 566], [-897, 479], [-974, 404], [-1091, 332],
+        [-1248, 248], [-1425, 140], [-1591, 0], [-1716, -169], [-1774, -353],
+        [-1754, -532], [-1666, -690], [-1528, -817], [-1363, -911], [-1192, -977],
+        [-1024, -1024], [-866, -1056], [-717, -1074], [-576, -1079], [-445, -1073],
+        [-322, -1061], [-209, -1050], [-103, -1045], [0, -1048], [104, -1057],
+        [212, -1063], [322, -1062], [434, -1047], [547, -1024], [666, -996],
+        [795, -969], [939, -939], [1097, -900], [1255, -839], [1395, -745],
+        [1492, -618], [1529, -464], [1505, -299], [1429, -141]
+      ],
+
+      /* Geometry: the narrowest road of the three, little run-off */
+      roadWidth: 340,
+      kerbWidth: 30,
+      grassMargin: 54,
+      rowStep: 12,
+
+      /* Race line: the line sits on the least twisty part of the lap */
+      startIndex: 42,
+      checkpointFractions: [0.2, 0.4, 0.6, 0.8],
+      laps: 3,
+
+      shards: { count: 10, laneSpread: 0.5, startClear: 650, endClear: 650, seed: 5150 },
+
+      scenery: {
+        seed: 20260202,
+        spacing: 170,
+        types: ['crystal', 'pylon', 'node', 'tree', 'billboard'],
+        nodeChance: 0.55
+      },
+
+      corners: [
+        { name: 'T1', at: 0.03, radius: 323 },
+        { name: 'T2', at: 0.09, radius: 650 },
+        { name: 'T3 SHARD CHICANE', at: 0.12, radius: 500 },
+        { name: 'T4', at: 0.18, radius: 800 },
+        { name: 'T5', at: 0.34, radius: 463 },
+        { name: 'SHARD HAIRPIN', at: 0.39, radius: 284 },
+        { name: 'T7', at: 0.5, radius: 482 },
+        { name: 'T8', at: 0.52, radius: 350 },
+        { name: 'T9', at: 0.79, radius: 621 },
+        { name: 'T10', at: 0.93, radius: 316 },
+        { name: 'T11', at: 0.96, radius: 416 }
+      ],
+
+      rating: 3
     }
   ];
 
-  /** The track currently being raced. Step 8 will change this at runtime. */
+  /** Look a track up by id; null when it does not exist. */
+  OR.trackById = function (id) {
+    for (let i = 0; i < OR.TRACKS.length; i++) {
+      if (OR.TRACKS[i].id === id) return OR.TRACKS[i];
+    }
+    return null;
+  };
+
+  /** The track currently being raced. Step 8 changes this at runtime. */
   OR.activeTrack = OR.TRACKS[0];
 })();
 
@@ -1592,29 +1849,54 @@ OR.CONFIG = {
   'use strict';
 
   const { CONFIG, Utils } = OR;
-  const data = OR.activeTrack;
+
+  /* The active track's data. `let` because Step 8 can switch tracks at runtime
+     through Track.use() — everything below reads it at call time. */
+  let data = OR.activeTrack;
 
   const Track = {
-    data: data,
-    id: data.id,
-    name: data.name,
+    data: null,
+    id: '',
+    name: '',
     points: [],
     count: 0,
     length: 0,
     checkpoints: [],
     scenery: [],
-    corners: data.corners || [],
+    corners: [],
+
+    /* Step 8: race flow comes from the track, not from the global config */
+    laps: CONFIG.race.laps,
+    shards: null,
 
     /* Surface bands, measured from the centerline */
-    halfRoad: data.roadWidth / 2,
-    shoulder: data.kerbWidth,
-    grassMargin: data.grassMargin
+    halfRoad: 0,
+    shoulder: 0,
+    grassMargin: 0
   };
 
-  Track.kerbStart = Track.halfRoad;
-  Track.grassStart = Track.halfRoad + Track.shoulder;
-  Track.limit = Track.grassStart + Track.grassMargin;          // soft bounce starts
-  Track.hardLimit = Track.limit + CONFIG.car.bounce.hardMargin; // absolute backstop
+  /** Point the module at a track's data and derive everything data-shaped. */
+  function adopt(trackData) {
+    data = trackData;
+    Track.data = data;
+    Track.id = data.id;
+    Track.name = data.name;
+    Track.corners = data.corners || [];
+
+    Track.halfRoad = data.roadWidth / 2;
+    Track.shoulder = data.kerbWidth;
+    Track.grassMargin = data.grassMargin;
+
+    Track.kerbStart = Track.halfRoad;
+    Track.grassStart = Track.halfRoad + Track.shoulder;
+    Track.limit = Track.grassStart + Track.grassMargin;          // soft bounce starts
+    Track.hardLimit = Track.limit + CONFIG.car.bounce.hardMargin; // absolute backstop
+
+    /* Per-track race rules and pickups, with the Step 3/4 config as fallback
+       for any key a track leaves out. */
+    Track.laps = data.laps || CONFIG.race.laps;
+    Track.shards = Object.assign({}, CONFIG.boost.shards, data.shards || {});
+  }
 
   /* ---- smoothing ---------------------------------------------------------- */
 
@@ -1678,6 +1960,7 @@ OR.CONFIG = {
   /* ---- build -------------------------------------------------------------- */
 
   Track.build = function () {
+    adopt(data);
     const built = buildCenterline(data.points, data.rowStep);
     const raw = built.points;
     const n = raw.length;
@@ -1743,7 +2026,9 @@ OR.CONFIG = {
     Track.start = points[startIndex];
     Track.startIndex = startIndex;
     Track.checkpoints = (data.checkpointFractions || []).map(function (f, i) {
-      const p = Track.pointAt(Track.length * f);
+      /* Fractions are measured from the START LINE, which is only the same as
+         arc length 0 when the track starts at its first control point. */
+      const p = Track.pointAt(Track.start.s + Track.length * f);
       return {
         index: i,
         fraction: f,
@@ -1959,6 +2244,36 @@ OR.CONFIG = {
     }
     Track.scenery = items;
     return Track;
+  };
+
+  /**
+   * Step 8: switch the live track. Rebuilds every derived field in place, so
+   * modules that captured `OR.Track` keep working. Callers that cache track
+   * shapes (the renderer, the shard layout) refresh afterwards — Game and
+   * TrackSelect do that through their own reset paths.
+   */
+  Track.use = function (trackData) {
+    if (!trackData) return Track;
+    OR.activeTrack = trackData;
+    adopt(trackData);
+    return Track.build();
+  };
+
+  /**
+   * Measure any track's centerline WITHOUT touching the live track. Used by
+   * the track select screen (previews and lap length) and by the tests that
+   * prove a preview matches the real thing once it is selected.
+   * `total` is the same number Track.build() reports, whatever the spacing.
+   */
+  Track.measure = function (trackData, spacing) {
+    const built = buildCenterline(trackData.points,
+      spacing || trackData.rowStep || CONFIG.track.rowStep);
+    return { points: built.points, total: built.total, step: built.step };
+  };
+
+  /** Just the preview polyline. */
+  Track.preview = function (trackData, spacing) {
+    return Track.measure(trackData, spacing).points;
   };
 
   OR.Track = Track.build();
@@ -2256,7 +2571,7 @@ OR.CONFIG = {
   const { CONFIG, Track } = OR;
 
   const Race = {
-    laps: CONFIG.race.laps,
+    laps: 0,                // set from the track in reset() (Step 8)
     lap: 1,                 // 1-based, for the HUD
     nextCheckpoint: 0,      // index of the gate we are waiting for
     checkpointsPassed: 0,
@@ -2271,7 +2586,7 @@ OR.CONFIG = {
     lastFraction: 0,        // raw 0..1 fraction, before unwrapping
 
     reset(car) {
-      this.laps = CONFIG.race.laps;
+      this.laps = Track.laps || CONFIG.race.laps;
       this.lap = 1;
       this.nextCheckpoint = 0;
       this.checkpointsPassed = 0;
@@ -2579,6 +2894,206 @@ OR.CONFIG = {
 
   Difficulty.load();
   OR.Difficulty = Difficulty;
+})();
+
+/* ==== js/bests.js ==== */
+/* =============================================================================
+ * bests.js — Step 8: the record book, per TRACK and per DIFFICULTY.
+ *
+ * One storage key holds the whole table:
+ *
+ *   { "flexnode":       { "normal": { timeMs: 38900, lapMs: 12750 }, ... },
+ *     "mesh-highway":   { ... },
+ *     "shard-speedway": { ... } }
+ *
+ * Both numbers are stored per cell: the best race time and the best lap.
+ * Everything is defensive — blocked storage (private mode, file://, quotas)
+ * simply falls back to an in-memory table for the session, exactly like
+ * Step 7's difficulty module.
+ *
+ * A flat Step 7 record ("best time per difficulty", no track) is migrated to
+ * FLEXNODE on first read, so old saves are not thrown away.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Utils } = OR;
+  const K = CONFIG.track.keys;
+
+  /** localStorage that never throws. */
+  function readRaw(key) {
+    try {
+      const value = window.localStorage.getItem(key);
+      return value === null ? null : value;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeRaw(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /** Positive finite number or 0. */
+  function topos(value) {
+    return typeof value === 'number' && isFinite(value) && value > 0 ? value : 0;
+  }
+
+  function emptyCell() {
+    return { timeMs: 0, lapMs: 0 };
+  }
+
+  /** Only keep the shape the game understands; junk is dropped silently. */
+  function sanitise(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    Object.keys(raw).forEach(function (trackId) {
+      const byDifficulty = raw[trackId];
+      if (!byDifficulty || typeof byDifficulty !== 'object') return;
+      const row = {};
+      Object.keys(byDifficulty).forEach(function (diffId) {
+        const cell = byDifficulty[diffId];
+        if (!cell || typeof cell !== 'object') return;
+        const timeMs = topos(cell.timeMs);
+        const lapMs = topos(cell.lapMs);
+        if (timeMs || lapMs) row[diffId] = { timeMs: timeMs, lapMs: lapMs };
+      });
+      if (Object.keys(row).length) out[trackId] = row;
+    });
+    return out;
+  }
+
+  /** Step 7 records are per difficulty only: they belong to the default track. */
+  function legacyTable() {
+    const raw = readRaw(CONFIG.difficulty.keys.best);
+    if (!raw) return null;
+    let parsed = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      return null;
+    }
+    if (!parsed || typeof parsed !== 'object') return null;
+    const row = {};
+    CONFIG.difficulty.levels.forEach(function (level) {
+      const ms = topos(parsed[level.id]);
+      if (ms) row[level.id] = { timeMs: ms, lapMs: 0 };
+    });
+    return Object.keys(row).length ? { flexnode: row } : null;
+  }
+
+  const Bests = {
+    /* Session mirror: blocked storage must not break the current race. */
+    _memory: null,
+
+    _load() {
+      if (Bests._memory) return Bests._memory;
+      const raw = readRaw(K.best);
+      let table = null;
+      if (raw) {
+        try {
+          table = sanitise(JSON.parse(raw));
+        } catch (error) {
+          table = null;
+        }
+      }
+      if (!table || !Object.keys(table).length) {
+        const migrated = legacyTable();
+        if (migrated) table = migrated;
+      }
+      Bests._memory = table || {};
+      return Bests._memory;
+    },
+
+    _save() {
+      writeRaw(K.best, JSON.stringify(Bests._memory));
+      return Bests._memory;
+    },
+
+    /** Forget everything (used by tests and a future "reset records"). */
+    clear() {
+      Bests._memory = {};
+      writeRaw(K.best, '{}');
+      return Bests;
+    },
+
+    /** The whole table, as a plain object copy. */
+    table() {
+      return JSON.parse(JSON.stringify(Bests._load()));
+    },
+
+    /** { timeMs, lapMs } for one track + difficulty; zeroes when unset. */
+    get(trackId, difficultyId) {
+      const table = Bests._load();
+      const row = table[trackId];
+      const cell = row && row[difficultyId];
+      return cell || emptyCell();
+    },
+
+    /** Race time only (0 = none). Used by the track select cards. */
+    bestTime(trackId, difficultyId) {
+      return topos(Bests.get(trackId, difficultyId).timeMs);
+    },
+
+    /** Best lap only (0 = none). */
+    bestLap(trackId, difficultyId) {
+      return topos(Bests.get(trackId, difficultyId).lapMs);
+    },
+
+    /**
+     * Offer a finished race to the record book.
+     * Returns the stored values plus what (if anything) improved.
+     */
+    record(trackId, difficultyId, result) {
+      const table = Bests._load();
+      if (!table[trackId]) table[trackId] = {};
+      const row = table[trackId];
+      if (!row[difficultyId]) row[difficultyId] = emptyCell();
+      const cell = row[difficultyId];
+
+      const previousTimeMs = topos(cell.timeMs);
+      const previousLapMs = topos(cell.lapMs);
+      const timeMs = topos(result && result.timeMs);
+      const lapMs = topos(result && result.lapMs);
+
+      const isNewTime = timeMs > 0 && (!previousTimeMs || timeMs < previousTimeMs);
+      const isNewLap = lapMs > 0 && (!previousLapMs || lapMs < previousLapMs);
+      if (isNewTime) cell.timeMs = timeMs;
+      if (isNewLap) cell.lapMs = lapMs;
+      if (isNewTime || isNewLap) Bests._save();
+
+      return {
+        timeMs: cell.timeMs,
+        lapMs: cell.lapMs,
+        previousTimeMs: previousTimeMs,
+        previousLapMs: previousLapMs,
+        isNewTime: isNewTime,
+        isNewLap: isNewLap
+      };
+    },
+
+    /** "Best on Normal 00:38.141" — the same wording Step 7 used. */
+    timeText(trackId, difficultyId) {
+      const level = OR.Difficulty.get(difficultyId);
+      const name = level.label.charAt(0) + level.label.slice(1).toLowerCase();
+      const ms = Bests.bestTime(trackId, level.id);
+      return ms ? 'Best on ' + name + ' ' + Utils.formatTime(ms)
+        : 'No ' + name + ' time yet';
+    },
+
+    /** "Best lap 00:12.930", or a dash when none has been set. */
+    lapText(trackId, difficultyId) {
+      const ms = Bests.bestLap(trackId, difficultyId);
+      return ms ? 'Best lap ' + Utils.formatTime(ms) : 'Best lap --:--.---';
+    }
+  };
+
+  OR.Bests = Bests;
 })();
 
 /* ==== js/rivals.js ==== */
@@ -3028,19 +3543,24 @@ OR.CONFIG = {
   'use strict';
 
   const { CONFIG, Utils, Track } = OR;
-  const S = CONFIG.boost.shards;
 
   const Shards = {
     items: [],
     collected: 0,
     seed: 90210,
 
+    /** The layout for the active track (Step 8: pickups come from track data). */
+    spec() {
+      return Track.shards || CONFIG.boost.shards;
+    },
+
     /** Rebuild the layout and clear the collected count (Race Again, menu). */
     reset() {
       Shards.items.length = 0;
       Shards.collected = 0;
 
-      const rand = Utils.mulberry32(Shards.seed);
+      const S = Shards.spec();
+      const rand = Utils.mulberry32(S.seed || Shards.seed);
       const first = S.startClear;
       const last = Track.length - S.endClear;
       const step = (last - first) / Math.max(1, S.count - 1);
@@ -3077,11 +3597,12 @@ OR.CONFIG = {
      */
     update(car, dt, active) {
       const list = Shards.items;
+      const S = Shards.spec();
       const r2 = S.radius * S.radius;
 
       for (let i = 0; i < list.length; i++) {
         const s = list[i];
-        s.phase += CONFIG.boost.shards.spin * dt;
+        s.phase += S.spin * dt;
         if (s.pop > 0) s.pop = Math.max(0, s.pop - dt * 2.2);
         if (s.taken || !active) continue;
 
@@ -4385,6 +4906,17 @@ OR.CONFIG = {
       return Renderer.minimap;
     },
 
+    /**
+     * Step 8: drop every shape that was cached for the old track and rebuild
+     * the ones that are cheap. Called after Track.use().
+     */
+    invalidateTrack() {
+      Renderer.paths = null;
+      Renderer.sceneryLayer = null;
+      if (Renderer.minimap) Renderer.buildMinimapPath();
+      return Renderer;
+    },
+
     buildMinimapPath() {
       const mm = Renderer.minimap;
       if (!mm) return null;
@@ -5104,13 +5636,31 @@ OR.CONFIG = {
         fieldSize: Game.entities.length,
         /* Step 7: difficulty + the best time for that difficulty. */
         difficultyId: Game.difficultyId,
-        difficulty: Game.difficulty.label
+        difficulty: Game.difficulty.label,
+        /* Step 8: which circuit the race was run on. */
+        trackId: Track.id,
+        trackName: Track.name,
+        trackRating: Track.rating
       };
+      /* Step 8: records are per track AND per difficulty (time and lap). */
+      const trackBest = OR.Bests.record(Track.id, Game.difficultyId, {
+        timeMs: Game.finalTimeMs,
+        lapMs: laps.bestLapMs
+      });
+      Game.results.trackBestMs = trackBest.timeMs;
+      Game.results.trackBestLapMs = trackBest.lapMs;
+      Game.results.isNewTrackBest = trackBest.isNewTime;
+      Game.results.isNewBestLap = trackBest.isNewLap;
+
+      /* Step 7's per-difficulty record is kept as well, so its storage key and
+         wording keep working exactly as before. */
       const best = OR.Difficulty.recordBest(Game.difficultyId, Game.finalTimeMs);
       Game.results.bestMs = best.bestMs;
       Game.results.previousBestMs = best.previousMs;
-      Game.results.isNewBest = best.isNewBest;
-      Game.results.bestText = OR.Difficulty.bestText(Game.difficultyId);
+      Game.results.isNewBest = trackBest.isNewTime || best.isNewBest;
+      Game.results.bestText = best.isNewBest
+        ? OR.Difficulty.bestText(Game.difficultyId)
+        : OR.Bests.timeText(Track.id, Game.difficultyId);
       Game._emit('finish', Game.results);
     },
 
@@ -5287,6 +5837,294 @@ OR.CONFIG = {
   OR.Game = Game;
 })();
 
+/* ==== js/trackselect.js ==== */
+/* =============================================================================
+ * trackselect.js — Step 8: choose a circuit.
+ *
+ * Everything here is built from OR.TRACKS: adding a track in trackdata.js is
+ * enough for it to appear as a card with a preview, a length, a difficulty
+ * rating and its records. There is no per-track code anywhere in this file.
+ *
+ * The screen lives inside the main menu (the menu state has two panes), so
+ * the five-state machine is untouched: the animated menu camera simply flies
+ * along whichever circuit is selected.
+ *
+ * Records come from OR.Bests and are shown for the difficulty currently
+ * selected on the menu.
+ * ========================================================================== */
+(function () {
+  'use strict';
+
+  const { CONFIG, Utils, Track, Renderer, Shards, Bests, Difficulty } = OR;
+
+  /* Rating 1..3 -> a word and stars. Anything else falls back to the middle. */
+  const RATINGS = ['', 'EASY', 'MEDIUM', 'HARD'];
+  const RATING_MAX = 3;
+
+  function ratingValue(rating) {
+    return Utils.clamp(Math.round(rating) || RATINGS.length - 1, 1, RATING_MAX);
+  }
+
+  /** localStorage that never throws (selection only; the records are in bests.js). */
+  function readRaw(key) {
+    try {
+      const value = window.localStorage.getItem(key);
+      return value === null ? null : value;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function writeRaw(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  const TrackSelect = {
+    el: {},
+    cards: [],
+    _geometry: {},
+
+    /** Cached centerline measurement for a track's preview and length. */
+    geometry(track) {
+      if (!TrackSelect._geometry[track.id]) {
+        TrackSelect._geometry[track.id] = Track.measure(track);
+      }
+      return TrackSelect._geometry[track.id];
+    },
+
+    /** Lap length in metres, measured from the real centerline. */
+    lengthMeters(track) {
+      return Math.round(TrackSelect.geometry(track).total * CONFIG.track.metersPerUnit);
+    },
+
+    ratingLabel(track) {
+      return RATINGS[ratingValue(track.rating)];
+    },
+
+    ratingStars(track) {
+      const r = ratingValue(track.rating);
+      return '★'.repeat(r) + '☆'.repeat(RATING_MAX - r);
+    },
+
+    /** The id saved from last time, or the first track. */
+    savedId() {
+      const saved = readRaw(CONFIG.track.keys.selection);
+      return OR.trackById(saved) ? saved : OR.TRACKS[0].id;
+    },
+
+    /* ---- the screen ------------------------------------------------------ */
+
+    init() {
+      TrackSelect.el.list = document.getElementById('trackList');
+      TrackSelect.el.summary = document.getElementById('trackSummary');
+      if (!TrackSelect.el.list) return TrackSelect;
+
+      TrackSelect.el.list.replaceChildren();
+      TrackSelect.cards = OR.TRACKS.map(function (track) {
+        return TrackSelect._buildCard(track);
+      });
+
+      /* Arrow keys move through the cards, exactly like the difficulty picker. */
+      TrackSelect.el.list.addEventListener('keydown', function (e) {
+        const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
+          : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        const ids = OR.TRACKS.map(t => t.id);
+        const next = ids[(ids.indexOf(Track.id) + step + ids.length) % ids.length];
+        TrackSelect.select(next);
+        const card = TrackSelect.el.list.querySelector('[data-track="' + next + '"]');
+        if (card) card.focus();
+      });
+
+      /* Restore the last choice without clobbering a test that already picked. */
+      TrackSelect.select(TrackSelect.savedId());
+      return TrackSelect;
+    },
+
+    _buildCard(track) {
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'track-card';
+      card.dataset.track = track.id;
+      card.setAttribute('role', 'radio');
+      card.setAttribute('aria-checked', 'false');
+      card.setAttribute('aria-label', track.name + ', ' + TrackSelect.ratingLabel(track) +
+        ' difficulty, ' + TrackSelect.lengthMeters(track) + ' metres');
+
+      const preview = document.createElement('canvas');
+      preview.className = 'track-preview';
+      preview.width = 220;
+      preview.height = 120;
+      preview.setAttribute('aria-hidden', 'true');
+
+      const head = document.createElement('div');
+      head.className = 'track-head';
+      const name = document.createElement('h3');
+      name.className = 'track-name';
+      name.textContent = track.name;
+      const badge = document.createElement('span');
+      badge.className = 'rating-badge';
+      badge.textContent = TrackSelect.ratingStars(track);
+      badge.title = TrackSelect.ratingLabel(track) + ' difficulty';
+      head.append(name, badge);
+
+      const blurb = document.createElement('p');
+      blurb.className = 'track-subtitle';
+      blurb.textContent = track.subtitle;
+
+      const meta = document.createElement('div');
+      meta.className = 'track-meta';
+      const facts = [
+        TrackSelect.lengthMeters(track) + ' m',
+        (track.laps || CONFIG.race.laps) + ' laps',
+        (track.checkpointFractions || []).length + ' checkpoints',
+        ((track.shards && track.shards.count) || CONFIG.boost.shards.count) + ' shards'
+      ];
+      facts.forEach(function (fact) {
+        const span = document.createElement('span');
+        span.className = 'track-fact';
+        span.textContent = fact;
+        meta.appendChild(span);
+      });
+
+      const best = document.createElement('p');
+      best.className = 'track-best';
+      const lap = document.createElement('p');
+      lap.className = 'track-best-lap';
+
+      const rating = document.createElement('span');
+      rating.className = 'sr-only';
+      rating.textContent = TrackSelect.ratingLabel(track) + ' difficulty';
+
+      card.append(preview, head, blurb, meta, best, lap, rating);
+      card.addEventListener('click', function (e) {
+        e.preventDefault();
+        TrackSelect.select(track.id);
+      });
+      TrackSelect.el.list.appendChild(card);
+
+      TrackSelect.drawPreview(preview, track);
+      return { track: track, node: card, preview: preview, best: best, lap: lap };
+    },
+
+    /**
+     * Scale the real centerline into the card. Taking the geometry from
+     * Track.measure() is what makes the preview genuinely match the circuit.
+     */
+    drawPreview(canvas, track) {
+      if (!canvas || !canvas.getContext) return null;
+      const ctx = canvas.getContext('2d');
+      const rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
+      const cssW = Math.max(120, Math.round((rect && rect.width) || canvas.clientWidth || 220));
+      const cssH = Math.max(70, Math.round((rect && rect.height) || canvas.clientHeight || 120));
+      const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+
+      const pts = TrackSelect.geometry(track).points;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (let i = 0; i < pts.length; i++) {
+        minX = Math.min(minX, pts[i][0]); maxX = Math.max(maxX, pts[i][0]);
+        minY = Math.min(minY, pts[i][1]); maxY = Math.max(maxY, pts[i][1]);
+      }
+      const pad = 16;
+      const scale = Math.min((cssW - pad * 2) / Math.max(1, maxX - minX),
+        (cssH - pad * 2) / Math.max(1, maxY - minY));
+      const ox = cssW / 2 - ((minX + maxX) / 2) * scale;
+      const oy = cssH / 2 - ((minY + maxY) / 2) * scale;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, cssW, cssH);
+      ctx.fillStyle = 'rgba(5, 7, 14, 0.72)';
+      ctx.fillRect(0, 0, cssW, cssH);
+
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      for (let i = 0; i <= pts.length; i++) {
+        const p = pts[i % pts.length];
+        const x = p[0] * scale + ox;
+        const y = p[1] * scale + oy;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = Utils.rgba(CONFIG.theme.violet, 0.32);
+      ctx.lineWidth = 6;
+      ctx.stroke();
+      ctx.strokeStyle = CONFIG.theme.cyan;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      /* The start/finish line: the control point's fraction of the loop. */
+      const f = (track.startIndex || 0) / Math.max(1, track.points.length);
+      const idx = Math.round(f * pts.length) % pts.length;
+      const a = pts[idx], b = pts[(idx + 1) % pts.length];
+      const sx = a[0] * scale + ox, sy = a[1] * scale + oy;
+      const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#f4f8ff';
+      ctx.fillRect(-2, -5, 4, 10);
+      ctx.restore();
+
+      canvas.setAttribute('data-track-length', String(Math.round(TrackSelect.geometry(track).total)));
+      return canvas;
+    },
+
+    /* ---- selection ------------------------------------------------------- */
+
+    /**
+     * Make a track the active one: rebuild geometry, pickups and cached
+     * layers, remember the choice, and update the cards.
+     */
+    select(id) {
+      const track = OR.trackById(id) || OR.TRACKS[0];
+      Track.use(track);
+      Shards.reset();
+      Renderer.invalidateTrack();
+      writeRaw(CONFIG.track.keys.selection, track.id);
+      TrackSelect.refresh();
+      return track;
+    },
+
+    /** Currently selected track (the live one). */
+    current() {
+      return OR.activeTrack;
+    },
+
+    /** Repaint every card for the current selection and difficulty. */
+    refresh() {
+      const difficultyId = Difficulty.currentId();
+      TrackSelect.cards.forEach(function (card) {
+        const selected = card.track.id === Track.id;
+        card.node.classList.toggle('is-selected', selected);
+        card.node.setAttribute('aria-checked', selected ? 'true' : 'false');
+        card.node.tabIndex = selected ? 0 : -1;
+        card.best.textContent = Bests.timeText(card.track.id, difficultyId);
+        card.best.classList.toggle('has-time', Bests.bestTime(card.track.id, difficultyId) > 0);
+        card.lap.textContent = Bests.bestLap(card.track.id, difficultyId)
+          ? 'Best lap ' + Utils.formatTime(Bests.bestLap(card.track.id, difficultyId)) : '';
+      });
+      if (TrackSelect.el.summary) {
+        const level = Difficulty.get(difficultyId);
+        TrackSelect.el.summary.textContent = Track.name + ' — ' +
+          TrackSelect.lengthMeters(Track) + ' m, ' + Track.laps + ' laps · ' +
+          TrackSelect.ratingLabel(Track) + ' · ' +
+          Bests.timeText(Track.id, level.id);
+      }
+      return TrackSelect;
+    }
+  };
+
+  OR.TrackSelect = TrackSelect;
+})();
+
 /* ==== js/main.js ==== */
 /* =============================================================================
  * main.js — bootstrap: wires the DOM screens to the game state machine.
@@ -5302,6 +6140,10 @@ OR.CONFIG = {
     finish: null,
     hud: null,
     touch: null,
+    /* Step 8: the menu has two panes — title ('main') and track select. */
+    menuMain: null,
+    menuTracks: null,
+    view: 'main',
 
     init() {
       Screens.menu = document.getElementById('menuScreen');
@@ -5309,6 +6151,8 @@ OR.CONFIG = {
       Screens.finish = document.getElementById('finishScreen');
       Screens.hud = document.getElementById('hud');
       Screens.touch = document.getElementById('touchControls');
+      Screens.menuMain = document.getElementById('menuMain');
+      Screens.menuTracks = document.getElementById('menuTracks');
 
       // ---- pause menu (Step 4) -------------------------------------------
       const pauseBtn = document.getElementById('pauseBtn');
@@ -5340,7 +6184,7 @@ OR.CONFIG = {
         quitBtn.addEventListener('click', e => {
           e.preventDefault();
           quitBtn.blur();
-          Game.returnToMenu();
+          Screens.quitToMenu();
         });
       }
 
@@ -5398,7 +6242,33 @@ OR.CONFIG = {
         menuBtn.addEventListener('click', e => {
           e.preventDefault();
           menuBtn.blur();
-          Game.returnToMenu();
+          Screens.quitToMenu();
+        });
+      }
+
+      /* ---- Step 8: track select pane ------------------------------------- */
+      const trackBtn = document.getElementById('trackBtn');
+      const trackStartBtn = document.getElementById('trackStartBtn');
+      const trackBackBtn = document.getElementById('trackBackBtn');
+      if (trackBtn) {
+        trackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          trackBtn.blur();
+          Screens.showMenuView('tracks');
+        });
+      }
+      if (trackStartBtn) {
+        trackStartBtn.addEventListener('click', e => {
+          e.preventDefault();
+          trackStartBtn.blur();
+          Game.startRace();
+        });
+      }
+      if (trackBackBtn) {
+        trackBackBtn.addEventListener('click', e => {
+          e.preventDefault();
+          trackBackBtn.blur();
+          Screens.showMenuView('main');
         });
       }
 
@@ -5459,6 +6329,21 @@ OR.CONFIG = {
       document.body.classList.toggle('is-paused', state === 'paused');
     },
 
+    /** Step 8: switch between the title pane and the track select pane. */
+    showMenuView(view) {
+      Screens.view = view === 'tracks' ? 'tracks' : 'main';
+      if (Screens.menuMain) Screens.menuMain.classList.toggle('hidden', Screens.view !== 'main');
+      if (Screens.menuTracks) Screens.menuTracks.classList.toggle('hidden', Screens.view !== 'tracks');
+      if (Screens.view === 'tracks' && OR.TrackSelect) OR.TrackSelect.refresh();
+      return Screens.view;
+    },
+
+    /** Quit to the menu — Step 8 lands on the track select screen. */
+    quitToMenu() {
+      Game.returnToMenu();
+      Screens.showMenuView('tracks');
+    },
+
     /** Highlight one difficulty button and explain what it does. */
     selectDifficulty(id) {
       const level = Difficulty.select(id);
@@ -5471,11 +6356,24 @@ OR.CONFIG = {
         });
       }
       if (Screens.pickerHint) Screens.pickerHint.textContent = level.blurb;
+      /* Track cards show the records for the selected difficulty. */
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
       return level;
     },
 
     showFinish(results) {
       document.getElementById('finalDifficulty').textContent = results.difficulty || 'NORMAL';
+      /* Step 8: which circuit, and its records for this difficulty. */
+      const trackName = document.getElementById('finalTrack');
+      if (trackName) trackName.textContent = results.trackName || OR.Track.name;
+      const trackBest = document.getElementById('finalTrackBest');
+      if (trackBest) {
+        const time = results.trackBestMs ? Utils.formatTime(results.trackBestMs) : '--:--.---';
+        const lap = results.trackBestLapMs ? Utils.formatTime(results.trackBestLapMs) : '--:--.---';
+        trackBest.textContent = 'Track best ' + time + ' · best lap ' + lap;
+        trackBest.classList.toggle('is-new', !!results.isNewTrackBest || !!results.isNewBestLap);
+      }
+      if (OR.TrackSelect) OR.TrackSelect.refresh();
       const bestTime = document.getElementById('finalBestTime');
       if (bestTime) {
         bestTime.textContent = results.isNewBest
@@ -5586,6 +6484,8 @@ OR.CONFIG = {
       Renderer.resize();
       Renderer.buildMinimapPath();
     }, 200);
+    /* Step 8: build the track cards and restore the saved circuit. */
+    if (OR.TrackSelect) OR.TrackSelect.init();
   }
 
   if (document.readyState === 'loading') {

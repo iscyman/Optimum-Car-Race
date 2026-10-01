@@ -13,8 +13,8 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'optimum-race.html');
 
 const SCRIPTS = [
-  'js/config.js', 'js/utils.js', 'js/trackdata.js', 'js/track.js', 'js/car.js', 'js/race.js', 'js/difficulty.js', 'js/rivals.js', 'js/collisions.js', 'js/standings.js', 'js/shards.js', 'js/input.js', 'js/audio.js',
-  'js/renderer.js', 'js/hud.js', 'js/game.js', 'js/main.js'
+  'js/config.js', 'js/utils.js', 'js/trackdata.js', 'js/track.js', 'js/car.js', 'js/race.js', 'js/difficulty.js', 'js/bests.js', 'js/rivals.js', 'js/collisions.js', 'js/standings.js', 'js/shards.js', 'js/input.js', 'js/audio.js',
+  'js/renderer.js', 'js/hud.js', 'js/game.js', 'js/trackselect.js', 'js/main.js'
 ];
 
 let html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');

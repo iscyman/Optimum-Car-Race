@@ -17,7 +17,14 @@ OR.CONFIG = {
     roadWidth: 420,     // drivable asphalt width (also in track data)
     shoulder: 34,       // kerb / rumble strip width on each side
     grassMargin: 62,    // run-off area between the kerb and the barrier
-    rowStep: 18         // fallback sample spacing if the track data omits one
+    rowStep: 18,        // fallback sample spacing if the track data omits one
+
+    /* Step 8: which track is selected, and the best time / best lap per
+       track AND per difficulty. */
+    keys: {
+      selection: 'optimumRace.track.v1',
+      best: 'optimumRace.trackBests.v1'
+    }
   },
 
   /* ---- Car physics (Steps 1 + 2) ----------------------------------------

@@ -931,6 +931,17 @@
       return Renderer.minimap;
     },
 
+    /**
+     * Step 8: drop every shape that was cached for the old track and rebuild
+     * the ones that are cheap. Called after Track.use().
+     */
+    invalidateTrack() {
+      Renderer.paths = null;
+      Renderer.sceneryLayer = null;
+      if (Renderer.minimap) Renderer.buildMinimapPath();
+      return Renderer;
+    },
+
     buildMinimapPath() {
       const mm = Renderer.minimap;
       if (!mm) return null;

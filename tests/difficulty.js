@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
-const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty', 'rivals', 'collisions', 'standings'];
+const FILES = ['config', 'utils', 'trackdata', 'track', 'car', 'race', 'difficulty', 'bests', 'rivals', 'collisions', 'standings'];
 const STEP = 1 / 120;
 
 let passed = 0, failed = 0;
@@ -321,6 +321,52 @@ section('balance target (reference decent player, no boost)');
     results.easy.rate >= results.normal.rate && results.normal.rate >= results.hard.rate,
     ['easy', 'normal', 'hard'].map(id => id + ' ' + Math.round(results[id].rate * 100) + '%').join('  '));
   console.log('      (6-race sample; `node tools/balance.js 28` gives the full table)');
+}
+
+section('difficulty × track (Step 8)');
+{
+  const storage = fakeStorage();
+  const game = boot(storage);
+  const diff = game.Difficulty;
+
+  /* Picking a circuit must not touch the rival level. */
+  diff.select('hard');
+  game.Track.use(game.trackById('mesh-highway'));
+  check('selecting a track does not change the difficulty',
+    diff.currentId() === 'hard' && diff.current().label === 'HARD' &&
+    game.activeTrack.id === 'mesh-highway',
+    diff.currentId() + ' on ' + game.activeTrack.id);
+
+  /* The same level keeps its own record on each circuit. */
+  game.Bests.record('mesh-highway', 'hard', { timeMs: 45000, lapMs: 22000 });
+  game.Bests.record('shard-speedway', 'hard', { timeMs: 52000, lapMs: 17000 });
+  game.Bests.record('mesh-highway', 'easy', { timeMs: 49000, lapMs: 24000 });
+  check('the same difficulty keeps a separate record per track',
+    game.Bests.bestTime('mesh-highway', 'hard') === 45000 &&
+    game.Bests.bestTime('shard-speedway', 'hard') === 52000 &&
+    game.Bests.bestTime('flexnode', 'hard') === 0 &&
+    game.Bests.bestTime('mesh-highway', 'easy') === 49000,
+    'hard: mesh ' + game.Bests.bestTime('mesh-highway', 'hard') +
+    ', shard ' + game.Bests.bestTime('shard-speedway', 'hard') +
+    '; easy: mesh ' + game.Bests.bestTime('mesh-highway', 'easy'));
+
+  /* Time and best lap are two records, not one. */
+  game.Bests.record('mesh-highway', 'hard', { timeMs: 47000, lapMs: 21000 });
+  check('time and best lap are tracked separately',
+    game.Bests.bestTime('mesh-highway', 'hard') === 45000 &&
+    game.Bests.bestLap('mesh-highway', 'hard') === 21000,
+    game.Utils.formatTime(game.Bests.bestTime('mesh-highway', 'hard')) + ' / ' +
+    game.Utils.formatTime(game.Bests.bestLap('mesh-highway', 'hard')));
+
+  /* Step 7 stored flat records with no track: they belong to FLEXNODE. */
+  const legacy = fakeStorage();
+  legacy.data[D.keys.best] = JSON.stringify({ hard: 36500, normal: 38900 });
+  const migrated = boot(legacy);
+  check('Step 7 flat records migrate to FLEXNODE',
+    migrated.Bests.bestTime('flexnode', 'hard') === 36500 &&
+    migrated.Bests.bestTime('flexnode', 'normal') === 38900 &&
+    migrated.Bests.bestTime('mesh-highway', 'hard') === 0,
+    migrated.Bests.timeText('flexnode', 'hard'));
 }
 
 console.log('\n' + '-'.repeat(56));

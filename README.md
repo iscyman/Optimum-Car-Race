@@ -1,4 +1,4 @@
-# OPTIMUM RACE — Steps 1 to 7
+# OPTIMUM RACE — Steps 1 to 8
 
 **Race. React. Win.**
 
@@ -120,15 +120,64 @@ npm run build      # regenerates optimum-race.html from the sources
 | Balance target | done (see the measured table below: a decent reference player wins EASY ~100 %, NORMAL ~46 %, HARD ~21 %) |
 | Best race time per difficulty | done (`Best on Normal 00:38.141` on the results screen, `NEW Best on …` when beaten) |
 
+
+### Step 8 — multiple tracks + track select
+
+| Requirement | Status |
+| --- | --- |
+| Keep FLEXNODE CIRCUIT, add MESH HIGHWAY (fast, wide, long straights) | done (`js/trackdata.js`, 1879 m lap, 560 u road) |
+| … and SHARD SPEEDWAY (tight, technical) | done (923 m lap, 340 u road, min corner radius 284 u) |
+| All tracks use the Step 5 data format, no per-track hacks | done (identical schema; `Track.use()` rebuilds in place) |
+| Track select screen: name, centreline preview, length, difficulty rating | done (menu pane, cards with canvases drawn from `Track.measure()`) |
+| Best time **and best lap** per track **and** difficulty | done (`js/bests.js`, `optimumRace.trackBests.v1`; Step 7 flat records migrate to FLEXNODE) |
+| Shards, checkpoints and lap count defined per track in data | done (`shards`, `checkpointFractions`, `laps` per entry; fall back to the Step 3/4 config) |
+| Race Again keeps the same track, Menu returns to track select | done (`#againBtn` restarts on the track; QUIT/MAIN MENU open the track pane) |
+| Track select works on mobile | done (cards stack to one column, ≥ 84 px previews, tap targets are full-width buttons) |
+
 ## Not built yet (deliberately)
 
-Multiple tracks · Optimum network integration ·
+Optimum network integration ·
 networking of any kind · simulated latency or fake network behaviour ·
 blockchain / wallets / tokens · XP · levels · unlocks · leaderboards ·
 multiplayer · events. Later steps add config sections and modules rather than
 rewriting what exists.
 
 ---
+
+## The tracks (Step 8)
+
+Every circuit is one entry in `OR.TRACKS` (`js/trackdata.js`) using the same
+keys; nothing outside that file knows which track is loaded.
+
+| | FLEXNODE CIRCUIT | MESH HIGHWAY | SHARD SPEEDWAY |
+| --- | --- | --- | --- |
+| Character | fast and flowing | two huge straights | tight and technical |
+| Lap | 1022 m | 1879 m | 923 m |
+| Laps | 3 | 2 | 3 |
+| Road width | 420 u | 560 u | 340 u |
+| Checkpoints | 3 | 4 | 4 |
+| Shards | 14 | 18 | 10 |
+| Rating | MEDIUM ★★☆ | EASY ★☆☆ | HARD ★★★ |
+| Tightest corner | MESH HAIRPIN, r 381 | T5 RIGHT SWEEP, r 670 | SHARD HAIRPIN, r 284 |
+
+Measured with the AI at NORMAL, a full race takes 40–44 s on FLEXNODE,
+43–47 s on MESH HIGHWAY and 41–45 s on SHARD SPEEDWAY, so the three sit in the
+same competitive window while driving completely differently.
+
+The track select screen draws each preview from the same centreline builder the
+game races on (`Track.measure()`), so a preview cannot drift from the circuit.
+The lap length printed on a card is that same measurement. Selecting a track
+calls `Track.use()`, which rebuilds the geometry in place and swaps the per-track
+laps, checkpoints and shard layout; the renderer drops its cached shapes and the
+menu camera flies the new circuit immediately.
+
+**Records.** `js/bests.js` stores `{ track → difficulty → { timeMs, lapMs } }`
+under `optimumRace.trackBests.v1`, with the same defensive try/catch storage as
+Step 7. Both numbers are shown: the finish screen prints the track best and best
+lap for the difficulty just raced, and every card shows the record for the
+difficulty currently selected on the menu. A race that beats either number is
+labelled `NEW`. Flat Step 7 saves (per difficulty, no track) are migrated to
+FLEXNODE on first read, so nobody loses a record.
 
 ## Controls
 
@@ -425,7 +474,7 @@ crosses the finish line.
 ## Testing
 
 ```bash
-npm test          # 317 checks: gameplay/UI, rival races, difficulty + balance
+npm test          # 375 checks: gameplay/UI, rival races, difficulty + balance, tracks
 npm run visual    # earlier-step real-browser pixel/performance regressions
 npm run rivals    # Steps 6–7 pixels, races, difficulty, phone emulation (needs Chrome)
 npm run balance   # tune the difficulty levels against the reference player
@@ -557,3 +606,43 @@ Only Steps 1–7 are implemented; later steps remain untouched.
   `tests/smoke.js` (section 17), `tests/rivals.js`, `tools/rivals-check.js`,
   `tools/build-standalone.js`, `package.json`, `package-lock.json`, `README.md`.
 - Regenerated: `optimum-race.html` (now 191.7 KB).
+
+### Step 8 verification and manual checks
+
+`npm test` runs four suites — 375 checks, 0 failures:
+
+| Suite | Checks | What it covers |
+| --- | --- | --- |
+| `tests/smoke.js` | 246 | Steps 1–7 plus section 18: the cards, previews, selection, pane navigation, race start on the selected track, RACE AGAIN, and the records written at the flag |
+| `tests/rivals.js` | 49 | AI racing, collisions, standings |
+| `tests/difficulty.js` | 47 | EASY / NORMAL / HARD plus the difficulty × track section: selection unaffected by track, per-track records, time vs lap |
+| `tests/tracks.js` | 33 | Track data schema, geometry per track, a full AI race on each circuit (laps and gates), per-track laps/checkpoints/shards, previews matching the built centreline, and the record book |
+
+Manual pass:
+
+1. `npm start` → **CHANGE TRACK**. The three cards appear with previews, lengths,
+   ratings and your records for the selected difficulty.
+2. Arrow keys or a click move the selection; the menu background flies the chosen
+   circuit immediately.
+3. **RACE THIS TRACK** → the HUD shows that track's lap count; the minimap, road
+   width, scenery, shard count and checkpoints all change with it.
+4. Finish a race: the results screen names the circuit and prints the track best
+   and best lap for that difficulty; **RACE AGAIN** keeps the track.
+5. **MAIN MENU** lands on the track select pane; the card now shows the new record.
+6. Race a second circuit at the same difficulty: its records are separate, and
+   both remain after a reload.
+7. Phone/tablet: the cards stack into one column and scroll inside the menu panel.
+
+### Files changed for Step 8
+
+- Added: `js/bests.js`, `js/trackselect.js`, `tests/tracks.js`.
+- Updated gameplay: `js/trackdata.js` (two new circuits, per-track shards),
+  `js/track.js` (`Track.use()`, `Track.measure()`, start-relative checkpoints,
+  `Track.laps`), `js/race.js` (lap count from the track), `js/shards.js`
+  (per-track layout), `js/game.js` (track-aware results + records),
+  `js/config.js` (storage keys), `js/renderer.js` (`invalidateTrack()`),
+  `js/main.js` (menu panes, finish screen).
+- Updated UI/docs: `index.html`, `css/style.css`, `tests/smoke.js` (section 18),
+  `tests/difficulty.js`, `tools/build-standalone.js`, `package.json`,
+  `README.md`.
+- Regenerated deliverable: `optimum-race.html`.

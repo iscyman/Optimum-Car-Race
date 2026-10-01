@@ -12,19 +12,24 @@
   'use strict';
 
   const { CONFIG, Utils, Track } = OR;
-  const S = CONFIG.boost.shards;
 
   const Shards = {
     items: [],
     collected: 0,
     seed: 90210,
 
+    /** The layout for the active track (Step 8: pickups come from track data). */
+    spec() {
+      return Track.shards || CONFIG.boost.shards;
+    },
+
     /** Rebuild the layout and clear the collected count (Race Again, menu). */
     reset() {
       Shards.items.length = 0;
       Shards.collected = 0;
 
-      const rand = Utils.mulberry32(Shards.seed);
+      const S = Shards.spec();
+      const rand = Utils.mulberry32(S.seed || Shards.seed);
       const first = S.startClear;
       const last = Track.length - S.endClear;
       const step = (last - first) / Math.max(1, S.count - 1);
@@ -61,11 +66,12 @@
      */
     update(car, dt, active) {
       const list = Shards.items;
+      const S = Shards.spec();
       const r2 = S.radius * S.radius;
 
       for (let i = 0; i < list.length; i++) {
         const s = list[i];
-        s.phase += CONFIG.boost.shards.spin * dt;
+        s.phase += S.spin * dt;
         if (s.pop > 0) s.pop = Math.max(0, s.pop - dt * 2.2);
         if (s.taken || !active) continue;
 

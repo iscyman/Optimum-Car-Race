@@ -25,29 +25,54 @@
   'use strict';
 
   const { CONFIG, Utils } = OR;
-  const data = OR.activeTrack;
+
+  /* The active track's data. `let` because Step 8 can switch tracks at runtime
+     through Track.use() — everything below reads it at call time. */
+  let data = OR.activeTrack;
 
   const Track = {
-    data: data,
-    id: data.id,
-    name: data.name,
+    data: null,
+    id: '',
+    name: '',
     points: [],
     count: 0,
     length: 0,
     checkpoints: [],
     scenery: [],
-    corners: data.corners || [],
+    corners: [],
+
+    /* Step 8: race flow comes from the track, not from the global config */
+    laps: CONFIG.race.laps,
+    shards: null,
 
     /* Surface bands, measured from the centerline */
-    halfRoad: data.roadWidth / 2,
-    shoulder: data.kerbWidth,
-    grassMargin: data.grassMargin
+    halfRoad: 0,
+    shoulder: 0,
+    grassMargin: 0
   };
 
-  Track.kerbStart = Track.halfRoad;
-  Track.grassStart = Track.halfRoad + Track.shoulder;
-  Track.limit = Track.grassStart + Track.grassMargin;          // soft bounce starts
-  Track.hardLimit = Track.limit + CONFIG.car.bounce.hardMargin; // absolute backstop
+  /** Point the module at a track's data and derive everything data-shaped. */
+  function adopt(trackData) {
+    data = trackData;
+    Track.data = data;
+    Track.id = data.id;
+    Track.name = data.name;
+    Track.corners = data.corners || [];
+
+    Track.halfRoad = data.roadWidth / 2;
+    Track.shoulder = data.kerbWidth;
+    Track.grassMargin = data.grassMargin;
+
+    Track.kerbStart = Track.halfRoad;
+    Track.grassStart = Track.halfRoad + Track.shoulder;
+    Track.limit = Track.grassStart + Track.grassMargin;          // soft bounce starts
+    Track.hardLimit = Track.limit + CONFIG.car.bounce.hardMargin; // absolute backstop
+
+    /* Per-track race rules and pickups, with the Step 3/4 config as fallback
+       for any key a track leaves out. */
+    Track.laps = data.laps || CONFIG.race.laps;
+    Track.shards = Object.assign({}, CONFIG.boost.shards, data.shards || {});
+  }
 
   /* ---- smoothing ---------------------------------------------------------- */
 
@@ -111,6 +136,7 @@
   /* ---- build -------------------------------------------------------------- */
 
   Track.build = function () {
+    adopt(data);
     const built = buildCenterline(data.points, data.rowStep);
     const raw = built.points;
     const n = raw.length;
@@ -176,7 +202,9 @@
     Track.start = points[startIndex];
     Track.startIndex = startIndex;
     Track.checkpoints = (data.checkpointFractions || []).map(function (f, i) {
-      const p = Track.pointAt(Track.length * f);
+      /* Fractions are measured from the START LINE, which is only the same as
+         arc length 0 when the track starts at its first control point. */
+      const p = Track.pointAt(Track.start.s + Track.length * f);
       return {
         index: i,
         fraction: f,
@@ -392,6 +420,36 @@
     }
     Track.scenery = items;
     return Track;
+  };
+
+  /**
+   * Step 8: switch the live track. Rebuilds every derived field in place, so
+   * modules that captured `OR.Track` keep working. Callers that cache track
+   * shapes (the renderer, the shard layout) refresh afterwards — Game and
+   * TrackSelect do that through their own reset paths.
+   */
+  Track.use = function (trackData) {
+    if (!trackData) return Track;
+    OR.activeTrack = trackData;
+    adopt(trackData);
+    return Track.build();
+  };
+
+  /**
+   * Measure any track's centerline WITHOUT touching the live track. Used by
+   * the track select screen (previews and lap length) and by the tests that
+   * prove a preview matches the real thing once it is selected.
+   * `total` is the same number Track.build() reports, whatever the spacing.
+   */
+  Track.measure = function (trackData, spacing) {
+    const built = buildCenterline(trackData.points,
+      spacing || trackData.rowStep || CONFIG.track.rowStep);
+    return { points: built.points, total: built.total, step: built.step };
+  };
+
+  /** Just the preview polyline. */
+  Track.preview = function (trackData, spacing) {
+    return Track.measure(trackData, spacing).points;
   };
 
   OR.Track = Track.build();
