@@ -1,0 +1,19 @@
+{
+  "name": "optimum-race",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Optimum Race - Steps 1-2: a lightweight single-player racing game that runs entirely in the browser.",
+  "scripts": {
+    "start": "node tools/serve.js --port 3000 --host 0.0.0.0",
+    "test": "node tests/smoke.js",
+    "build": "node tools/build-standalone.js",
+    "screenshots": "node tools/screenshots.js",
+    "preview": "node tools/ascii-preview.js",
+    "visual": "node tools/visual-check.js"
+  },
+  "devDependencies": {
+    "canvas": "^3.0.0",
+    "jsdom": "^26.0.0",
+    "puppeteer": "^24.0.0"
+  }
+}
